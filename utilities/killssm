@@ -1,0 +1,22 @@
+#!/bin/bash
+
+SSM_NAME='ssm-coordinator'
+process=`grep libssm.so /proc/*/maps | cut -d / -f 3 | uniq`
+
+#全てのプロセスにSIGINTを送る
+for i in ${process}
+do
+	name=`cat "/proc/$i/cmdline" | tr '\0' ' ' | cut -d ' '  -f1`
+	if [ ${name} = ${SSM_NAME} ]; then
+		continue;
+	fi
+	echo $i  $name
+	kill -s SIGINT $i
+	sleep 0.01
+done
+
+# ssm-coordinatorは最後に終了
+sleep 1
+killall -s SIGINT ${SSM_NAME}
+
+#kill -SIGINT `grep libssm.so /proc/*/maps | cut -d / -f 3 | uniq`

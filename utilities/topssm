@@ -1,0 +1,3 @@
+#!/bin/bash
+top -p `grep libssm.so /proc/*/maps | cut -d / -f 3 | uniq| head -n 19 | tr -t '\n' ','`$$
+

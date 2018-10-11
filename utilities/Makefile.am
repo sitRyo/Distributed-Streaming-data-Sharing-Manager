@@ -1,0 +1,72 @@
+# set the include path found by configure
+INCLUDES= $(all_includes) -I../include
+
+AM_CFLAGS   = -Wall -std=c++11
+AM_CXXFLAGS = $(AM_CFLAGS)
+
+bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph
+noinst_PROGRAMS = read_proxy_test write_proxy_test
+noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h
+
+# shell scripts
+#EXTRA_DIST = ssm-advance-player killssm psssm topssm
+dist_bin_SCRIPTS = ssm-advance-player killssm psssm topssm
+
+## lsssm
+lsssm_SOURCES = lsssm.c
+lsssm_LDADD = ../src/libssm.la
+
+## ssm-logger
+ssm_logger_SOURCES = ssm-logger.cpp
+ssm_logger_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+ssm_logger_CXXFLAGS = $(ssm_logger_CFLAGS)
+ssm_logger_LDADD = ../src/libssm.la -lm
+
+## ssm-player
+ssm_player_SOURCES = ssm-player.cpp ssm-proxy-client.cpp
+ssm_player_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+ssm_player_CXXFLAGS = $(ssm_advance_player_CFLAGS)
+ssm_player_LDADD = ../src/libssm.la -lm
+
+## ssm-proxy
+ssm_proxy_SOURCES = ssm-proxy.cpp test.cpp
+ssm_proxy_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+ssm_proxy_CXXFLAGS = $(ssm_proxy_CFLAGS)
+ssm_proxy_LDADD = ../src/libssm.la -lm
+
+## read_test
+read_proxy_test_SOURCES = read_proxy_test.cpp ssm-proxy-client.cpp
+read_proxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+read_proxy_test_CXXFLAGS = $(read_proxy_test_CFLAGS)
+read_proxy_test_LDADD = ../src/libssm.la -lm
+
+## write_test
+write_proxy_test_SOURCES = write_proxy_test.cpp ssm-proxy-client.cpp
+write_roxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+write_proxy_test_CXXFLAGS = $(write_proxy_test_CFLAGS)
+write_proxy_test_LDADD = ../src/libssm.la -lm
+
+## ssm-transporter
+ssm_transporter_SOURCES = ssm-transporter.c
+ssm_transporter_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+ssm_transporter_CXXFLAGS = $(ssm_transporter_CFLAGS)
+ssm_transporter_LDADD = ../src/libssm.la -lm -lpthread
+
+## ssm-date
+ssm_date_SOURCES = ssm-date.c
+ssm_date_CFLAGS = $(AM_CFLAGS)
+ssm_date_CXXFLAGS = $(ssm_date_CFLAGS)
+ssm_date_LDADD = ../src/libssm.la
+
+## ssm-monitor
+ssm_monitor_SOURCES = ssm-monitor.c
+ssm_monitor_CFLAGS = $(AM_CFLAGS)
+ssm_monitor_CXXFLAGS = $(ssm_monitor_CFLAGS)
+ssm_monitor_LDADD = ../src/libssm.la
+
+## ssm-graph
+ssm_graph_SOURCES = ssm-graph.cpp
+ssm_graph_CFLAGS = $(AM_CFLAGS)
+ssm_graph_CXXFLAGS = $(ssm_graph_CFLAGS)
+ssm_graph_LDADD = ../src/libssm.la
+

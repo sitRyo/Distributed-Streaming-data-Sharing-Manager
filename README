@@ -1,0 +1,32 @@
+Sensor Sharing Manager
+                Eijiro TAKEUCHI 2008/6/4
+Streaming data Sharing Manager
+                Taku SHIKINA 2011/5/13
+
+SSM is streaming sensor data management program.
+
+
+:Directory structrure
+ssm
+-Makefile   make file
+-README     This file
+-src        sources
+-include    include files
+-utilities  lssm,ssmlogger,ssmmultiplayer
+
+:install
+ $ ./configure
+ $ make
+ $ sudo make install
+
+
+:executable files
+ - ssm-coordinator     SSM
+ - lsssm               print ssm list
+ - ssm-logger          logging ssm data
+ - ssm-advance-player  play ssm log data
+ - ssm-monitor         monitoring ssm
+ - ssm-graph           print ssm dot file
+ - ssm-transporter     transport ssm
+ - ssm-date            print ssm time
+

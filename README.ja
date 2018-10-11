@@ -1,0 +1,62 @@
+/** @mainpage Streaming data Sharing Manager
+             
+@section abstruct 概要
+Streaming data Sharing Manager(以降SSM)は、時系列で得られるセンサデータを複数のプロセスで扱いやすくするための一種のリングバッファです。<br />
+これにより非リアルタイムOS上でも時刻の整合性を保ったままセンサデータを扱う事ができます。<br />
+SSMは共有メモリを簡単に使うためのプロトコル・管理ソフトでしかありません。<br />
+センサのハンドラーやビューアなどのユーザプログラムは自分で用意する必要があります。<br />
+
+
+@subsection 特徴
+ - 任意のデータサイズに対応
+ - 一定個数の履歴を保持
+ - 共有メモリベースでコンテキストスイッチを待たず高速にアクセス可能
+ - 各センサにつき１入力n出力
+ - 時刻指定でのアクセスが可能
+ - よほど古いデータにアクセスしなければほとんど衝突は起こらない。
+
+@subsection 制約
+ - データサイズが変えられない
+ - でかいデータが扱えない（各Linuxの共有メモリの制限による）
+ - 書き込み側、読み込み側はデータ型が分かっている必要がある
+ - あらかじめ最低周期を設定する必要がある
+ - 著しく不規則な周期だと時刻指定でのアクセスに時間がかかる可能性がある
+ - 時刻はdouble型に固定
+    
+@section directory ディレクトリ構成
+SSM/
+ - Makefile   Make ファイル
+ - README_jp  このファイル
+ - src        ソースファイル
+ - include    インクルードファイル
+ - utilities  SSMのユーティリティのソースコード
+ 
+@section install インストール
+@code
+ $ ./configure
+ $ make
+ $ sudo make install
+@endcode
+/usr/local/bin以下に実行ファイルがおかれる。
+lib及び/usr/local/lib以下にライブラリ、
+/usr/local/include以下にヘッダファイルが置かれる。
+
+@section programs プログラム
+ - ssm-coordinator     Sensor Shairing Manager
+ - lsssm               登録されているセンサ情報のリスト表示
+ - ssm-logger          ログ取り
+ - ssm-advance-player  ログ再生
+ - ssm-monitor         書き込み状況表示
+ - ssm-graph           ssmの接続状態のdotファイル吐き出し
+ - ssm-transporter     ２台のPCでのSSMの同期
+ - ssm-date            SSM時刻管理
+ 
+Sensor Sharing Manager
+@author Eijiro TAKEUCHI
+@date 2008 - 2010
+
+Streaming data Sharing Manager
+@author Taku SHIKINA
+@date 2010 - 2011
+
+ */
