@@ -295,9 +295,9 @@ bool PConnector::recvData() {
 
 	/* recv data print */
 	printf("\nfull size = %d\n", mFullDataSize);
-	char *p = (char*)mData;
+	char *p = (char*)buf;
 
-	for (int i = 0; i < mDataSize; ++i) {
+	for (int i = 0; i < size; ++i) {
 		printf("%02x ", p[i] & 0xff);
 	}
 	printf("\n");
