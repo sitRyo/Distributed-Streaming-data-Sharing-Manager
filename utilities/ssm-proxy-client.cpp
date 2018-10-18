@@ -10,10 +10,28 @@
 
 #include "ssm.h"
 #include "ssm-proxy-client.hpp"
+#include "ssm-proxy-client-child.hpp"
+
 
 #define FOR_DEBUG 0
 
 PConnector::PConnector() {
+	initPConnector();
+}
+
+PConnector::PConnector(const char *streamName, int streamId) {
+	initPConnector();
+	setStream(streamName, streamId);
+}
+
+PConnector::~PConnector() {
+	printf("PConnector destructor\n");
+	if (sock != -1) {
+		close(sock);
+	}
+}
+
+void PConnector::initPConnector() {
 	printf("PConnector constructor\n");
 	sock = -1;
 	dsock = -1;
@@ -29,13 +47,6 @@ PConnector::PConnector() {
 	openMode = PROXY_INIT;
 	timeId = -1;
 	timecontrol = NULL;
-}
-
-PConnector::~PConnector() {
-	printf("PConnector destructor\n");	
-	if (sock != -1) {
-		close(sock);
-	}
 }
 
 int PConnector::readInt(char **p) {
@@ -152,6 +163,7 @@ bool PConnector::initRemote() {
 	bool r = true;
 	ssm_msg msg;
 	char *msg_buf = (char*)malloc(sizeof(ssm_msg));
+	// Todo change IPAddress
 	connectToServer("127.0.0.1", 8080);
 	if(!sendMsgToServer(MC_INITIALIZE, NULL)) {
 		fprintf(stderr, "error in initRemote\n");
@@ -312,9 +324,9 @@ ssmTimeT PConnector::getRealTime() {
 	return current.tv_sec + current.tv_sec / 1000000.0;
 }
 
-// Todo: gettimeSSM()はできない. 代替案が必要． -> prototype time = 0
+// prototype time = getTimeSSM()
 bool PConnector::write( ssmTimeT time ) {
-
+	/*
 	printf("\nfull size = %d\n", mFullDataSize);
 	char *p = &((char*)mFullData)[8];
 
@@ -322,13 +334,14 @@ bool PConnector::write( ssmTimeT time ) {
 		printf("%02x ", p[i] & 0xff);
 	}
 	printf("\n");
-
-	// 緊急 現在時間をとる
+	*/
+	/*
 	if (time == 0) {
 		struct timeval current;
 		gettimeofday( &current, NULL );
 		time = current.tv_sec + current.tv_sec / 1000000.0;;
 	}
+	*/
 
 	// 先頭にアドレスを入れたい
 	*((ssmTimeT*)mFullData) = time;
@@ -386,6 +399,7 @@ bool PConnector::sendData(const char *data, size_t size) {
 	return true;
 }
 
+// mDataにfulldataのポインタをセット
 void PConnector::setBuffer(void *data, size_t dataSize, void *property, size_t propertySize, void* fulldata) {
 	mData = data;
 	mDataSize = dataSize;
@@ -393,7 +407,6 @@ void PConnector::setBuffer(void *data, size_t dataSize, void *property, size_t p
 	mPropertySize = propertySize;
 	mFullData = fulldata;
 	mFullDataSize = mDataSize + sizeof(ssmTimeT);
-	//printf("data size = %d, propertysize = %d\n", mDataSize, mPropertySize);
 }
 
 void PConnector::setStream(const char *streamName, int streamId = 0) {
@@ -615,6 +628,7 @@ bool PConnector::createDataCon() {
 	free(msg_buf);
 
 	printf("connectToDataServer!\n");
+	// Todo: change IPAddress
 	connectToDataServer("127.0.0.1", msg.suid);
 
 	return true;
@@ -634,4 +648,3 @@ bool PConnector::terminate() {
 
 	return true;
 }
-

@@ -21,7 +21,7 @@
 // データ構造
 #include "intSsm.h"
 // クライアント側
-#include "ssm-proxy-client.hpp"
+#include "ssm-proxy-client-child.hpp"
 // おまじない
 using namespace std;
 // 終了するかどうかの判定用変数
@@ -53,16 +53,14 @@ int main(int aArgc, char **aArgv) {
 	// SSMApi<intSsm_k> intSsm(SNAME_INT, 1);
 
 	// サーバとのコネクタを設定
-	PConnector *con = new PConnector();
+	// PConnector *con = new PConnector();
+	PConnectorClient<intSsm_k> con(SNAME_INT, 1);
 	// initSSM
-	con->initRemote();
+	con.initRemote();
 
 	// openmode, streamName, sidを設定
 	SSM_open_mode SSM_WRITE = SSM_WRITE;
-	char *streamName = SNAME_INT;
-	int sid = 1;
-
-
+	/*
 	// for network
 	// データ構造体のサイズ, プロパティサイズ
 	size_t dataSize = sizeof(intSsm_k);
@@ -72,18 +70,19 @@ int main(int aArgc, char **aArgv) {
 	SSMDummy* property = (SSMDummy*)malloc(propertySize);
 
 	printf("%p\n", data);
-
-	con->setBuffer(rcvbuf, dataSize, property, propertySize, data);
+	*/
+	// con->setBuffer(rcvbuf, dataSize, property, propertySize, data);
 
 	// stream creates!
-	if (!con->create(streamName, sid, 5.0, 1.0)) {
+	if (!con.create(5.0, 1.0)) {
+		con.terminate();
 		return 1;
 	}
 
 	// データの送受信路を開く
-	if (!con->createDataCon()) {
+	if (!con.createDataCon()) {
 		// endSSMの代わりが必要 -> MC_TERMINATEの発行
-		con->terminate();
+		con.terminate();
 		return 1;
 	}
 	// 書き込む変数
@@ -93,16 +92,18 @@ int main(int aArgc, char **aArgv) {
 	while (!gShutOff) {
 		cnt += 1;
 		//((intSsm_k*)(&data[8]))->num = cnt;
-		((intSsm_k*)&((char*)data)[8])->num = cnt;
+		con.wdata->num = cnt;
 		printf("write %d\n", cnt);
-		con->write();
+		con.write();
 		sleepSSM(1);
 	}
 
-	con->terminate();
+	con.terminate();
 
+	/*
 	// メモリの解放を忘れずに
 	free(data);
 	free(rcvbuf);
 	free(property);
+	*/
 }

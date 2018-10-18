@@ -152,7 +152,8 @@ write_proxy_test-ssm-proxy-client.o: ssm-proxy-client.cpp \
  /usr/include/sys/_types/_socklen_t.h /usr/include/sys/_types/_iovec_t.h \
  /usr/include/netinet/in.h /usr/include/netinet6/in6.h \
  /usr/include/arpa/inet.h ../include/libssm.h /usr/include/sys/shm.h \
- /usr/include/sys/ipc.h ../include/ssm.h
+ /usr/include/sys/ipc.h ../include/ssm.h \
+ ../include/ssm-proxy-client-child.hpp ../include/ssm-proxy-client.hpp
 
 /usr/include/stdio.h:
 
@@ -607,3 +608,7 @@ write_proxy_test-ssm-proxy-client.o: ssm-proxy-client.cpp \
 /usr/include/sys/ipc.h:
 
 ../include/ssm.h:
+
+../include/ssm-proxy-client-child.hpp:
+
+../include/ssm-proxy-client.hpp:

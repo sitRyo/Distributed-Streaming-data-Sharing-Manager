@@ -9,6 +9,13 @@
 
 #include "libssm.h"
 
+/**
+ * Dummy Class
+ */
+class DSSMDummy
+{
+};
+
 class PConnector {
 private:
 	struct sockaddr_in server;
@@ -49,8 +56,12 @@ public:
 	SSM_tid timeId; // データのTimeID (SSM_tid == int)
 	ssmTimeT time = 0;  // データのタイムスタンプ (ssmTimeT == double)
 
+
 	PConnector();
 	~PConnector();
+	PConnector(const char *streamName, int streamId = 0);
+
+	void initPConnector();
 
 	bool connectToServer(const char* serverName, int port);
 	bool sendMsgToServer(int cmd_type, ssm_msg *msg);
@@ -76,7 +87,7 @@ public:
 	double timettof( struct timespec t ); // 使わないかも
 	static ssmTimeT getRealTime(); // 現在時刻の取得
 
-	bool write( ssmTimeT time = 0); // write bulkdata with time
+	bool write( ssmTimeT time = gettimeSSM()); // write bulkdata with time
 
 	bool read( SSM_tid tmid = -1, READ_packet_type type = TIME_ID ); // read
 	bool readNew(); // 最新であり、前回読み込んだデータと違うデータのときに読み込む

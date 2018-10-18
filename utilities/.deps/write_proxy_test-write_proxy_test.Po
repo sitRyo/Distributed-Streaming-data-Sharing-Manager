@@ -140,10 +140,11 @@ write_proxy_test-write_proxy_test.o: write_proxy_test.cpp \
  ../include/ssm.hpp ../include/ssm.h ../include/ssm-time.h \
  ../include/libssm.h /usr/include/sys/shm.h /usr/include/sys/ipc.h \
  /usr/include/sys/_types/_key_t.h intSsm.h \
- ../include/ssm-proxy-client.hpp /usr/include/sys/types.h \
- /usr/include/sys/_types/_u_char.h /usr/include/sys/_types/_u_short.h \
- /usr/include/sys/_types/_u_int.h /usr/include/sys/_types/_caddr_t.h \
- /usr/include/sys/_types/_blkcnt_t.h /usr/include/sys/_types/_blksize_t.h \
+ ../include/ssm-proxy-client-child.hpp ../include/ssm-proxy-client.hpp \
+ /usr/include/sys/types.h /usr/include/sys/_types/_u_char.h \
+ /usr/include/sys/_types/_u_short.h /usr/include/sys/_types/_u_int.h \
+ /usr/include/sys/_types/_caddr_t.h /usr/include/sys/_types/_blkcnt_t.h \
+ /usr/include/sys/_types/_blksize_t.h \
  /usr/include/sys/_types/_in_addr_t.h \
  /usr/include/sys/_types/_in_port_t.h /usr/include/sys/_types/_ino_t.h \
  /usr/include/sys/_types/_ino64_t.h /usr/include/sys/_types/_nlink_t.h \
@@ -549,6 +550,8 @@ write_proxy_test-write_proxy_test.o: write_proxy_test.cpp \
 /usr/include/sys/_types/_key_t.h:
 
 intSsm.h:
+
+../include/ssm-proxy-client-child.hpp:
 
 ../include/ssm-proxy-client.hpp:
 

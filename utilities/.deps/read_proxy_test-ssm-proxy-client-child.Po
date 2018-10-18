@@ -1,5 +1,5 @@
-ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
- /usr/include/_stdio.h /usr/include/sys/cdefs.h \
+read_proxy_test-ssm-proxy-client-child.o: ssm-proxy-client-child.cpp \
+ /usr/include/stdio.h /usr/include/_stdio.h /usr/include/sys/cdefs.h \
  /usr/include/sys/_symbol_aliasing.h \
  /usr/include/sys/_posix_availability.h /usr/include/Availability.h \
  /usr/include/AvailabilityInternal.h /usr/include/_types.h \
@@ -46,11 +46,10 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
  /usr/include/sys/_types/_fd_clr.h /usr/include/sys/_types/_fd_isset.h \
  /usr/include/sys/_types/_fd_zero.h /usr/include/sys/_types/_fd_copy.h \
  /usr/include/sys/_select.h /usr/include/sys/_types/_uuid_t.h \
- /usr/include/gethostuuid.h /usr/include/string.h \
- /usr/include/sys/_types/_rsize_t.h /usr/include/sys/_types/_errno_t.h \
- /usr/include/strings.h /usr/include/errno.h /usr/include/sys/errno.h \
- /usr/include/sys/time.h /usr/include/sys/_types/_timeval64.h \
- /usr/include/time.h /usr/include/sys/_types/_clock_t.h \
+ /usr/include/gethostuuid.h /usr/include/string.h /usr/include/strings.h \
+ /usr/include/errno.h /usr/include/sys/errno.h /usr/include/sys/time.h \
+ /usr/include/sys/_types/_timeval64.h /usr/include/time.h \
+ /usr/include/sys/_types/_clock_t.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/iostream \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/x86_64-apple-darwin17.3.0/bits/c++config.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/x86_64-apple-darwin17.3.0/bits/os_defines.h \
@@ -69,22 +68,26 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
  /usr/include/ctype.h /usr/include/_ctype.h /usr/include/runetype.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/exception \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/atomic_lockfree_defines.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/exception_ptr.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/exception_defines.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/nested_exception.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/char_traits.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_algobase.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/functexcept.h \
- /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/exception_defines.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/cpp_type_traits.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/ext/type_traits.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/ext/numeric_traits.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_pair.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/move.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/concept_check.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/type_traits \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_iterator_base_types.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_iterator_base_funcs.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/debug/debug.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_iterator.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/ptr_traits.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/predefined_ops.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/cstdint \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/localefwd.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/x86_64-apple-darwin17.3.0/bits/c++locale.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/clocale \
@@ -118,10 +121,20 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_function.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/backward/binders.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/range_access.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/initializer_list \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/basic_string.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/ext/alloc_traits.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/alloc_traits.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/ext/string_conversions.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/cstdlib \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/cstdio \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/cerrno \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/functional_hash.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/hash_bytes.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/basic_string.tcc \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/locale_classes.tcc \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/system_error \
+ /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/x86_64-apple-darwin17.3.0/bits/error_constants.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/stdexcept \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/streambuf \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/streambuf.tcc \
@@ -137,7 +150,8 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/ostream.tcc \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/istream \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/istream.tcc \
- ../include/ssm.h ../include/ssm-time.h ../include/ssm-proxy-client.hpp \
+ ../include/ssm.h ../include/ssm-time.h \
+ ../include/ssm-proxy-client-child.hpp ../include/ssm-proxy-client.hpp \
  /usr/include/sys/types.h /usr/include/sys/_types/_u_char.h \
  /usr/include/sys/_types/_u_short.h /usr/include/sys/_types/_u_int.h \
  /usr/include/sys/_types/_caddr_t.h /usr/include/sys/_types/_blkcnt_t.h \
@@ -145,15 +159,15 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
  /usr/include/sys/_types/_in_addr_t.h \
  /usr/include/sys/_types/_in_port_t.h /usr/include/sys/_types/_ino_t.h \
  /usr/include/sys/_types/_ino64_t.h /usr/include/sys/_types/_key_t.h \
- /usr/include/sys/_types/_nlink_t.h /usr/include/sys/_types/_fsblkcnt_t.h \
+ /usr/include/sys/_types/_nlink_t.h /usr/include/sys/_types/_rsize_t.h \
+ /usr/include/sys/_types/_errno_t.h /usr/include/sys/_types/_fsblkcnt_t.h \
  /usr/include/sys/_types/_fsfilcnt_t.h /usr/include/sys/socket.h \
  /usr/include/machine/_param.h /usr/include/i386/_param.h \
  /usr/include/net/net_kev.h /usr/include/sys/_types/_sa_family_t.h \
  /usr/include/sys/_types/_socklen_t.h /usr/include/sys/_types/_iovec_t.h \
  /usr/include/netinet/in.h /usr/include/netinet6/in6.h \
  /usr/include/arpa/inet.h ../include/libssm.h /usr/include/sys/shm.h \
- /usr/include/sys/ipc.h ../include/ssm.h \
- ../include/ssm-proxy-client-child.hpp ../include/ssm-proxy-client.hpp
+ /usr/include/sys/ipc.h ../include/ssm.h
 
 /usr/include/stdio.h:
 
@@ -333,10 +347,6 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 
 /usr/include/string.h:
 
-/usr/include/sys/_types/_rsize_t.h:
-
-/usr/include/sys/_types/_errno_t.h:
-
 /usr/include/strings.h:
 
 /usr/include/errno.h:
@@ -397,13 +407,17 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/atomic_lockfree_defines.h:
 
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/exception_ptr.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/exception_defines.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/nested_exception.h:
+
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/char_traits.h:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_algobase.h:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/functexcept.h:
-
-/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/exception_defines.h:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/cpp_type_traits.h:
 
@@ -417,6 +431,8 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/concept_check.h:
 
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/type_traits:
+
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_iterator_base_types.h:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/stl_iterator_base_funcs.h:
@@ -428,6 +444,8 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/ptr_traits.h:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/predefined_ops.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/cstdint:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/localefwd.h:
 
@@ -505,13 +523,33 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/range_access.h:
 
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/initializer_list:
+
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/basic_string.h:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/ext/alloc_traits.h:
 
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/alloc_traits.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/ext/string_conversions.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/cstdlib:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/cstdio:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/cerrno:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/functional_hash.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/hash_bytes.h:
+
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/basic_string.tcc:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/locale_classes.tcc:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/system_error:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/x86_64-apple-darwin17.3.0/bits/error_constants.h:
 
 /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/stdexcept:
 
@@ -549,6 +587,8 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 
 ../include/ssm-time.h:
 
+../include/ssm-proxy-client-child.hpp:
+
 ../include/ssm-proxy-client.hpp:
 
 /usr/include/sys/types.h:
@@ -576,6 +616,10 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 /usr/include/sys/_types/_key_t.h:
 
 /usr/include/sys/_types/_nlink_t.h:
+
+/usr/include/sys/_types/_rsize_t.h:
+
+/usr/include/sys/_types/_errno_t.h:
 
 /usr/include/sys/_types/_fsblkcnt_t.h:
 
@@ -608,7 +652,3 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 /usr/include/sys/ipc.h:
 
 ../include/ssm.h:
-
-../include/ssm-proxy-client-child.hpp:
-
-../include/ssm-proxy-client.hpp:

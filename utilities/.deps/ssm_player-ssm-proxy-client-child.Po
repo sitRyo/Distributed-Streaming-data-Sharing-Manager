@@ -1,5 +1,5 @@
-ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
- /usr/include/_stdio.h /usr/include/sys/cdefs.h \
+ssm_player-ssm-proxy-client-child.o: ssm-proxy-client-child.cpp \
+ /usr/include/stdio.h /usr/include/_stdio.h /usr/include/sys/cdefs.h \
  /usr/include/sys/_symbol_aliasing.h \
  /usr/include/sys/_posix_availability.h /usr/include/Availability.h \
  /usr/include/AvailabilityInternal.h /usr/include/_types.h \
@@ -137,7 +137,8 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/ostream.tcc \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/istream \
  /usr/local/Cellar/gcc@5/5.5.0_2/include/c++/5.5.0/bits/istream.tcc \
- ../include/ssm.h ../include/ssm-time.h ../include/ssm-proxy-client.hpp \
+ ../include/ssm.h ../include/ssm-time.h \
+ ../include/ssm-proxy-client-child.hpp ../include/ssm-proxy-client.hpp \
  /usr/include/sys/types.h /usr/include/sys/_types/_u_char.h \
  /usr/include/sys/_types/_u_short.h /usr/include/sys/_types/_u_int.h \
  /usr/include/sys/_types/_caddr_t.h /usr/include/sys/_types/_blkcnt_t.h \
@@ -152,8 +153,7 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
  /usr/include/sys/_types/_socklen_t.h /usr/include/sys/_types/_iovec_t.h \
  /usr/include/netinet/in.h /usr/include/netinet6/in6.h \
  /usr/include/arpa/inet.h ../include/libssm.h /usr/include/sys/shm.h \
- /usr/include/sys/ipc.h ../include/ssm.h \
- ../include/ssm-proxy-client-child.hpp ../include/ssm-proxy-client.hpp
+ /usr/include/sys/ipc.h ../include/ssm.h
 
 /usr/include/stdio.h:
 
@@ -549,6 +549,8 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 
 ../include/ssm-time.h:
 
+../include/ssm-proxy-client-child.hpp:
+
 ../include/ssm-proxy-client.hpp:
 
 /usr/include/sys/types.h:
@@ -608,7 +610,3 @@ ssm_player-ssm-proxy-client.o: ssm-proxy-client.cpp /usr/include/stdio.h \
 /usr/include/sys/ipc.h:
 
 ../include/ssm.h:
-
-../include/ssm-proxy-client-child.hpp:
-
-../include/ssm-proxy-client.hpp:
