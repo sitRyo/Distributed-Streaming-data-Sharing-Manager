@@ -17,7 +17,7 @@
 // その他
 #include <ssm.hpp>
 // データ構造
-#include "intSsm.h"
+#include "Dstructure.h"
 // クライアント側
 #include "ssm-proxy-client-child.hpp"
 // おまじない
@@ -46,7 +46,7 @@ int usleepSSM(useconds_t usec) {
 }
 
 int main() {
-	PConnectorClient<intSsm_k> con(SNAME_INT, 1);
+	PConnectorClient<Dstructure> con(SNAME_DS, 2);
 
 	con.initRemote();
 
@@ -61,10 +61,10 @@ int main() {
 	while (!gShutOff) {
 		if (con.readNew()) {
 			printf("\n");
-			printf("%%%%%%%%%%%%%%%%%%%%%");
+			printf("%%%%%%%%%%%%%%%%%%%%%\n");
 			printf("read\n");
 			printf("time -> %f", con.time);
-			printf(" data -> %d\n", con.data.num);
+			printf(" icnt -> %d, dcnt -> %f\n", con.data.inum, con.data.dnum);
 			printf("%%%%%%%%%%%%%%%%%%%%%\n");
 		}
 		sleepSSM(1);

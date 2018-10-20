@@ -5,7 +5,7 @@ AM_CFLAGS   = -Wall -std=c++11
 AM_CXXFLAGS = $(AM_CFLAGS)
 
 bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph
-noinst_PROGRAMS = read_proxy_test write_proxy_test read_proxy_test_2 write_proxy_test_2
+noinst_PROGRAMS = read_proxy_test write_proxy_test read_proxy_test_2 write_proxy_sample_2
 noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h
 
 # shell scripts
@@ -47,14 +47,14 @@ read_proxy_test_2_LDADD = ../src/libssm.la -lm
 
 ## write_test
 write_proxy_test_SOURCES = write_proxy_test.cpp ssm-proxy-client.cpp
-write_roxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+write_proxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 write_proxy_test_CXXFLAGS = $(write_proxy_test_CFLAGS)
 write_proxy_test_LDADD = ../src/libssm.la -lm
 
-write_proxy_test_2_SOURCES = write_proxy_test_2.cpp ssm-proxy-client.cpp
-write_roxy_test_2_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
-write_proxy_test_2_CXXFLAGS = $(write_proxy_test_CFLAGS)
-write_proxy_test_2_LDADD = ../src/libssm.la -lm
+write_proxy_sample_2_SOURCES = write_proxy_sample_2.cpp ssm-proxy-client.cpp
+write_proxy_sample_2_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+write_proxy_sample_2_CXXFLAGS = $(write_proxy_test_CFLAGS)
+write_proxy_sample_2_LDADD = ../src/libssm.la -lm
 
 ## ssm-transporter
 ssm_transporter_SOURCES = ssm-transporter.c

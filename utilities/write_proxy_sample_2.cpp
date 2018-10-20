@@ -47,7 +47,7 @@ int usleepSSM(useconds_t usec) {
 int main() {
 	PConnectorClient<Dstructure> con(SNAME_DS, 2);
 
-	SSM_open_mode SSM_WRITE = SSM_WRITE;
+	con.initRemote();
 
 	if (!con.create(5.0,1.0)) {
 		con.terminate();

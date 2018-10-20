@@ -93,7 +93,8 @@ host_triplet = x86_64-apple-darwin17.7.0
 bin_PROGRAMS = lsssm$(EXEEXT) ssm-logger$(EXEEXT) ssm-player$(EXEEXT) \
 	ssm-proxy$(EXEEXT) ssm-transporter$(EXEEXT) ssm-date$(EXEEXT) \
 	ssm-monitor$(EXEEXT) ssm-graph$(EXEEXT)
-noinst_PROGRAMS = read_proxy_test$(EXEEXT) write_proxy_test$(EXEEXT)
+noinst_PROGRAMS = read_proxy_test$(EXEEXT) write_proxy_test$(EXEEXT) \
+	read_proxy_test_2$(EXEEXT) write_proxy_sample_2$(EXEEXT)
 subdir = utilities
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
@@ -125,6 +126,15 @@ read_proxy_test_DEPENDENCIES = ../src/libssm.la
 read_proxy_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(read_proxy_test_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
+am_read_proxy_test_2_OBJECTS =  \
+	read_proxy_test_2-read_proxy_test_2.$(OBJEXT) \
+	read_proxy_test_2-ssm-proxy-client.$(OBJEXT)
+read_proxy_test_2_OBJECTS = $(am_read_proxy_test_2_OBJECTS)
+read_proxy_test_2_DEPENDENCIES = ../src/libssm.la
+read_proxy_test_2_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 am_ssm_date_OBJECTS = ssm_date-ssm-date.$(OBJEXT)
 ssm_date_OBJECTS = $(am_ssm_date_OBJECTS)
@@ -172,6 +182,15 @@ ssm_transporter_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
 	$(ssm_transporter_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
+am_write_proxy_sample_2_OBJECTS =  \
+	write_proxy_sample_2-write_proxy_sample_2.$(OBJEXT) \
+	write_proxy_sample_2-ssm-proxy-client.$(OBJEXT)
+write_proxy_sample_2_OBJECTS = $(am_write_proxy_sample_2_OBJECTS)
+write_proxy_sample_2_DEPENDENCIES = ../src/libssm.la
+write_proxy_sample_2_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
+	$(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 am_write_proxy_test_OBJECTS =  \
 	write_proxy_test-write_proxy_test.$(OBJEXT) \
 	write_proxy_test-ssm-proxy-client.$(OBJEXT)
@@ -227,6 +246,8 @@ am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/lsssm.Po \
 	./$(DEPDIR)/read_proxy_test-read_proxy_test.Po \
 	./$(DEPDIR)/read_proxy_test-ssm-proxy-client.Po \
+	./$(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Po \
+	./$(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Po \
 	./$(DEPDIR)/ssm_date-ssm-date.Po \
 	./$(DEPDIR)/ssm_graph-ssm-graph.Po \
 	./$(DEPDIR)/ssm_logger-ssm-logger.Po \
@@ -236,6 +257,8 @@ am__depfiles_remade = ./$(DEPDIR)/lsssm.Po \
 	./$(DEPDIR)/ssm_proxy-ssm-proxy.Po \
 	./$(DEPDIR)/ssm_proxy-test.Po \
 	./$(DEPDIR)/ssm_transporter-ssm-transporter.Po \
+	./$(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Po \
+	./$(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Po \
 	./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po \
 	./$(DEPDIR)/write_proxy_test-write_proxy_test.Po
 am__mv = mv -f
@@ -276,15 +299,17 @@ am__v_CXXLD_ = $(am__v_CXXLD_$(AM_DEFAULT_VERBOSITY))
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
 SOURCES = $(lsssm_SOURCES) $(read_proxy_test_SOURCES) \
-	$(ssm_date_SOURCES) $(ssm_graph_SOURCES) $(ssm_logger_SOURCES) \
+	$(read_proxy_test_2_SOURCES) $(ssm_date_SOURCES) \
+	$(ssm_graph_SOURCES) $(ssm_logger_SOURCES) \
 	$(ssm_monitor_SOURCES) $(ssm_player_SOURCES) \
 	$(ssm_proxy_SOURCES) $(ssm_transporter_SOURCES) \
-	$(write_proxy_test_SOURCES)
+	$(write_proxy_sample_2_SOURCES) $(write_proxy_test_SOURCES)
 DIST_SOURCES = $(lsssm_SOURCES) $(read_proxy_test_SOURCES) \
-	$(ssm_date_SOURCES) $(ssm_graph_SOURCES) $(ssm_logger_SOURCES) \
+	$(read_proxy_test_2_SOURCES) $(ssm_date_SOURCES) \
+	$(ssm_graph_SOURCES) $(ssm_logger_SOURCES) \
 	$(ssm_monitor_SOURCES) $(ssm_player_SOURCES) \
 	$(ssm_proxy_SOURCES) $(ssm_transporter_SOURCES) \
-	$(write_proxy_test_SOURCES)
+	$(write_proxy_sample_2_SOURCES) $(write_proxy_test_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -462,10 +487,18 @@ read_proxy_test_SOURCES = read_proxy_test.cpp ssm-proxy-client.cpp
 read_proxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 read_proxy_test_CXXFLAGS = $(read_proxy_test_CFLAGS)
 read_proxy_test_LDADD = ../src/libssm.la -lm
+read_proxy_test_2_SOURCES = read_proxy_test_2.cpp ssm-proxy-client.cpp
+read_proxy_test_2_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+read_proxy_test_2_CXXFLAGS = $(read_proxy_test_CFLAGS)
+read_proxy_test_2_LDADD = ../src/libssm.la -lm
 write_proxy_test_SOURCES = write_proxy_test.cpp ssm-proxy-client.cpp
-write_roxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+write_proxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 write_proxy_test_CXXFLAGS = $(write_proxy_test_CFLAGS)
 write_proxy_test_LDADD = ../src/libssm.la -lm
+write_proxy_sample_2_SOURCES = write_proxy_sample_2.cpp ssm-proxy-client.cpp
+write_proxy_sample_2_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+write_proxy_sample_2_CXXFLAGS = $(write_proxy_test_CFLAGS)
+write_proxy_sample_2_LDADD = ../src/libssm.la -lm
 ssm_transporter_SOURCES = ssm-transporter.c
 ssm_transporter_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 ssm_transporter_CXXFLAGS = $(ssm_transporter_CFLAGS)
@@ -582,6 +615,10 @@ read_proxy_test$(EXEEXT): $(read_proxy_test_OBJECTS) $(read_proxy_test_DEPENDENC
 	@rm -f read_proxy_test$(EXEEXT)
 	$(AM_V_CXXLD)$(read_proxy_test_LINK) $(read_proxy_test_OBJECTS) $(read_proxy_test_LDADD) $(LIBS)
 
+read_proxy_test_2$(EXEEXT): $(read_proxy_test_2_OBJECTS) $(read_proxy_test_2_DEPENDENCIES) $(EXTRA_read_proxy_test_2_DEPENDENCIES) 
+	@rm -f read_proxy_test_2$(EXEEXT)
+	$(AM_V_CXXLD)$(read_proxy_test_2_LINK) $(read_proxy_test_2_OBJECTS) $(read_proxy_test_2_LDADD) $(LIBS)
+
 ssm-date$(EXEEXT): $(ssm_date_OBJECTS) $(ssm_date_DEPENDENCIES) $(EXTRA_ssm_date_DEPENDENCIES) 
 	@rm -f ssm-date$(EXEEXT)
 	$(AM_V_CCLD)$(ssm_date_LINK) $(ssm_date_OBJECTS) $(ssm_date_LDADD) $(LIBS)
@@ -609,6 +646,10 @@ ssm-proxy$(EXEEXT): $(ssm_proxy_OBJECTS) $(ssm_proxy_DEPENDENCIES) $(EXTRA_ssm_p
 ssm-transporter$(EXEEXT): $(ssm_transporter_OBJECTS) $(ssm_transporter_DEPENDENCIES) $(EXTRA_ssm_transporter_DEPENDENCIES) 
 	@rm -f ssm-transporter$(EXEEXT)
 	$(AM_V_CCLD)$(ssm_transporter_LINK) $(ssm_transporter_OBJECTS) $(ssm_transporter_LDADD) $(LIBS)
+
+write_proxy_sample_2$(EXEEXT): $(write_proxy_sample_2_OBJECTS) $(write_proxy_sample_2_DEPENDENCIES) $(EXTRA_write_proxy_sample_2_DEPENDENCIES) 
+	@rm -f write_proxy_sample_2$(EXEEXT)
+	$(AM_V_CXXLD)$(write_proxy_sample_2_LINK) $(write_proxy_sample_2_OBJECTS) $(write_proxy_sample_2_LDADD) $(LIBS)
 
 write_proxy_test$(EXEEXT): $(write_proxy_test_OBJECTS) $(write_proxy_test_DEPENDENCIES) $(EXTRA_write_proxy_test_DEPENDENCIES) 
 	@rm -f write_proxy_test$(EXEEXT)
@@ -658,6 +699,8 @@ distclean-compile:
 include ./$(DEPDIR)/lsssm.Po # am--include-marker
 include ./$(DEPDIR)/read_proxy_test-read_proxy_test.Po # am--include-marker
 include ./$(DEPDIR)/read_proxy_test-ssm-proxy-client.Po # am--include-marker
+include ./$(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Po # am--include-marker
+include ./$(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Po # am--include-marker
 include ./$(DEPDIR)/ssm_date-ssm-date.Po # am--include-marker
 include ./$(DEPDIR)/ssm_graph-ssm-graph.Po # am--include-marker
 include ./$(DEPDIR)/ssm_logger-ssm-logger.Po # am--include-marker
@@ -667,6 +710,8 @@ include ./$(DEPDIR)/ssm_player-ssm-proxy-client.Po # am--include-marker
 include ./$(DEPDIR)/ssm_proxy-ssm-proxy.Po # am--include-marker
 include ./$(DEPDIR)/ssm_proxy-test.Po # am--include-marker
 include ./$(DEPDIR)/ssm_transporter-ssm-transporter.Po # am--include-marker
+include ./$(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Po # am--include-marker
+include ./$(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Po # am--include-marker
 include ./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po # am--include-marker
 include ./$(DEPDIR)/write_proxy_test-write_proxy_test.Po # am--include-marker
 
@@ -788,6 +833,34 @@ read_proxy_test-ssm-proxy-client.obj: ssm-proxy-client.cpp
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
 #	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_CXXFLAGS) $(CXXFLAGS) -c -o read_proxy_test-ssm-proxy-client.obj `if test -f 'ssm-proxy-client.cpp'; then $(CYGPATH_W) 'ssm-proxy-client.cpp'; else $(CYGPATH_W) '$(srcdir)/ssm-proxy-client.cpp'; fi`
 
+read_proxy_test_2-read_proxy_test_2.o: read_proxy_test_2.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) -MT read_proxy_test_2-read_proxy_test_2.o -MD -MP -MF $(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Tpo -c -o read_proxy_test_2-read_proxy_test_2.o `test -f 'read_proxy_test_2.cpp' || echo '$(srcdir)/'`read_proxy_test_2.cpp
+	$(AM_V_at)$(am__mv) $(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Tpo $(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Po
+#	$(AM_V_CXX)source='read_proxy_test_2.cpp' object='read_proxy_test_2-read_proxy_test_2.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) -c -o read_proxy_test_2-read_proxy_test_2.o `test -f 'read_proxy_test_2.cpp' || echo '$(srcdir)/'`read_proxy_test_2.cpp
+
+read_proxy_test_2-read_proxy_test_2.obj: read_proxy_test_2.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) -MT read_proxy_test_2-read_proxy_test_2.obj -MD -MP -MF $(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Tpo -c -o read_proxy_test_2-read_proxy_test_2.obj `if test -f 'read_proxy_test_2.cpp'; then $(CYGPATH_W) 'read_proxy_test_2.cpp'; else $(CYGPATH_W) '$(srcdir)/read_proxy_test_2.cpp'; fi`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Tpo $(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Po
+#	$(AM_V_CXX)source='read_proxy_test_2.cpp' object='read_proxy_test_2-read_proxy_test_2.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) -c -o read_proxy_test_2-read_proxy_test_2.obj `if test -f 'read_proxy_test_2.cpp'; then $(CYGPATH_W) 'read_proxy_test_2.cpp'; else $(CYGPATH_W) '$(srcdir)/read_proxy_test_2.cpp'; fi`
+
+read_proxy_test_2-ssm-proxy-client.o: ssm-proxy-client.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) -MT read_proxy_test_2-ssm-proxy-client.o -MD -MP -MF $(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Tpo -c -o read_proxy_test_2-ssm-proxy-client.o `test -f 'ssm-proxy-client.cpp' || echo '$(srcdir)/'`ssm-proxy-client.cpp
+	$(AM_V_at)$(am__mv) $(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Tpo $(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Po
+#	$(AM_V_CXX)source='ssm-proxy-client.cpp' object='read_proxy_test_2-ssm-proxy-client.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) -c -o read_proxy_test_2-ssm-proxy-client.o `test -f 'ssm-proxy-client.cpp' || echo '$(srcdir)/'`ssm-proxy-client.cpp
+
+read_proxy_test_2-ssm-proxy-client.obj: ssm-proxy-client.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) -MT read_proxy_test_2-ssm-proxy-client.obj -MD -MP -MF $(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Tpo -c -o read_proxy_test_2-ssm-proxy-client.obj `if test -f 'ssm-proxy-client.cpp'; then $(CYGPATH_W) 'ssm-proxy-client.cpp'; else $(CYGPATH_W) '$(srcdir)/ssm-proxy-client.cpp'; fi`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Tpo $(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Po
+#	$(AM_V_CXX)source='ssm-proxy-client.cpp' object='read_proxy_test_2-ssm-proxy-client.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(read_proxy_test_2_CXXFLAGS) $(CXXFLAGS) -c -o read_proxy_test_2-ssm-proxy-client.obj `if test -f 'ssm-proxy-client.cpp'; then $(CYGPATH_W) 'ssm-proxy-client.cpp'; else $(CYGPATH_W) '$(srcdir)/ssm-proxy-client.cpp'; fi`
+
 ssm_graph-ssm-graph.o: ssm-graph.cpp
 	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_graph_CXXFLAGS) $(CXXFLAGS) -MT ssm_graph-ssm-graph.o -MD -MP -MF $(DEPDIR)/ssm_graph-ssm-graph.Tpo -c -o ssm_graph-ssm-graph.o `test -f 'ssm-graph.cpp' || echo '$(srcdir)/'`ssm-graph.cpp
 	$(AM_V_at)$(am__mv) $(DEPDIR)/ssm_graph-ssm-graph.Tpo $(DEPDIR)/ssm_graph-ssm-graph.Po
@@ -871,6 +944,34 @@ ssm_proxy-test.obj: test.cpp
 #	$(AM_V_CXX)source='test.cpp' object='ssm_proxy-test.obj' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
 #	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -c -o ssm_proxy-test.obj `if test -f 'test.cpp'; then $(CYGPATH_W) 'test.cpp'; else $(CYGPATH_W) '$(srcdir)/test.cpp'; fi`
+
+write_proxy_sample_2-write_proxy_sample_2.o: write_proxy_sample_2.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) -MT write_proxy_sample_2-write_proxy_sample_2.o -MD -MP -MF $(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Tpo -c -o write_proxy_sample_2-write_proxy_sample_2.o `test -f 'write_proxy_sample_2.cpp' || echo '$(srcdir)/'`write_proxy_sample_2.cpp
+	$(AM_V_at)$(am__mv) $(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Tpo $(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Po
+#	$(AM_V_CXX)source='write_proxy_sample_2.cpp' object='write_proxy_sample_2-write_proxy_sample_2.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) -c -o write_proxy_sample_2-write_proxy_sample_2.o `test -f 'write_proxy_sample_2.cpp' || echo '$(srcdir)/'`write_proxy_sample_2.cpp
+
+write_proxy_sample_2-write_proxy_sample_2.obj: write_proxy_sample_2.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) -MT write_proxy_sample_2-write_proxy_sample_2.obj -MD -MP -MF $(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Tpo -c -o write_proxy_sample_2-write_proxy_sample_2.obj `if test -f 'write_proxy_sample_2.cpp'; then $(CYGPATH_W) 'write_proxy_sample_2.cpp'; else $(CYGPATH_W) '$(srcdir)/write_proxy_sample_2.cpp'; fi`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Tpo $(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Po
+#	$(AM_V_CXX)source='write_proxy_sample_2.cpp' object='write_proxy_sample_2-write_proxy_sample_2.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) -c -o write_proxy_sample_2-write_proxy_sample_2.obj `if test -f 'write_proxy_sample_2.cpp'; then $(CYGPATH_W) 'write_proxy_sample_2.cpp'; else $(CYGPATH_W) '$(srcdir)/write_proxy_sample_2.cpp'; fi`
+
+write_proxy_sample_2-ssm-proxy-client.o: ssm-proxy-client.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) -MT write_proxy_sample_2-ssm-proxy-client.o -MD -MP -MF $(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Tpo -c -o write_proxy_sample_2-ssm-proxy-client.o `test -f 'ssm-proxy-client.cpp' || echo '$(srcdir)/'`ssm-proxy-client.cpp
+	$(AM_V_at)$(am__mv) $(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Tpo $(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Po
+#	$(AM_V_CXX)source='ssm-proxy-client.cpp' object='write_proxy_sample_2-ssm-proxy-client.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) -c -o write_proxy_sample_2-ssm-proxy-client.o `test -f 'ssm-proxy-client.cpp' || echo '$(srcdir)/'`ssm-proxy-client.cpp
+
+write_proxy_sample_2-ssm-proxy-client.obj: ssm-proxy-client.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) -MT write_proxy_sample_2-ssm-proxy-client.obj -MD -MP -MF $(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Tpo -c -o write_proxy_sample_2-ssm-proxy-client.obj `if test -f 'ssm-proxy-client.cpp'; then $(CYGPATH_W) 'ssm-proxy-client.cpp'; else $(CYGPATH_W) '$(srcdir)/ssm-proxy-client.cpp'; fi`
+	$(AM_V_at)$(am__mv) $(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Tpo $(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Po
+#	$(AM_V_CXX)source='ssm-proxy-client.cpp' object='write_proxy_sample_2-ssm-proxy-client.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_sample_2_CXXFLAGS) $(CXXFLAGS) -c -o write_proxy_sample_2-ssm-proxy-client.obj `if test -f 'ssm-proxy-client.cpp'; then $(CYGPATH_W) 'ssm-proxy-client.cpp'; else $(CYGPATH_W) '$(srcdir)/ssm-proxy-client.cpp'; fi`
 
 write_proxy_test-write_proxy_test.o: write_proxy_test.cpp
 	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_test_CXXFLAGS) $(CXXFLAGS) -MT write_proxy_test-write_proxy_test.o -MD -MP -MF $(DEPDIR)/write_proxy_test-write_proxy_test.Tpo -c -o write_proxy_test-write_proxy_test.o `test -f 'write_proxy_test.cpp' || echo '$(srcdir)/'`write_proxy_test.cpp
@@ -1037,6 +1138,8 @@ distclean: distclean-am
 		-rm -f ./$(DEPDIR)/lsssm.Po
 	-rm -f ./$(DEPDIR)/read_proxy_test-read_proxy_test.Po
 	-rm -f ./$(DEPDIR)/read_proxy_test-ssm-proxy-client.Po
+	-rm -f ./$(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Po
+	-rm -f ./$(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/ssm_date-ssm-date.Po
 	-rm -f ./$(DEPDIR)/ssm_graph-ssm-graph.Po
 	-rm -f ./$(DEPDIR)/ssm_logger-ssm-logger.Po
@@ -1046,6 +1149,8 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ssm_proxy-ssm-proxy.Po
 	-rm -f ./$(DEPDIR)/ssm_proxy-test.Po
 	-rm -f ./$(DEPDIR)/ssm_transporter-ssm-transporter.Po
+	-rm -f ./$(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Po
+	-rm -f ./$(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-write_proxy_test.Po
 	-rm -f Makefile
@@ -1096,6 +1201,8 @@ maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/lsssm.Po
 	-rm -f ./$(DEPDIR)/read_proxy_test-read_proxy_test.Po
 	-rm -f ./$(DEPDIR)/read_proxy_test-ssm-proxy-client.Po
+	-rm -f ./$(DEPDIR)/read_proxy_test_2-read_proxy_test_2.Po
+	-rm -f ./$(DEPDIR)/read_proxy_test_2-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/ssm_date-ssm-date.Po
 	-rm -f ./$(DEPDIR)/ssm_graph-ssm-graph.Po
 	-rm -f ./$(DEPDIR)/ssm_logger-ssm-logger.Po
@@ -1105,6 +1212,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ssm_proxy-ssm-proxy.Po
 	-rm -f ./$(DEPDIR)/ssm_proxy-test.Po
 	-rm -f ./$(DEPDIR)/ssm_transporter-ssm-transporter.Po
+	-rm -f ./$(DEPDIR)/write_proxy_sample_2-ssm-proxy-client.Po
+	-rm -f ./$(DEPDIR)/write_proxy_sample_2-write_proxy_sample_2.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-write_proxy_test.Po
 	-rm -f Makefile
