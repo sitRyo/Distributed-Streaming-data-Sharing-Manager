@@ -49,6 +49,7 @@ private:
 	void serializeMessage(ssm_msg *msg, char *buf);
 	bool createRemoteSSM( const char *name, int stream_id, size_t ssm_size, ssmTimeT life, ssmTimeT cycle );
 	bool setPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata, size_t size);
+	bool getPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata);
 
 	bool sendData(const char *data, size_t size);
 
@@ -80,6 +81,7 @@ public:
 	bool open(SSM_open_mode openMode = SSM_READ);
 	bool open(const char *streamNane, int streamId, SSM_open_mode openMode);
 	bool setProperty();
+	bool getProperty();
 	void setOffset(ssmTimeT offset);
 	bool createDataCon();
 	bool terminate();

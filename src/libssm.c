@@ -182,7 +182,6 @@ void del_msg( void )
 int send_msg( int cmd_type, ssm_msg *msg )
 {
 	ssm_msg msgbuf;
-	printf("libssm.c : send_msg\n");
 	/* initialize check */
 	if( msq_id < 0 )
 	{
@@ -703,6 +702,7 @@ int get_propertySSM( const char *name, int sensor_uid, void *adata )
 
 	if( strlen( name ) > SSM_SNAME_MAX )
 	{
+		printf("error 0\n");
 		strcpy( err_msg, "name length" );
 		return 0;
 	}
@@ -715,11 +715,17 @@ int get_propertySSM( const char *name, int sensor_uid, void *adata )
 	msg.time = 0;
 
 	/* communicate */
-	if( !communicate_msg( MC_STREAM_PROPERTY_GET, &msg ) )
+	if( !communicate_msg( MC_STREAM_PROPERTY_GET, &msg ) ) {
+		printf("error 1\n");
 		return 0;
+	}
 
-	if( !msg.ssize )
+
+	if( !msg.ssize ) {
+		printf("error 2\n");
 		return 0;								/* エラー */
+	}
+
 	size = msg.ssize;
 
 	ptr = malloc( size + sizeof ( long ) );

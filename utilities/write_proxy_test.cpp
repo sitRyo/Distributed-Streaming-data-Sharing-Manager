@@ -54,7 +54,8 @@ int main(int aArgc, char **aArgv) {
 
 	// サーバとのコネクタを設定
 	// PConnector *con = new PConnector();
-	PConnectorClient<intSsm_k> con(SNAME_INT, 1);
+	// doubleProperty_p -> double 1個
+	PConnectorClient<intSsm_k, doubleProperty_p> con(SNAME_INT, 1);
 	// initSSM
 	con.initRemote();
 
@@ -79,9 +80,11 @@ int main(int aArgc, char **aArgv) {
 		return 1;
 	}
 
+	con.property.dnum = 1.5;
+	con.setProperty();
+
 	// データの送受信路を開く
 	if (!con.createDataCon()) {
-		// endSSMの代わりが必要 -> MC_TERMINATEの発行
 		con.terminate();
 		return 1;
 	}

@@ -11,6 +11,7 @@
 
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <errno.h>
 
@@ -646,9 +647,43 @@ void ProxyServer::handleCommand() {
 					sendMsg(MC_FAIL, &msg);
 					break;
 				}
+				printf("set property\n");
+				if (mProperty != NULL) {
+					printf("mProperty is not null\n");
+				} else {
+					printf("mProperty is null\n");
+				}
 				sendMsg(MC_RES, &msg);
 			} else {
 				sendMsg(MC_FAIL, &msg);
+			}
+			break;
+		}
+		case MC_STREAM_PROPERTY_GET: {
+			printf("MC_STREAM_PROPERTY_GET\n");
+			mPropertySize = msg.ssize;
+			mProperty = (char*)malloc(mPropertySize);
+			if (mProperty == NULL) {
+				sendMsg(MC_FAIL, &msg);
+				break;
+			}
+
+			// propertyを取得
+			stream.setPropertyBuffer(mProperty, mPropertySize);
+
+			if (!stream.getProperty()) {
+				printf("can't get property on SSM\n");
+				sendMsg(MC_FAIL, &msg);
+				break;
+			}
+
+			// propertyのサイズを送信
+			msg.ssize = mPropertySize;
+			sendMsg(MC_RES, &msg);
+
+			printf("send property\n");
+			if (send(this->client.data_socket, mProperty, mPropertySize, 0) == -1) {
+				fprintf(stderr, "packet send error\n");
 			}
 			break;
 		}

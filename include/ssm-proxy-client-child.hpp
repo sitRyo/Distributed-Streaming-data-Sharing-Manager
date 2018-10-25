@@ -41,6 +41,7 @@ public:
 	~PConnectorClient() {
 		//std::cout << __PRETTY_FUNCTION__ << std::endl;
 		free(fulldata); // いやな予感がする
+		free(wdata);
 	}
 };
 

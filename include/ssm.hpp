@@ -488,6 +488,7 @@ public:
 	 */
 	bool getProperty(  )
 	{
+		printf("mPropertySize: %d\n", mPropertySize);
 		if( mPropertySize > 0 )
 			return static_cast < bool > ( get_propertySSM( streamName, streamId, mProperty ) );
 		else

@@ -687,7 +687,7 @@ int msq_loop( void )
 		case MC_STREAM_PROPERTY_GET:
 			if( verbosity_mode >= 2 )
 			{
-				printf( "message:propeerty_get\n" );
+				printf( "message:property_get\n" );
 				printf( "   |   :name=%s id=%d\n", msg.name, msg.suid );
 			}
 

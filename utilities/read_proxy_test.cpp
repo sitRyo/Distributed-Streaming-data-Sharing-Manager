@@ -51,7 +51,7 @@ int usleepSSM(useconds_t usec) {
 int main() {
 	// サーバとのコネクタを設定
 	// スタック領域にメモリを確保
-	PConnectorClient<intSsm_k> con(SNAME_INT, 1);
+	PConnectorClient<intSsm_k, doubleProperty_p> con(SNAME_INT, 1);
 
 	// サーバと接続、サーバ側はプロセスをフォーク
 	// MC_INITIALIZEを発行
@@ -81,6 +81,8 @@ int main() {
 	SSM_open_mode SSM_READ = SSM_READ;
 	con.open(SSM_READ);
 
+	con.getProperty();
+	printf("property -> %f\n", con.property.dnum);
 	// データ通信路を開く
 	if (!con.createDataCon()) {
 		// endSSM() -> MC_TERMINATE

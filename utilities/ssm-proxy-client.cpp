@@ -464,6 +464,7 @@ bool PConnector::createRemoteSSM( const char *name, int stream_id, size_t ssm_si
 
 	bool r = true;
 	char *msg_buf = (char*)malloc(sizeof(ssm_msg));
+	printf("msg_buf: %p\n", msg_buf);
 	if (!sendMsgToServer(MC_CREATE | open_mode, &msg)) {
 		fprintf(stderr, "error in createRemoteSSM\n");
 		r = false;
@@ -585,6 +586,56 @@ bool PConnector::setPropertyRemoteSSM(const char *name, int sensor_uid, const vo
 			}
 		}
 
+	} else {
+		fprintf(stderr, "fail recvMsg\n");
+		r = false;
+	}
+	free(msg_buf);
+	return r;
+}
+
+bool PConnector::getProperty() {
+	if (mPropertySize > 0) {
+		return getPropertyRemoteSSM(streamName, streamId, mProperty);
+	}
+	return false;
+}
+
+bool PConnector::getPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata) {
+	ssm_msg msg;
+	int size;
+	char *data = ( char * )adata;
+	if( strlen( name ) > SSM_SNAME_MAX ) {
+		fprintf(stderr, "name length error\n");
+		return 0;
+	}
+
+	strncpy( msg.name, name, SSM_SNAME_MAX );
+	msg.suid = sensor_uid;
+	msg.ssize = mPropertySize;
+	msg.hsize = 0;
+	msg.time = 0;
+
+	bool r = true;
+	char *msg_buf = (char*)malloc(sizeof(ssm_msg));
+	if (!sendMsgToServer(MC_STREAM_PROPERTY_GET, &msg)) {
+		fprintf(stderr, "error in getPropertyRemoteSSM send\n");
+		return false;
+	}
+
+	if (recvMsgFromServer(&msg, msg_buf)) {
+		if (msg.cmd_type != MC_RES) {
+			fprintf(stderr, "error in getPropertyRemoteSSM recv\n");
+			return false;
+		}
+		// propertyのサイズ
+		int size = msg.ssize;
+		// property取得
+		int len = recv(sock, data, size, 0);
+		if (len != size) {
+			fprintf(stderr, "fail recv property\n");
+			r = false;
+		}
 	} else {
 		fprintf(stderr, "fail recvMsg\n");
 		r = false;
