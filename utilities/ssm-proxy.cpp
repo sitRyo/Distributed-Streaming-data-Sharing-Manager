@@ -661,8 +661,10 @@ void ProxyServer::handleCommand() {
 		}
 		case MC_STREAM_PROPERTY_GET: {
 			printf("MC_STREAM_PROPERTY_GET\n");
-			mPropertySize = msg.ssize;
-			mProperty = (char*)malloc(mPropertySize);
+			if (mProperty == NULL) {
+				mPropertySize = msg.ssize;
+				mProperty = (char*)malloc(mPropertySize);
+			}
 			if (mProperty == NULL) {
 				sendMsg(MC_FAIL, &msg);
 				break;

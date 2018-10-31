@@ -37,6 +37,8 @@ void ctrlC(int aStatus)
 // Ctrl-C による正常終了を設定
 inline void setSigInt(){ signal(SIGINT, ctrlC); }
 
+/*
+
 unsigned int sleepSSM(double sec) {
 	return usleepSSM(sec * 1000000.0);
 }
@@ -48,6 +50,8 @@ int usleepSSM(useconds_t usec) {
 	return usleep((int)t);
 }
 
+*/
+
 int main() {
 	// サーバとのコネクタを設定
 	// スタック領域にメモリを確保
@@ -56,7 +60,7 @@ int main() {
 	// サーバと接続、サーバ側はプロセスをフォーク
 	// MC_INITIALIZEを発行
 	// con->initRemote();
-	con.initRemote();
+	con.initSSM();
 
 	/*
 	// openmode, streamName, sidを設定

@@ -36,6 +36,7 @@ void ctrlC(int aStatus)
 // Ctrl-C による正常終了を設定
 inline void setSigInt(){ signal(SIGINT, ctrlC); }
 
+/*
 unsigned int sleepSSM(double sec) {
 	return usleepSSM(sec * 1000000.0);
 }
@@ -46,33 +47,18 @@ int usleepSSM(useconds_t usec) {
 	t = (double)usec / speed;
 	return usleep((int)t);
 }
+*/
 
 int main(int aArgc, char **aArgv) {
-	// ストリームを作った方がいいんじゃないか？
-	// 内部のメンバにアクセスできる
-	// SSMApi<intSsm_k> intSsm(SNAME_INT, 1);
-
 	// サーバとのコネクタを設定
 	// PConnector *con = new PConnector();
 	// doubleProperty_p -> double 1個
 	PConnectorClient<intSsm_k, doubleProperty_p> con(SNAME_INT, 1);
 	// initSSM
-	con.initRemote();
+	con.initSSM();
 
-	// openmode, streamName, sidを設定
+	// openmodeを設定
 	SSM_open_mode SSM_WRITE = SSM_WRITE;
-	/*
-	// for network
-	// データ構造体のサイズ, プロパティサイズ
-	size_t dataSize = sizeof(intSsm_k);
-	size_t propertySize = sizeof(SSMDummy);
-	void* data = malloc(dataSize + sizeof(ssmTimeT));
-	void* rcvbuf = malloc(dataSize + sizeof(ssmTimeT));
-	SSMDummy* property = (SSMDummy*)malloc(propertySize);
-
-	printf("%p\n", data);
-	*/
-	// con->setBuffer(rcvbuf, dataSize, property, propertySize, data);
 
 	// stream creates!
 	if (!con.create(5.0, 1.0)) {

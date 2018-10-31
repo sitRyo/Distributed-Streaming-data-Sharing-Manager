@@ -182,6 +182,10 @@ bool PConnector::initRemote() {
 
 }
 
+bool PConnector::initSSM() {
+	return initRemote();
+}
+
 void PConnector::serializeMessage(ssm_msg *msg, char *buf) {
 	printf("serialize message\n");
 	msg->msg_type = readLong(&buf);

@@ -74,6 +74,7 @@ public:
 	void* getData();
 
 	bool initRemote();
+	bool initSSM();
 	void setStream(const char *streamName, int streamId);
 	void setBuffer(void *data, size_t dataSize, void *property, size_t propertySize, void *fulldata);
 	bool create(const char *streamName, int streamId, double saveTime, double cycle);

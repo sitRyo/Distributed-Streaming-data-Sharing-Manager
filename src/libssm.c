@@ -702,7 +702,6 @@ int get_propertySSM( const char *name, int sensor_uid, void *adata )
 
 	if( strlen( name ) > SSM_SNAME_MAX )
 	{
-		printf("error 0\n");
 		strcpy( err_msg, "name length" );
 		return 0;
 	}
@@ -716,13 +715,11 @@ int get_propertySSM( const char *name, int sensor_uid, void *adata )
 
 	/* communicate */
 	if( !communicate_msg( MC_STREAM_PROPERTY_GET, &msg ) ) {
-		printf("error 1\n");
 		return 0;
 	}
 
 
 	if( !msg.ssize ) {
-		printf("error 2\n");
 		return 0;								/* エラー */
 	}
 
