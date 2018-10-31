@@ -1,13 +1,8 @@
 /*
- * read_proxy_test.cpp
- *
- *  Created on: 2018/09/19
- *      Author: gunjiryouta
+ *	ネットワークを介したread機能のテスト
+ *	1秒に1回書き込まれるデータを取ってきて表示する．
  */
 
-/* MC_OPENテスト
- * ssm-proxy-clientからMC_OPENを発行し、proxyからの応答があることを確認する。
- */
 
 // c++系
 #include <iostream>
@@ -37,76 +32,54 @@ void ctrlC(int aStatus)
 // Ctrl-C による正常終了を設定
 inline void setSigInt(){ signal(SIGINT, ctrlC); }
 
-/*
-
-unsigned int sleepSSM(double sec) {
-	return usleepSSM(sec * 1000000.0);
-}
-
-int usleepSSM(useconds_t usec) {
-	double t,speed = 1.0;
-
-	t = (double)usec / speed;
-	return usleep((int)t);
-}
-
-*/
-
 int main() {
-	// サーバとのコネクタを設定
-	// スタック領域にメモリを確保
+	/*
+	 * 変数の宣言
+	 * PConnectorClient<data型, property型> 変数名(ssm登録名, ssm登録番号);
+	 * property型は省略可能、省略するとpropertyにアクセスできなきなくなるだけ
+	 * ssm登録番号は省略可能、省略すると0に設定される
+	 * ssm登録名は./intSsm.hに#define SNAME_INT "intSsm"と定義
+	 * data型とproperty型は ./intSsm.h に定義
+	 */
 	PConnectorClient<intSsm_k, doubleProperty_p> con(SNAME_INT, 1);
 
-	// サーバと接続、サーバ側はプロセスをフォーク
-	// MC_INITIALIZEを発行
-	// con->initRemote();
+	// ssm関連の初期化
 	con.initSSM();
 
-	/*
-	// openmode, streamName, sidを設定
+
 	SSM_open_mode SSM_READ = SSM_READ;
-	char *streamName = SNAME_INT;
-	int sid = 1;
+	// 共有メモリにすでにある領域を開く
+	// 失敗するとfalseを返す
+	if (!con.open(SSM_READ)) {
+		// terminate()でssm-coordinatorとの接続を切断する
+		con.terminate();
+		return 1;
+	}
 
-	// データ構造体のサイズ, プロパティサイズ
-	size_t dataSize = sizeof(intSsm_k);
-	size_t propertySize = sizeof(SSMDummy);
-	void* data = malloc(dataSize + sizeof(ssmTimeT));
-	void* property = malloc(propertySize);
-	void* fulldata = malloc(dataSize + sizeof(ssmTimeT));
-
-	// コネクタのバッファ設定
-	// con->setBuffer(data, dataSize, property, propertySize, fulldata);
-	con.setBuffer(data, dataSize, property, propertySize, fulldata);
-	*/
-	// open!
-	// con->open(streamName, sid, SSM_READ);
-	// con.open(streamName, sid, SSM_READ);
-	SSM_open_mode SSM_READ = SSM_READ;
-	con.open(SSM_READ);
-
+	// 指定したプロパティを取得
 	con.getProperty();
+
+	// プロパティは 変数名.property.データ でアクセス
 	printf("property -> %f\n", con.property.dnum);
+
 	// データ通信路を開く
+	// これをしないとデータを取得できない
 	if (!con.createDataCon()) {
 		// endSSM() -> MC_TERMINATE
 		con.terminate();
 		return 1;
 	}
 
-	struct timeval current;
+	// 安全に終了できるように設定
+	setSigInt();
 	double ttime;
 	while (!gShutOff) {
+
 		// 最新のデータを取得
 		if (con.readNew()) {
 			printf("\n");
 			printf("now -> %f\n", con.time);
 			cout << "NUM = " << con.data.num << endl;
-			gettimeofday( &current, NULL );
-			ttime = current.tv_sec + current.tv_sec / 1000000.0;
-			printf("ttime -> %f\n", ttime - con.time);
-			printf("timestamp -> %f\n", con.time);
-			printf("timeid -> %d\n", con.timeId);
 		}
 
 		// 1秒前のデータを取得
@@ -114,19 +87,14 @@ int main() {
 			printf("\n");
 			printf("before 1 sec -> %f\n", con.time);
 			cout << "old NUM = " << con.data.num << endl;
-			printf("timestamp -> %f\n", con.time);
-			printf("timeid -> %d\n", con.timeId);
 		}
 
+		// SSM時間に合わせたsleep...だが，speedを1以外に変更できないので引数がそのまま停止時間になる
 		sleepSSM(1);
 	}
 
+	// プログラム終了後は切断
 	con.terminate();
-	/*
-	free(data);
-	free(property);
-	free(fulldata);
-	*/
 }
 
 
