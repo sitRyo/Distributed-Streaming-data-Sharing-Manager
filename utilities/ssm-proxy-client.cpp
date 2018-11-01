@@ -164,7 +164,8 @@ bool PConnector::initRemote() {
 	ssm_msg msg;
 	char *msg_buf = (char*)malloc(sizeof(ssm_msg));
 	// Todo change IPAddress
-	connectToServer("127.0.0.1", 8080);
+	connectToServer(ipaddr, 8080);
+	//connectToServer("127.0.0.1", 8080);
 	if(!sendMsgToServer(MC_INITIALIZE, NULL)) {
 		fprintf(stderr, "error in initRemote\n");
 	}
@@ -411,6 +412,11 @@ void PConnector::setBuffer(void *data, size_t dataSize, void *property, size_t p
 	mPropertySize = propertySize;
 	mFullData = fulldata;
 	mFullDataSize = mDataSize + sizeof(ssmTimeT);
+}
+
+// IPAddressをセット(デフォルトはループバック)
+void PConnector::setIpAddress(char *address) {
+	ipaddr = address;
 }
 
 void PConnector::setStream(const char *streamName, int streamId = 0) {
@@ -684,7 +690,8 @@ bool PConnector::createDataCon() {
 
 	printf("connectToDataServer!\n");
 	// Todo: change IPAddress
-	connectToDataServer("127.0.0.1", msg.suid);
+	connectToDataServer(ipaddr, msg.suid);
+	//connectToDataServer("127.0.0.1", msg.suid);
 
 	return true;
 }

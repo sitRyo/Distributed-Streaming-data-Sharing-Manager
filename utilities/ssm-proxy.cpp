@@ -664,10 +664,10 @@ void ProxyServer::handleCommand() {
 			if (mProperty == NULL) {
 				mPropertySize = msg.ssize;
 				mProperty = (char*)malloc(mPropertySize);
-			}
-			if (mProperty == NULL) {
-				sendMsg(MC_FAIL, &msg);
-				break;
+				if (mProperty == NULL) {
+					sendMsg(MC_FAIL, &msg);
+					break;
+				}
 			}
 
 			// propertyを取得

@@ -33,8 +33,7 @@ private:
 	void *mFullData;
 	size_t mFullDataSize;
 	ssmtime *timecontrol;					///< for get real time
-
-
+	char *ipaddr;
 
 	void writeInt(char **p, int v);
 	void writeLong(char **p, long v);
@@ -77,6 +76,7 @@ public:
 	bool initSSM();
 	void setStream(const char *streamName, int streamId);
 	void setBuffer(void *data, size_t dataSize, void *property, size_t propertySize, void *fulldata);
+	void setIpAddress(char *address);
 	bool create(const char *streamName, int streamId, double saveTime, double cycle);
 	bool create(double saveTime, double cycle);
 	bool open(SSM_open_mode openMode = SSM_READ);
