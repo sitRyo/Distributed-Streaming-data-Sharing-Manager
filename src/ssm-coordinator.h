@@ -30,6 +30,6 @@ SSM_List *serch_SSM_List( char *name, int suid );
 int msq_loop( void );
 SSM_List *get_nth_SSM_List( int n );
 int get_num_SSM_List( void );
-long get_receive_id( void );
+uint64_t get_receive_id( void );
 
 #endif

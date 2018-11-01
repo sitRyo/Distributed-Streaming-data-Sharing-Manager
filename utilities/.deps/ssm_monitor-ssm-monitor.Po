@@ -29,10 +29,14 @@ ssm_monitor-ssm-monitor.o: ssm-monitor.c /usr/include/stdio.h \
  /usr/include/sys/_types/_ucontext.h /usr/include/sys/_types/_pid_t.h \
  /usr/include/sys/_types/_sigset_t.h /usr/include/sys/_types/_uid_t.h \
  /usr/include/sys/_pthread/_pthread_t.h ../include/ssm.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5/gcc/x86_64-apple-darwin17.3.0/5.5.0/include/stdint.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5/gcc/x86_64-apple-darwin17.3.0/5.5.0/include-fixed/stdint.h \
+ /usr/include/_types/_uint8_t.h /usr/include/_types/_uint16_t.h \
+ /usr/include/_types/_uint32_t.h /usr/include/_types/_uint64_t.h \
+ /usr/include/_types/_intmax_t.h /usr/include/_types/_uintmax_t.h \
  ../include/ssm-time.h /usr/include/unistd.h /usr/include/sys/unistd.h \
  /usr/include/sys/_types/_posix_vdisable.h \
- /usr/include/sys/_types/_seek_set.h /usr/include/_types/_uint64_t.h \
- /usr/include/_types/_uint32_t.h /usr/include/sys/_types/_gid_t.h \
+ /usr/include/sys/_types/_seek_set.h /usr/include/sys/_types/_gid_t.h \
  /usr/include/sys/_types/_useconds_t.h /usr/include/sys/select.h \
  /usr/include/sys/_types/_fd_def.h /usr/include/sys/_types/_timespec.h \
  /usr/include/sys/_types/_timeval.h /usr/include/sys/_types/_time_t.h \
@@ -155,6 +159,22 @@ ssm_monitor-ssm-monitor.o: ssm-monitor.c /usr/include/stdio.h \
 
 ../include/ssm.h:
 
+/usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5/gcc/x86_64-apple-darwin17.3.0/5.5.0/include/stdint.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5/gcc/x86_64-apple-darwin17.3.0/5.5.0/include-fixed/stdint.h:
+
+/usr/include/_types/_uint8_t.h:
+
+/usr/include/_types/_uint16_t.h:
+
+/usr/include/_types/_uint32_t.h:
+
+/usr/include/_types/_uint64_t.h:
+
+/usr/include/_types/_intmax_t.h:
+
+/usr/include/_types/_uintmax_t.h:
+
 ../include/ssm-time.h:
 
 /usr/include/unistd.h:
@@ -164,10 +184,6 @@ ssm_monitor-ssm-monitor.o: ssm-monitor.c /usr/include/stdio.h \
 /usr/include/sys/_types/_posix_vdisable.h:
 
 /usr/include/sys/_types/_seek_set.h:
-
-/usr/include/_types/_uint64_t.h:
-
-/usr/include/_types/_uint32_t.h:
 
 /usr/include/sys/_types/_gid_t.h:
 

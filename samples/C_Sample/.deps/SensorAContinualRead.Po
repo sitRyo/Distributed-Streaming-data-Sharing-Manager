@@ -31,8 +31,13 @@ SensorAContinualRead.o: SensorAContinualRead.c /usr/include/stdio.h \
  /usr/include/sys/_types/_fd_zero.h /usr/include/sys/_types/_fd_copy.h \
  /usr/include/sys/_select.h /usr/include/sys/_types/_dev_t.h \
  /usr/include/sys/_types/_mode_t.h /usr/include/sys/_types/_uuid_t.h \
- /usr/include/gethostuuid.h ../../include/ssm.h ../../include/ssm-time.h \
- /usr/include/time.h /usr/include/sys/_types/_clock_t.h SensorA.h
+ /usr/include/gethostuuid.h ../../include/ssm.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5/gcc/x86_64-apple-darwin17.3.0/5.5.0/include/stdint.h \
+ /usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5/gcc/x86_64-apple-darwin17.3.0/5.5.0/include-fixed/stdint.h \
+ /usr/include/_types/_uint8_t.h /usr/include/_types/_uint16_t.h \
+ /usr/include/_types/_intmax_t.h /usr/include/_types/_uintmax_t.h \
+ ../../include/ssm-time.h /usr/include/time.h \
+ /usr/include/sys/_types/_clock_t.h SensorA.h
 
 /usr/include/stdio.h:
 
@@ -157,6 +162,18 @@ SensorAContinualRead.o: SensorAContinualRead.c /usr/include/stdio.h \
 /usr/include/gethostuuid.h:
 
 ../../include/ssm.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5/gcc/x86_64-apple-darwin17.3.0/5.5.0/include/stdint.h:
+
+/usr/local/Cellar/gcc@5/5.5.0_2/lib/gcc/5/gcc/x86_64-apple-darwin17.3.0/5.5.0/include-fixed/stdint.h:
+
+/usr/include/_types/_uint8_t.h:
+
+/usr/include/_types/_uint16_t.h:
+
+/usr/include/_types/_intmax_t.h:
+
+/usr/include/_types/_uintmax_t.h:
 
 ../../include/ssm-time.h:
 

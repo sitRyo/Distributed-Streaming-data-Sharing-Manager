@@ -133,15 +133,15 @@ void print_list( SSM_List * p )
 	{
 		printf( "   |   :name : %s\n", p->name );
 		printf( "   |   :ID: %d  offset: %d  size: %d  address: %ld \n   |\n", p->shm_id, p->shm_offset, p->size,
-				( long )p->shm_ptr );
+				( uint64_t )p->shm_ptr );
 		p = p->next;
 	}
 }
 
 /* 宛先作成 */
-long get_receive_id( void )
+uint64_t get_receive_id( void )
 {
-	static long id;
+	static uint64_t id;
 	if( id < MSQ_RES )
 		id = MSQ_RES;
 
@@ -646,7 +646,7 @@ int msq_loop( void )
 					printf( "   |   :exist\n" );
 				if( !slist->property )
 				{								/* 場所がなければ作る */
-					slist->property = static_cast< char *>( malloc( msg.ssize + sizeof ( long ) ) );
+					slist->property = static_cast< char *>( malloc( msg.ssize + sizeof ( uint64_t ) ) );
 					slist->property_size = msg.ssize;
 				}
 				if( slist->property )
@@ -706,7 +706,7 @@ int msq_loop( void )
 						return 0;
 
 					/* データを送る */
-					*( ( long * )slist->property ) = msg.res_type;	/* 返信 */
+					*( ( uint64_t * )slist->property ) = msg.res_type;	/* 返信 */
 					msgsnd( msq_id, ( char * )slist->property, slist->property_size, 0 );
 				}
 				else
@@ -816,7 +816,7 @@ int msq_loop( void )
 				}
 				msge.msg_type = msg.res_type;		/* 返信 */
 				/* 送信 */
-				if( ( msgsnd( msq_id, &msge, sizeof(ssm_msg_edge) - sizeof(long), 0 ) ) < 0 )
+				if( ( msgsnd( msq_id, &msge, sizeof(ssm_msg_edge) - sizeof(uint64_t), 0 ) ) < 0 )
 					return 0;
 			}
 			break;
