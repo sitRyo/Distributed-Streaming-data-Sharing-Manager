@@ -117,8 +117,8 @@ extern "C"
 	/** SSMコマンドメッセージ */
 	typedef struct
 	{
-		long msg_type;							///< 宛先
-		long res_type;							///< 返信用
+		uint64_t msg_type;							///< 宛先
+		uint64_t res_type;							///< 返信用
 		int cmd_type;							///< コマンドの種類
 		char name[SSM_SNAME_MAX];				///< ストリーム名
 		int suid;								///< ID
@@ -131,7 +131,7 @@ extern "C"
 	/** SSMのエッジ取得メッセージ */
 	typedef struct
 	{
-		long msg_type;							///< 宛先
+		uint64_t msg_type;							///< 宛先
 		int cmd_type;							///< コマンドの種類
 		char name[SSM_SNAME_MAX];				///< ストリーム名
 		int suid;								///< ID
