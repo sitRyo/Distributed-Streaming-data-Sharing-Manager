@@ -27,7 +27,7 @@
 
 extern pid_t my_pid; // for debug
 
-DataCommunicator::DataCommunicator(uint16_t nport, char* mData, size_t d_size, size_t t_size, SSMApiBase *pstream, PROXY_open_mode type) {
+DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size, uint64_t t_size, SSMApiBase *pstream, PROXY_open_mode type) {
 	printf("DataCommunicatir new\n");
 	this->mData = mData;
 	this->mDataSize = d_size;
@@ -69,7 +69,7 @@ READ_packet_type DataCommunicator::receiveTimeIdData(double* value) {
 	// 注意! bufのメモリ解放
 
 	READ_packet_type ret;
-	size_t size = sizeof(int) + sizeof(double);
+	uint64_t size = sizeof(int) + sizeof(double);
 	void* buf = malloc(size);
 	int len = recv(this->client.data_socket, buf, size, 0);
 	printf("len: %d\n", len); // 8(int2つ分)になるはず
@@ -159,7 +159,7 @@ bool DataCommunicator::sendToReadData() {
 	// 送信するデータ: mData(データ本体), time(タイムスタンプ), tid(タイムID)
 
 	std::cout << "send mData" << std::endl;
-	size_t size = mDataSize + sizeof(ssmTimeT) + sizeof(SSM_tid);
+	uint64_t size = mDataSize + sizeof(ssmTimeT) + sizeof(SSM_tid);
 	printf("size: %d", size);
 	// char buf[mDataSize];
 	void* buf = malloc(size);
@@ -489,7 +489,7 @@ int ProxyServer::receiveMsg(ssm_msg *msg, char *buf) {
 
 int ProxyServer::sendMsg(int cmd_type, ssm_msg *msg) {
 	ssm_msg msgbuf;
-	size_t len;
+	uint64_t len;
 	char *buf, *p;
 	if (msg == NULL) {
 		msg = &msgbuf;
@@ -792,7 +792,7 @@ void ProxyServer::catchSignal(int signo) {
 
 int main(void) {
 	ProxyServer server;
-	printf("size_t size = %d\n", (int)sizeof(size_t));
+	printf("uint64_t size = %d\n", (int)sizeof(uint64_t));
 	server.init();
 	server.run();
 	test();

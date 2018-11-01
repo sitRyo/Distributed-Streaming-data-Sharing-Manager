@@ -10,7 +10,7 @@
 template <typename T, typename P = SSMDummy>
 class SSMPApi : public SSMApiBase
 {
-	void setBuffer(void *data, size_t dataSize, void *property, size_t propertySize );
+	void setBuffer(void *data, uint64_t dataSize, void *property, uint64_t propertySize );
 
 	void initApi()
 	{
@@ -37,7 +37,7 @@ public:
 	// @brief data格納用メモリの確保
 	// @param dataSize[in] データのサイズ
 	// @retrun メモリ確保に成功したらtrueを返す
-	bool alloc( size_t dataSize )
+	bool alloc( uint64_t dataSize )
 	{
 		bool ret = true;
 		data = (T*)malloc( dataSize );

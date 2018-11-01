@@ -104,7 +104,7 @@ extern "C"
 	 *
 	 * @see destroySSM, openSSM
 	 */
-	SSM_sid createSSM( const char *stream_name, int stream_id, size_t stream_size, ssmTimeT life, ssmTimeT cycle ) __attribute__ ((warn_unused_result));
+	SSM_sid createSSM( const char *stream_name, int stream_id, uint64_t stream_size, ssmTimeT life, ssmTimeT cycle ) __attribute__ ((warn_unused_result));
 	
 	/**
 	 * @brief ストリームの破棄
@@ -249,7 +249,7 @@ extern "C"
 	 *
 	 * create済みのストリームしか登録できないので注意。
 	 */
-	int set_propertySSM( const char *stream_name, int stream_id, const void *data, size_t size );
+	int set_propertySSM( const char *stream_name, int stream_id, const void *data, uint64_t size );
 
 	/**
 	 * @brief SSMからのプロパティーの取得
@@ -263,8 +263,8 @@ extern "C"
 
 	/* others */
 	int getSSM_num( void );
-	int getSSM_name( int n, char *stream_name, int *stream_id, size_t *size );
-	int getSSM_info( const char *stream_name, int stream_id, size_t *size, int *num, double *cycle, size_t *property_size );
+	int getSSM_name( int n, char *stream_name, int *stream_id, uint64_t *size );
+	int getSSM_info( const char *stream_name, int stream_id, uint64_t *size, int *num, double *cycle, uint64_t *property_size );
 	
 	/**
 	 * @brief メモリダンプ

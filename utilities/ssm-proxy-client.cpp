@@ -243,7 +243,7 @@ bool PConnector::readNew() {
 // 時間で取得
 bool PConnector::readTime(ssmTimeT t) {
 	READ_packet_type type = REAL_TIME; // 時間を送る -> libssm.h
-	size_t len = sizeof(int) + sizeof(ssmTimeT);
+	uint64_t len = sizeof(int) + sizeof(ssmTimeT);
 	void* buf = malloc(len);
 	((READ_packet_type *)buf)[0] = type;
 	*((ssmTimeT *)&(((READ_packet_type *)buf)[1])) = t;
@@ -260,7 +260,7 @@ bool PConnector::readTime(ssmTimeT t) {
 
 // timeidをproxyに送信 -> proxy側でtimeidを更新してもらう
 bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
-	size_t len = sizeof(int) + sizeof(ssmTimeT);
+	uint64_t len = sizeof(int) + sizeof(ssmTimeT);
 	void* buf = malloc(len);
 	((int *)buf)[0] = type;
 	((int *)buf)[1] = tmid;
@@ -288,7 +288,7 @@ bool PConnector::recvData() {
 	// サイズ: mDataSize + sizeof(ssmTimeT) + sizeof(SSM_tid)
 	// mDataを更新 <- こいつはポインタ
 
-	size_t size = mDataSize + sizeof(ssmTimeT) + sizeof(SSM_tid);
+	uint64_t size = mDataSize + sizeof(ssmTimeT) + sizeof(SSM_tid);
 	void* buf = malloc(size);
 
 	int len = recv(dsock, buf, size, 0);
@@ -396,7 +396,7 @@ bool PConnector::sendMsgToServer(int cmd_type, ssm_msg *msg) {
 	return true;
 }
 
-bool PConnector::sendData(const char *data, size_t size) {
+bool PConnector::sendData(const char *data, uint64_t size) {
 	if (send(sock, data, size, 0) == -1) {
 		fprintf(stderr, "error in sendData\n");
 		return false;
@@ -405,7 +405,7 @@ bool PConnector::sendData(const char *data, size_t size) {
 }
 
 // mDataにfulldataのポインタをセット
-void PConnector::setBuffer(void *data, size_t dataSize, void *property, size_t propertySize, void* fulldata) {
+void PConnector::setBuffer(void *data, uint64_t dataSize, void *property, uint64_t propertySize, void* fulldata) {
 	mData = data;
 	mDataSize = dataSize;
 	mProperty = property;
@@ -424,10 +424,10 @@ void PConnector::setStream(const char *streamName, int streamId = 0) {
 	this->streamId = streamId;
 }
 
-bool PConnector::createRemoteSSM( const char *name, int stream_id, size_t ssm_size, ssmTimeT life, ssmTimeT cycle ) {
+bool PConnector::createRemoteSSM( const char *name, int stream_id, uint64_t ssm_size, ssmTimeT life, ssmTimeT cycle ) {
 	ssm_msg msg;
 	int open_mode = SSM_READ | SSM_WRITE;
-	size_t len;
+	uint64_t len;
 
 	/* initialize check */
 	if( !name ) {
@@ -551,7 +551,7 @@ bool PConnector::setProperty() {
 	return false;
 }
 
-bool PConnector::setPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata, size_t size) {
+bool PConnector::setPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata, uint64_t size) {
 	ssm_msg msg;
 	char *ptr;
 	const char *data = ( char * )adata;

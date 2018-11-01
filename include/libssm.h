@@ -106,7 +106,7 @@ extern "C"
 	{
 		SSM_tid tid_top;						///< 最新のTID(rp = tid_top wp = tid_top+1 )
 		int num;								///< 履歴数
-		size_t size;							///< データサイズ
+		uint64_t size;							///< データサイズ
 		double cycle;							///< データの入力される周期（最低値）
 		int data_off;							///< データまでのオフセット
 		int times_off;							///< 時刻データまでのオフセット
@@ -122,8 +122,8 @@ extern "C"
 		int cmd_type;							///< コマンドの種類
 		char name[SSM_SNAME_MAX];				///< ストリーム名
 		int suid;								///< ID
-		size_t ssize;							///< データサイズ
-		size_t hsize;							///< 履歴数
+		uint64_t ssize;							///< データサイズ
+		uint64_t hsize;							///< 履歴数
 		ssmTimeT time;							///< ストリーム周期
 		ssmTimeT saveTime;                       ///< saveTime
 	} ssm_msg;
@@ -155,7 +155,7 @@ extern "C"
 	int getSSM_node_num( void );
 	int getSSM_node_info( int n, int *node_num );
 	int getSSM_edge_num( void );
-	int getSSM_edge_info( int n, char *name, size_t name_size, int *id, int *node1, int *node2, int *dir );
+	int getSSM_edge_info( int n, char *name, uint64_t name_size, int *id, int *node1, int *node2, int *dir );
 	
 	/* open */
 	int opentimeSSM( void ) __attribute__ ((warn_unused_result));
@@ -171,7 +171,7 @@ extern "C"
 	/* data */
 	void *shm_get_data_address( ssm_header * shm_p );
 	void *shm_get_data_ptr( ssm_header * shm_p, SSM_tid tid );
-	size_t shm_get_data_size( ssm_header *shm_p );
+	uint64_t shm_get_data_size( ssm_header *shm_p );
 	/* ssmtime */
 	ssmTimeT *shm_get_time_address( ssm_header * shm_p );
 	void shm_init_time( ssm_header * shm_p );

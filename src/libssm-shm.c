@@ -84,7 +84,7 @@ void *shm_get_data_ptr( ssm_header *shm_p, SSM_tid tid )
  	return ( void * )( (char *)shm_p + shm_p->data_off + (shm_p->size * ( tid % shm_p->num )));
 }
 
-size_t shm_get_data_size( ssm_header *shm_p )
+uint64_t shm_get_data_size( ssm_header *shm_p )
 {
 	return shm_p->size;
 }

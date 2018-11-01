@@ -33,9 +33,9 @@ private:
 	TCPCLIENT_INFO client;
 
 	char* mData;
-	size_t mDataSize;
-	size_t ssmTimeSize;
-	size_t mFullDataSize;
+	uint64_t mDataSize;
+	uint64_t ssmTimeSize;
+	uint64_t mFullDataSize;
 	PROXY_open_mode mType;
 
 	SSMApiBase *pstream;
@@ -45,7 +45,7 @@ private:
 	bool sclose();
 public:
 	DataCommunicator() = delete;
-	DataCommunicator(uint16_t nport, char* mData, size_t d_size, size_t t_size, SSMApiBase *pstream, PROXY_open_mode type);
+	DataCommunicator(uint16_t nport, char* mData, uint64_t d_size, uint64_t t_size, SSMApiBase *pstream, PROXY_open_mode type);
 	~DataCommunicator();
 	void* run(void *args);
 
@@ -68,11 +68,11 @@ private:
 	uint16_t nport;     // センサデータ受信用のポート番号.子プロセスが生成されるたびにインクリメントしていく
 
 	char* mData;        // データ用
-	size_t mDataSize;   // データサイズ
-	size_t ssmTimeSize; // ssmTimeTのサイズ
-	size_t mFullDataSize;  // mDataSize + ssmTimeSize
+	uint64_t mDataSize;   // データサイズ
+	uint64_t ssmTimeSize; // ssmTimeTのサイズ
+	uint64_t mFullDataSize;  // mDataSize + ssmTimeSize
 	char *mProperty;
-	size_t mPropertySize;
+	uint64_t mPropertySize;
 	PROXY_open_mode mType;
 
 	DataCommunicator *com;

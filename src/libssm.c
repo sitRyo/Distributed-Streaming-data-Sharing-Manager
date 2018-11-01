@@ -197,7 +197,7 @@ int send_msg( int cmd_type, ssm_msg *msg )
 	msg->cmd_type = cmd_type;
 	
 	/* send */
-	if( msgsnd( msq_id, ( void * )( msg ), ( size_t ) SSM_MSG_SIZE, 0 ) < 0 )
+	if( msgsnd( msq_id, ( void * )( msg ), ( uint64_t ) SSM_MSG_SIZE, 0 ) < 0 )
 	{
 		perror( "msgsnd" );
 		sprintf( err_msg, "msq send err" );
@@ -216,9 +216,9 @@ int send_msg( int cmd_type, ssm_msg *msg )
 int receive_msg( ssm_msg *msg )
 {
 #ifdef __APPLE__
-        volatile ssize_t len;
+        volatile int64_t len;
 #else
-	ssize_t len;
+	int64_t len;
 #endif
 	/* initialize check */
 	if( msq_id < 0 )
@@ -314,12 +314,12 @@ int endSSM( void )
 }
 
 /*------------Allocate sensor data space with time table on SSM  -----*/
-SSM_sid createSSM( const char *name, int stream_id, size_t ssm_size, ssmTimeT life, ssmTimeT cycle )
+SSM_sid createSSM( const char *name, int stream_id, uint64_t ssm_size, ssmTimeT life, ssmTimeT cycle )
 {
 	ssm_msg msg;
 	int open_mode = SSM_READ | SSM_WRITE;
 	ssm_header *shm_p;
-	size_t len;
+	uint64_t len;
 
 	/* initialize check */
 	if( !name )
@@ -488,7 +488,7 @@ int closeSSM( SSM_sid *sid )
 /** @brief copy data to shared memory */
 static void write_data( void *ssmp, const void *data, void *user_data )
 {
-	size_t size = *( size_t *)user_data;
+	uint64_t size = *( uint64_t *)user_data;
 	// printf("datasize... %zu\n", size);
 	memcpy( ssmp, data, size );
 }
@@ -496,7 +496,7 @@ static void write_data( void *ssmp, const void *data, void *user_data )
 /** @brief copy data to shared memory */
 static void read_data( const void *ssmp, void *data, void *user_data )
 {
-	size_t size = *( size_t *)user_data;
+	uint64_t size = *( uint64_t *)user_data;
 	memcpy( data, ssmp, size );
 }
 
@@ -657,7 +657,7 @@ SSM_tid writeSSMP_time( SSM_sid sid, const void *adata, ssmTimeT ytime ,
 }
 
 /*----------------------センサのプロパティのセット-----------------*/
-int set_propertySSM( const char *name, int sensor_uid, const void *adata, size_t size )
+int set_propertySSM( const char *name, int sensor_uid, const void *adata, uint64_t size )
 {
 	ssm_msg msg;
 	char *ptr;
@@ -791,7 +791,7 @@ int getSSM_num( void )
 }
 
 /* n番めのセンサの名前情報を読み込む */
-int getSSM_name( int n, char *name, int *suid, size_t *size )
+int getSSM_name( int n, char *name, int *suid, uint64_t *size )
 {
 	ssm_msg msg;
 
@@ -811,7 +811,7 @@ int getSSM_name( int n, char *name, int *suid, size_t *size )
 }
 
 /* 指定した名前のセンサの情報を読み込む */
-int getSSM_info( const char *name, int suid, size_t *size, int *num, double *cycle, size_t *property_size )
+int getSSM_info( const char *name, int suid, uint64_t *size, int *num, double *cycle, uint64_t *property_size )
 {
 	ssm_msg msg;
 
@@ -883,9 +883,9 @@ int getSSM_edge_num( void )
 }
 
 /* n番目のエッジの情報を取得する */
-int getSSM_edge_info( int n, char *name, size_t name_size, int *id, int *node1, int *node2, int *dir )
+int getSSM_edge_info( int n, char *name, uint64_t name_size, int *id, int *node1, int *node2, int *dir )
 {
-	ssize_t len;
+	int64_t len;
 	ssm_msg msg;
 	ssm_msg_edge edge;
 

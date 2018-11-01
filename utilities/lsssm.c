@@ -26,7 +26,7 @@ int main( int argc, char *argv[] )
 	int sid_search;
 	char name[100], size_unit, property_unit;
 	int suid, num;
-	size_t size, property_size;
+	uint64_t size, property_size;
 	double cycle, size_human, property_size_human;
 
 	if( !initSSM(  ) )

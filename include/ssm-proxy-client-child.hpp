@@ -26,7 +26,7 @@ private:
 	}
 
 protected:
-	void setBuffer(void *data, size_t dataSize, void *property, size_t propertySize, void *fulldata);
+	void setBuffer(void *data, uint64_t dataSize, void *property, uint64_t propertySize, void *fulldata);
 
 public:
 	T data;

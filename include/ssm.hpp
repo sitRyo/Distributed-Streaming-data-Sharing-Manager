@@ -36,9 +36,9 @@ protected:
 	bool isVerbose;								///< エラーメッセージを出力するかどうか
 	bool isBlocking;							///< ブロッキングするかどうか
 	void *mData;								///< データのポインタ
-	size_t mDataSize;							///< データ構造体のサイズ
+	uint64_t mDataSize;							///< データ構造体のサイズ
 	void *mProperty;							///< プロパティのポインタ
-	size_t mPropertySize;						///< プロパティサイズ
+	uint64_t mPropertySize;						///< プロパティサイズ
 
 	/**
 	 * @brief 初期化
@@ -180,7 +180,7 @@ public:
 		return mData;
 	}
 	
-	size_t dataSize()
+	uint64_t dataSize()
 	{
 		return mDataSize;
 	}
@@ -190,13 +190,13 @@ public:
 		return mProperty;
 	}
 	
-	size_t propertySize()
+	uint64_t propertySize()
 	{
 		return mPropertySize;
 	}
 
 	/// 共有メモリに確保するデータ構造体のサイズ
-	virtual size_t sharedSize(  )
+	virtual uint64_t sharedSize(  )
 	{
 		return mDataSize;
 	}
@@ -500,7 +500,7 @@ public:
 	 *
 	 * 継承したときなど、ポインタを外部からさわらせたくないときはprivateの中に入れる
 	 */
-	void setBuffer(void *data, size_t dataSize, void *property, size_t propertySize )
+	void setBuffer(void *data, uint64_t dataSize, void *property, uint64_t propertySize )
 	{
 		mData = data;
 		mDataSize = dataSize;
@@ -511,7 +511,7 @@ public:
 	/**
 	 * データだけのバッファをセットする
 	 */
-	void setDataBuffer(void *data, size_t dataSize) {
+	void setDataBuffer(void *data, uint64_t dataSize) {
 		mData = data;
 		mDataSize = dataSize;
 	}
@@ -519,7 +519,7 @@ public:
 	/**
 	 * プロパティのバッファをセットする
 	 */
-	void setPropertyBuffer(void *property, size_t propertySize) {
+	void setPropertyBuffer(void *property, uint64_t propertySize) {
 		mProperty = property;
 		mPropertySize = propertySize;
 	}
@@ -577,7 +577,7 @@ template < typename T, typename P = SSMDummy > class SSMApi:public SSMApiBase
 	}
 
 protected:
-	void setBuffer(void *data, size_t dataSize, void *property, size_t propertySize );
+	void setBuffer(void *data, uint64_t dataSize, void *property, uint64_t propertySize );
 
 public:
 	T data;										 ///< @brief SSM Data.
