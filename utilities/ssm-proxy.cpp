@@ -362,7 +362,7 @@ int ProxyServer::readInt(char **p) {
 	return v;
 }
 
-long ProxyServer::readLong(char **p) {
+uint64_t ProxyServer::readLong(char **p) {
 	uint8_t v1 = **p; (*p)++;
 	uint8_t v2 = **p; (*p)++;
 	uint8_t v3 = **p; (*p)++;
@@ -372,8 +372,8 @@ long ProxyServer::readLong(char **p) {
 	uint8_t v7 = **p; (*p)++;
 	uint8_t v8 = **p; (*p)++;
 
-	long lv = (long)((long)v1 << 56 | (long)v2 << 48 | (long)v3 << 40 | (long)v4 << 32
-			| (long)v5 << 24 | (long)v6 << 16 | (long)v7 << 8 | (long)v8);
+	uint64_t lv = (uint64_t)((uint64_t)v1 << 56 | (uint64_t)v2 << 48 | (uint64_t)v3 << 40 | (uint64_t)v4 << 32
+			| (uint64_t)v5 << 24 | (uint64_t)v6 << 16 | (uint64_t)v7 << 8 | (uint64_t)v8);
 	return lv;
 }
 
@@ -398,7 +398,7 @@ void ProxyServer::writeInt(char **p, int v) {
 	**p = (v >> 0)  & 0xff; (*p)++;
 }
 
-void ProxyServer::writeLong(char **p, long v) {
+void ProxyServer::writeLong(char **p, uint64_t v) {
 	**p = (v >> 56) & 0xff; (*p)++;
 	**p = (v >> 48) & 0xff; (*p)++;
 	**p = (v >> 40)  & 0xff; (*p)++;

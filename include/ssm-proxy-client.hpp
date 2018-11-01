@@ -36,12 +36,12 @@ private:
 	char *ipaddr;
 
 	void writeInt(char **p, int v);
-	void writeLong(char **p, long v);
+	void writeLong(char **p, uint64_t v);
 	void writeDouble(char **p, double v);
 	void writeRawData(char **p, char *d, int len);
 
 	int  readInt(char **p);
-	long readLong(char **p);
+	uint64_t readLong(char **p);
 	double readDouble(char **p);
 	void readRawData(char **p, char *d, int len);
 

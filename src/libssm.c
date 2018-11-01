@@ -683,9 +683,9 @@ int set_propertySSM( const char *name, int sensor_uid, const void *adata, size_t
 	if( !msg.ssize )
 		return 0;								/* エラー */
 
-	ptr = malloc( size + sizeof ( long ) );
-	memcpy( ptr + sizeof ( long ), data, size );
-	*( ( long * )ptr ) = msg.res_type;
+	ptr = malloc( size + sizeof ( uint64_t ) );
+	memcpy( ptr + sizeof ( uint64_t ), data, size );
+	*( ( uint64_t * )ptr ) = msg.res_type;
 	/* 送信 */
 	msgsnd( msq_id, ptr, size, 0 );
 	free( ptr );
@@ -725,12 +725,12 @@ int get_propertySSM( const char *name, int sensor_uid, void *adata )
 
 	size = msg.ssize;
 
-	ptr = malloc( size + sizeof ( long ) );
+	ptr = malloc( size + sizeof ( uint64_t ) );
 
 	/* 受信 */
 	msgrcv( msq_id, ptr, size, my_pid, 0 );
 
-	memcpy( data, ptr + sizeof ( long ), size );
+	memcpy( data, ptr + sizeof ( uint64_t ), size );
 	free( ptr );
 	return 1;
 }
@@ -894,7 +894,7 @@ int getSSM_edge_info( int n, char *name, size_t name_size, int *id, int *node1, 
 		return 0;
 	
 	/* receive */
-	len = msgrcv( msq_id, &edge, sizeof(ssm_msg_edge) - sizeof(long), my_pid, 0 );
+	len = msgrcv( msq_id, &edge, sizeof(ssm_msg_edge) - sizeof(uint64_t), my_pid, 0 );
 	if( len <= 0 )
 	{
 		strcpy( err_msg, "receive data err" );
