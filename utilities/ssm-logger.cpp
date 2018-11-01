@@ -109,8 +109,8 @@ int main( int aArgc, char **aArgv )
 	int num;
 	void *data = NULL;
 	void *property = NULL;
-	size_t propertySize = 0;
-	size_t dataSize = 0;
+	uint64_t propertySize = 0;
+	uint64_t dataSize = 0;
 	
 	// オプション解析
 	if( !param.optAnalyze( aArgc, aArgv ) )

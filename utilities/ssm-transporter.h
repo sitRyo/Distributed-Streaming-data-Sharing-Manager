@@ -7,15 +7,15 @@ typedef struct _ssmt_header {
 	int head;
 	int id;
 	int type;
-	size_t size;
+	uint64_t size;
 	double time;
 } SSMT_header;
 
 typedef struct _ssmt_newsensor {
 	char name[30];
 	int suid;
-	size_t size;
-	size_t property_size;
+	uint64_t size;
+	uint64_t property_size;
 	double time;
 	double cycle;
 } SSMT_newsensor;
@@ -26,8 +26,8 @@ typedef struct _reg_sensor {
 	char name[30];
 	int suid;
 	SSM_sid sid;
-	size_t size;
-	size_t property_size;
+	uint64_t size;
+	uint64_t property_size;
 	int tid;
 	int wp;
 	int rp;

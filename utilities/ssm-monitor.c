@@ -40,7 +40,7 @@ typedef struct
 {
 	char name[SSM_SNAME_MAX];
 	int suid;
-	size_t size;
+	uint64_t size;
 	SSM_sid ssmId;
 	int tid;
 } info_t;

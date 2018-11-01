@@ -68,8 +68,8 @@ class LogPlayer
 	const char *logName;
 	void *data;
 	void *property;
-	size_t propertySize;
-	size_t dataSize;
+	uint64_t propertySize;
+	uint64_t dataSize;
 	SSMApiBase stream;
 	SSMLogBase log;
 	void *fulldata;

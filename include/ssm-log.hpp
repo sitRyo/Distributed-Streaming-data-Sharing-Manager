@@ -16,9 +16,9 @@ class SSMLogBase
 protected:
 	ssmTimeT mTime;	
 	void *mData;								///< データのポインタ
-	size_t mDataSize;							///< データ構造体のサイズ
+	uint64_t mDataSize;							///< データ構造体のサイズ
 	void *mProperty;							///< プロパティのポインタ
-	size_t mPropertySize;						///< プロパティサイズ
+	uint64_t mPropertySize;						///< プロパティサイズ
 	void *mFullData;
 	int mStreamId;								///< ストリームID
 	int mBufferNum;								///< ssmのリングバッファの個数
@@ -148,7 +148,7 @@ public:
 	virtual ~SSMLogBase()
 	{
 	}
-	void setBuffer(void *data, size_t dataSize, void *property, size_t propertySize, void *fulldata)
+	void setBuffer(void *data, uint64_t dataSize, void *property, uint64_t propertySize, void *fulldata)
 	{
 		mData = data;
 		mDataSize = dataSize;
@@ -367,7 +367,7 @@ public:
 	{
 		return mData;
 	}
-	size_t &dataSize(  )
+	uint64_t &dataSize(  )
 	{
 		return mDataSize;
 	}
@@ -376,7 +376,7 @@ public:
 	{
 		return mProperty;
 	}
-	size_t &propertySize()
+	uint64_t &propertySize()
 	{
 		return mPropertySize;
 	}
@@ -416,7 +416,7 @@ public:
  */
 template < typename D, typename P = SSMDummy > class SSMLog : public SSMLogBase
 {
-	void setBuffer(void *data, size_t dataSize, void *property, size_t propertySize );
+	void setBuffer(void *data, uint64_t dataSize, void *property, uint64_t propertySize );
 	void initLog()
 	{
 		SSMLogBase::setBuffer( &dataBuf, sizeof( D ), &propertyBuf, sizeof( P ) );
