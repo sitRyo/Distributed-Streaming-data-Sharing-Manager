@@ -51,4 +51,15 @@ gcc-5 より以前のバージョンだと, コンパイルが正常にできな
 * サンプルプログラム
 DSSMのサンプルは utility/read_proxy_sample と utility/write_proxy_sample です.
 
- 
+* トラブルシューティング
+1. autotool関連のエラーがでる
+ $ autoreconf -i -f
+を実行すると治るかもしれません.
+
+--install（-i）
+パッケージ化に足りないファイルを自動的に生成。
+--force（-f）
+既存のファイルを置き換える。デフォルトでは既存のファイルを上書きしない。
+
+2. リンカがエラーを吐く
+32bitOSを使用しているときは, utility/Makefile.amのAM_CFLAGSに-L/lib64 -lpthreadを追加してください
