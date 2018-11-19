@@ -62,4 +62,8 @@ DSSMのサンプルは utility/read_proxy_sample と utility/write_proxy_sample 
 既存のファイルを置き換える。デフォルトでは既存のファイルを上書きしない。
 
 2. リンカがエラーを吐く
-32bitOSを使用しているときは, utility/Makefile.amのAM_CFLAGSに-L/lib64 -lpthreadを追加してください
+32bitOSを使用しているときは, utility/Makefile.amのAM_CFLAGSに-L/lib64 -lpthreadを追加してください.
+
+3. メッセージをcoordinatorに送ろうとするとメモリ二重解放エラーが出る
+branchを32-64bitに切り替えて, 再度makeして実行してください.
+masterブランチは同じbitのOS間での通信にしか対応していません.
