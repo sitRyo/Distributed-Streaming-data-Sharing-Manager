@@ -66,7 +66,6 @@ int main() {
 	// データ通信路を開く
 	// これをしないとデータを取得できない
 	if (!con.createDataCon()) {
-		// endSSM() -> MC_TERMINATE
 		con.terminate();
 		return 1;
 	}
