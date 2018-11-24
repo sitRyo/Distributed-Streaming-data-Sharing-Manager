@@ -1,5 +1,64 @@
 Network Streaming data Sharing Manager Readme
 
+******長谷川先生へ
+
+インストール手順
+1, フォルダを解凍したら, 新しいフォルダを作成してその中に解凍したNSSMをそのまま入れてください.
+(これは, NSSMのインストール中にできるフォルダをまとめるためです)
+2, $ ./configure
+3, $ make
+(aclocal.m4のレシピで失敗しましたとエラーが出た場合 -> autoreconf -i -fを実行してください)
+4, cameraのCMakeLists.txtに
+
+link_directories(${Network_Streaming_data_Sharing_Managerまでの絶対パス}/src/.libs)
+include_directories(${Network_Streaming_data_Sharing_Managerまでの絶対パス}/include)
+
+をadd_executableの前に入れてください.
+
+(私の環境では以下のようになりました)
+
+cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
+
+project(camera)
+
+#include_directories( ../../include )
+
+# set the default path for built executables to the "bin" directory
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+
+# set the build type
+set(CMAKE_BUILD_TYPE Release)
+# confirmation messages
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+message(STATUS "CMAKE_C_FLAGS_RELEASE: ${CMAKE_C_FLAGS_RELEASE}")
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
+
+find_package(OpenCV REQUIRED)
+
+#D WITH_LIBV4L=ON
+#OCV_OPTION(WITH_V4L            "Include Video 4 Linux support"               ON   IF (UNIX AND NOT ANDROID) )
+#OCV_OPTION(WITH_LIBV4L         "Use libv4l for Video 4 Linux support"        ON   IF (UNIX AND NOT ANDROID) )
+
+// ここを長谷川先生のPCのパスに書き換えて保存してください．
+link_directories(/Users/gunjiryouta/nssm/nssm/src/.libs)
+include_directories(/Users/gunjiryouta/nssm/nssm/include)
+
+add_executable(camera-handler ./src/camera-handler.cpp)
+target_link_libraries(camera-handler ssm ${OpenCV_LIBRARIES})
+
+add_executable(camera-viewer ./src/camera-viewer.cpp)
+
+5, CMakeLists.txtを保存してmakeしてください.
+
+この手順を踏むことで起動が行えるようになります．
+煩わしくて申し訳ありませんがよろしくお願いします.
+
+******************
+
+
+
 * 概要
 Network Streaming data Sharing Manager(以降DSSM) は Streaming data Sharing Manager(以降SSM) にネットワークを介した共有メモリへのアクセス機能を追加したものです.
 SSMで構成されたシステムのプログラムを殆ど変更せずにネットワーク対応にすることを目標に開発しています.
