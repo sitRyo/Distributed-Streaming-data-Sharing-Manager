@@ -15,6 +15,9 @@ Network_Streaming_data_Sharing_Manager -
  - utilities  SSMとDSSMのユーティリティのソースコード
 
 * インストール
+
+ (installしない場合は, 新たなディレクトリを作って, その中にダウンロードしたNSSMをそのまま入れてください)
+
  $ ./configure
  $ make
 
@@ -40,7 +43,7 @@ ${Network_Streaming_data_Sharing_Managerまでの絶対パス}/src/.libs
 link_directories(${Network_Streaming_data_Sharing_Managerまでの絶対パス}/src/.libs)
 include_directories(${Network_Streaming_data_Sharing_Managerまでの絶対パス}/include)
 
-makeファイルを変更後, もう1度 make を実行することでNSSMでプログラムが動作するようになります.
+上記の命令を記述したらCMakeLists.txtを保存して, もう1度makeを実行してください
 
 注1 ) Autotoolsがない場合
  $ apt-get install automake libtool
