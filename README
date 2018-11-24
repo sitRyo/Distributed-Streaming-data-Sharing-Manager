@@ -8,7 +8,10 @@ Network Streaming data Sharing Manager Readme
 2, $ ./configure
 3, $ make
 (aclocal.m4のレシピで失敗しましたとエラーが出た場合 -> autoreconf -i -fを実行してください)
-4, cameraのCMakeLists.txtに
+
+4, sudo bash setup.sh
+
+5, cameraのCMakeLists.txtに
 
 link_directories(${Network_Streaming_data_Sharing_Managerまでの絶対パス}/src/.libs)
 include_directories(${Network_Streaming_data_Sharing_Managerまでの絶対パス}/include)
@@ -50,9 +53,11 @@ target_link_libraries(camera-handler ssm ${OpenCV_LIBRARIES})
 
 add_executable(camera-viewer ./src/camera-viewer.cpp)
 
-5, CMakeLists.txtを保存してmakeしてください.
+6, CMakeLists.txtを保存してmakeしてください.
+7, {NSSMまでのパス}/src/ssm-coordinator
+8, {cameraまでのパス}/bin/camera-handler
 
-この手順を踏むことで起動が行えるようになります．
+この手順を踏むことで起動ができます．
 煩わしくて申し訳ありませんがよろしくお願いします.
 
 ******************
