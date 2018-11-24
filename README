@@ -17,8 +17,26 @@ Network_Streaming_data_Sharing_Manager -
 * インストール
  $ ./configure
  $ make
+
 (/usr/local/bin以下にインストールしたい場合)
  $ sudo make install
+
+(/usr/local/bin以下にインストールしない場合)
+最初に, NSSM管理用のディレクトリを作成します(名前は何でも良いです).
+作成したディレクトリにダウンロードしたNSSMを移動します.
+
+その後Network Streaming data Sharing Manager内のスクリプト(setup.sh)を実行します.
+$ bash setup.sh
+
+次に実行するmakeファイルに以下のリンクを加えてください
+${Network_Streaming_data_Sharing_Managerまでの絶対パス}/include
+${Network_Streaming_data_Sharing_Managerまでの絶対パス}/src/.libs
+
+* cmakeの場合, CMakeLists.txtのadd_executable命令の前に以下の命令を加えてください
+link_directories(${Network_Streaming_data_Sharing_Managerまでの絶対パス}/src/.libs)
+include_directories(${Network_Streaming_data_Sharing_Managerまでの絶対パス}/include)
+
+makeファイルを変更後, もう1度 make を実行することでNSSMでプログラムが動作するようになります.
 
 注1 ) Autotoolsがない場合
  $ apt-get install automake libtool
@@ -27,6 +45,24 @@ Network_Streaming_data_Sharing_Manager -
 注2 ) コンパイラがc++11に対応していない場合
 gcc-5 より以前のバージョンだと, コンパイルが正常にできない現象を確認しています.
 その際は, gcc-8をインストールしてコンパイルしてください.
+
+注3 )
+
+setup.shを実行すると, build2というディレクトリが生成され, 以下のようなディレクトリ構成になります
+
+|
+|- Network Streaming data Sharing Manager
+|- build2
+
+そのため, 新たなディレクトリを作成してその中でNSSM関連のディレクトリをまとめることをおすすめしています.
+(つまり以下のようなディレクトリ構造です.)
+
+- projects
+  |
+  |- Network Streaming data Sharing Manager
+  |- build2
+
+なお, このスクリプトはプログラムが参照するSSMのライブラリをNSSM内のライブラリに変更しています.
 
 * プログラム
 - SSM
