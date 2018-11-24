@@ -40,21 +40,11 @@ read_proxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 read_proxy_test_CXXFLAGS = $(read_proxy_test_CFLAGS)
 read_proxy_test_LDADD = ../src/libssm.la -lm
 
-read_proxy_test_2_SOURCES = read_proxy_test_2.cpp ssm-proxy-client.cpp
-read_proxy_test_2_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
-read_proxy_test_2_CXXFLAGS = $(read_proxy_test_CFLAGS)
-read_proxy_test_2_LDADD = ../src/libssm.la -lm
-
 ## write_test
 write_proxy_test_SOURCES = write_proxy_test.cpp ssm-proxy-client.cpp
 write_proxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 write_proxy_test_CXXFLAGS = $(write_proxy_test_CFLAGS)
 write_proxy_test_LDADD = ../src/libssm.la -lm
-
-write_proxy_sample_2_SOURCES = write_proxy_sample_2.cpp ssm-proxy-client.cpp
-write_proxy_sample_2_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
-write_proxy_sample_2_CXXFLAGS = $(write_proxy_test_CFLAGS)
-write_proxy_sample_2_LDADD = ../src/libssm.la -lm
 
 ## ssm-transporter
 ssm_transporter_SOURCES = ssm-transporter.c

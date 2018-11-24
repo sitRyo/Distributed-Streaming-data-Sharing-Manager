@@ -18,12 +18,16 @@ Network_Streaming_data_Sharing_Manager -
  $ ./configure
  $ make
 
+(aclocal.m4のレシピで失敗しましたとエラーが出た場合 -> autoreconf -i -fを実行してください)
+(DSO missing from command line とエラーが出た場合 -> utility/Makefile.amのAM_CFLAGSに-L/lib64 -lpthreadを追加してください)
+
 (/usr/local/bin以下にインストールしたい場合)
  $ sudo make install
 
 (/usr/local/bin以下にインストールしない場合)
 最初に, NSSM管理用のディレクトリを作成します(名前は何でも良いです).
 作成したディレクトリにダウンロードしたNSSMを移動します.
+($ mv {新規ディレクトリのパス} {ダウンロードしたNSSMのパス} など)
 
 その後Network Streaming data Sharing Manager内のスクリプト(setup.sh)を実行します.
 $ bash setup.sh
