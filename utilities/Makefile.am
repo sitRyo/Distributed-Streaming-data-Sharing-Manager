@@ -1,11 +1,11 @@
 # set the include path found by configure
 INCLUDES= $(all_includes) -I../include
 
-AM_CFLAGS   = -Wall -std=c++11
+AM_CFLAGS   = -Wall -std=c++11 -L/lib64 -lpthread
 AM_CXXFLAGS = $(AM_CFLAGS)
 
 bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph
-noinst_PROGRAMS = read_proxy_test write_proxy_test read_proxy_test_2 write_proxy_sample_2
+noinst_PROGRAMS = read_proxy_test write_proxy_test
 noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h
 
 # shell scripts
