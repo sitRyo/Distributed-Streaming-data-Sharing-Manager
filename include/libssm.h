@@ -45,9 +45,14 @@ typedef enum {
  */
 typedef enum {
 	TIME_ID = 0, // send timeid
-	REAL_TIME = 1, // send real time
-	READ_NEXT = 2, // read next
-	PACKET_FAILED = 3 // falied
+	REAL_TIME, // send real time
+	READ_NEXT, // read next
+	SSM_ID, // request ssm id
+	TID_REQ, // request time id
+	TOP_TID_REQ, // request timeid top
+	BOTTOM_TID_REQ, // request timeid bottom
+	PACKET_FAILED // falied
+
 } READ_packet_type;
 
 /**
