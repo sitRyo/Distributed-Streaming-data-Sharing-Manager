@@ -53,10 +53,12 @@ DataCommunicator::~DataCommunicator() {
 }
 
 bool DataCommunicator::receiveData() {
-	int len = recv(this->client.data_socket, mData, mFullDataSize, 0);
-	if (len != mFullDataSize) {
+  int len = 0;
+  while ((len += recv(this->client.data_socket, &mData[len], mFullDataSize-len, 0)) != mFullDataSize);
+  /*int len = recv(this->client.data_socket, mData, mFullDataSize, 0);
+    if (len != mFullDataSize) {
 		return false;
-	}
+    }*/
 	return true;
 }
 
@@ -80,6 +82,7 @@ READ_packet_type DataCommunicator::receiveTimeIdData(double* value) {
 		return PACKET_FAILED;
 	}
 
+	// recv packet
 	ret = ((READ_packet_type *)buf)[0];
 
 	if (ret == TIME_ID or ret == READ_NEXT) {
@@ -87,11 +90,21 @@ READ_packet_type DataCommunicator::receiveTimeIdData(double* value) {
 		printf("recv len -> %d\n", len);
 		printf("recv val -> %d\n", ttt);
 		*value = ttt;
-	} else {
+	} else if (ret == REAL_TIME){
 		double* ddd = (ssmTimeT*)(buf + sizeof(READ_packet_type));
 		printf("recv len -> %d\n", len);
 		printf("recv val -> %f\n", ddd);
 		*value = *ddd;
+	} else if (ret == SSM_ID) {
+		printf("requested ssmid\n");
+	} else if (ret == TID_REQ) {
+		printf("requested tid\n");
+		double* ddd = (ssmTimeT*)(buf + sizeof(READ_packet_type));
+		*value = *ddd;
+	} else if (ret == BOTTOM_TID_REQ) {
+		printf("requested tid bottom\n");
+	} else if (ret == TOP_TID_REQ) {
+		printf("requested tid top\n");
 	}
 
 	free(buf);
@@ -133,7 +146,7 @@ void DataCommunicator::readData() {
 			printf("can't recv data\n");
 			break;
 		}
-
+		// value "buf" has real time
 		if (type == TIME_ID) {
 			int tid = (SSM_tid)buf;
 			printf("recv timeid -> %d\n", tid);
@@ -142,9 +155,21 @@ void DataCommunicator::readData() {
 			int tid = (SSM_tid)buf;
 			printf("recv timeid -> %d (readNext)\n", tid);
 			pstream->readNext(tid - pstream->timeId);
-		} else {
+		} else if (type == REAL_TIME) {
 			printf("recv ssmtime -> %f\n", (ssmTimeT)buf);
 			pstream->readTime((ssmTimeT)buf); // 明示的にしておく
+		} else if (type == SSM_ID) {
+			printf("send back ssm id\n");
+			sendToSSMId();
+			continue;
+		} else if (type == TID_REQ) {
+			printf("send back time id\n");
+			sendToTimeId(type, buf);
+			continue;
+		} else if (type == BOTTOM_TID_REQ || type == TOP_TID_REQ) {
+			printf("send back time id\n");
+			sendToTimeId(type);
+			continue;
 		}
 
 		if (!sendToReadData()) {
@@ -152,6 +177,58 @@ void DataCommunicator::readData() {
 			break;
 		}
 	}
+}
+
+/* ssmIdを返す */
+bool DataCommunicator::sendToSSMId() {
+	uint64_t size = sizeof(SSM_sid);
+	SSM_sid s = pstream->getSSMId();
+
+	std::cout << "send ssmid: " << sizeof(s) << std::endl;
+
+	if (send(this->client.data_socket, (char*)s, size, 0) == -1) {
+		fprintf(stderr, "error in sendToSSMId\n");
+		return false;
+	}
+
+	std::cout << "send ssmID is successful" << std::endl;
+	return true;
+}
+
+/* timeidをlibssm.hにssmidを渡して返す */
+bool DataCommunicator::sendToTimeId(READ_packet_type type, ssmTimeT ytime) {
+	SSM_sid id = pstream->getSSMId();
+	SSM_tid* tid;
+	SSM_tid tmp_id;
+	tid = &tmp_id;
+
+	switch (type) {
+		case TID_REQ:
+		{
+			tmp_id = getTID(id, ytime);
+			break;
+		}
+		case TOP_TID_REQ:
+		{
+			tmp_id = getTID_top(id);
+			break;
+		}
+		case BOTTOM_TID_REQ:
+		{
+			tmp_id = getTID_bottom(id);
+		}
+	}
+	printf("timeid -> -L %d\n", *tid);
+	for (int i = 0; i < sizeof(SSM_tid); ++i) {
+		printf("%02x ", ((char*)tid)[i] & 0xff);
+	}
+	printf("\n");
+	if (send(this->client.data_socket, (char*)tid, sizeof(SSM_tid), 0) == -1) {
+		perror("sendtoTimeId");
+		fprintf(stderr, "error in sendToTimeId\n");
+		return false;
+	}
+	return true;
 }
 
 bool DataCommunicator::sendToReadData() {
@@ -449,11 +526,12 @@ void ProxyServer::serializeMessage(ssm_msg *msg, char *buf) {
 }
 
 bool ProxyServer::receiveData() {
-	//char *p;
-	int len = recv(this->client.data_socket, mData, mFullDataSize, 0);
-	if (len != mFullDataSize) {
+  int len = 0;
+  while ((len += recv(this->client.data_socket, &mData[len], mFullDataSize-len, 0)) != mFullDataSize);
+  /*int len = recv(this->client.data_socket, mData, mFullDataSize, 0);
+    if (len != mFullDataSize) {
 		return false;
-	}
+    }*/
 	return true;
 }
 void ProxyServer::handleData() {

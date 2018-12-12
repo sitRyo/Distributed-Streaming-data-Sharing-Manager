@@ -37,6 +37,7 @@ void PConnector::initPConnector() {
 	dsock = -1;
 	mDataSize = 0;
 	streamId = 0;
+	sid = 0;
 	mData = NULL;
 	mFullData = NULL;
 	mProperty = NULL;
@@ -47,6 +48,8 @@ void PConnector::initPConnector() {
 	openMode = PROXY_INIT;
 	timeId = -1;
 	timecontrol = NULL;
+	isVerbose = false;
+	isBlocking = false;
 }
 
 int PConnector::readInt(char **p) {
@@ -114,6 +117,34 @@ void PConnector::writeRawData(char **p, char *d, int len) {
 	for (int i = 0; i < len; ++i, (*p)++) **p = d[i];
 }
 
+/* simple getter and setter */
+
+const char *PConnector::getStreamName() const {
+	return streamName;
+}
+
+const char *PConnector::getSensorName() const {
+	return streamName;
+}
+
+int PConnector::getStreamId() const {
+	return streamId;
+}
+
+int PConnector::getSensorId() const {
+	return streamId;
+}
+
+/* verboseモードを設定できる(現在は設定しても何も起こらない) */
+void PConnector::setVerbose(bool verbose) {
+	isVerbose = verbose;
+}
+
+/* blockingの設定、今は何も起きない */
+void PConnector::setBlocking(bool isBlocking) {
+	this->isBlocking = isBlocking;
+}
+
 void* PConnector::getData() {
 	// mDataのゲッタ. 使用するときはTにキャスト. 返り値はポインタであることに注意.
 	return mData;
@@ -123,6 +154,106 @@ bool PConnector::isOpen() {
 	// streamは開いているか？
 	return (streamId != 0) ? true : false;
 }
+
+void *PConnector::data() {
+	return mData;
+}
+
+uint64_t PConnector::dataSize() {
+	return mDataSize;
+}
+
+void *PConnector::property() {
+	return mProperty;
+}
+
+uint64_t PConnector::propertySize() {
+	return mPropertySize;
+}
+
+uint64_t PConnector::sharedSize() {
+	return mDataSize;
+}
+
+SSM_sid PConnector::getSSMId() {
+	printf("in getSSMId\n");
+	sid = 0;
+	/*
+	if (sid == 0) {
+		requestSSMId();
+	}*/
+	return sid;
+}
+
+SSM_tid PConnector::getTID(SSM_sid sid, ssmTimeT ytime) {
+	return getTID(ytime);
+}
+
+SSM_tid PConnector::getTID(ssmTimeT ytime) {
+	READ_packet_type type = TID_REQ;
+	uint64_t size = sizeof(READ_packet_type) + sizeof(double);
+	void *buf = malloc(size);
+	((READ_packet_type*)buf)[0] = type;
+	*((ssmTimeT*)&(((READ_packet_type*)buf)[1])) = ytime;
+
+	if (send(dsock, buf, size, 0) == -1) {
+		fprintf(stderr, "error in getTID\n");
+		return -1;
+	}
+
+	free(buf);
+	return recvTID();
+}
+
+SSM_tid PConnector::getTID_top(SSM_sid sid) {
+	printf("timeid: %d\n", timeId);
+	SSM_tid temp_timeid = getTID_top();
+	printf("timeid: %d\n", temp_timeid);
+	return temp_timeid;
+}
+
+SSM_tid PConnector::getTID_top() {
+	READ_packet_type type = TOP_TID_REQ;
+	uint64_t size = sizeof(READ_packet_type) + sizeof(double);
+	printf("in 1\n");
+	void *buf = malloc(size);
+	printf("in 2\n");
+	((READ_packet_type*)buf)[0] = type;
+	printf("in 3\n");
+	*((ssmTimeT*)&(((READ_packet_type*)buf)[1])) = -1;
+	printf("in 4\n");
+
+	if (send(dsock, buf, size, 0) == -1) {
+		perror("getTID_top");
+		fprintf(stderr, "error in getTID\n");
+		return -1;
+	}
+
+	printf("in 5\n");
+	free(buf);
+	return recvTID();
+}
+
+SSM_tid PConnector::recvTID() {
+	SSM_tid *buf;
+	uint64_t size = sizeof(SSM_tid);
+	if (recv(dsock, (char *)buf, size, 0) != size) {
+		perror("recvTID");
+		fprintf(stderr, "error in recvTID\n");
+		return -2;
+	}
+	for (int i = 0; i < 4; ++i) {
+		printf("%02x ", ((char*)buf)[i] & 0xff);
+	}
+
+	printf("recvTID: %d\n", *buf);
+	return *buf;
+}
+
+
+
+
+/* fin getter methods */
 
 bool PConnector::connectToServer(const char* serverName, int port) {
 	printf("connect to server\n");
@@ -154,6 +285,9 @@ bool PConnector::connectToDataServer(const char* serverName, int port) {
 	}
 	printf("dsock = %d\n", sock);
 	printf("connect to dataserver	\n");
+
+	/* sidを返してもらう */
+
 	return true;
 }
 
@@ -291,7 +425,9 @@ bool PConnector::recvData() {
 	uint64_t size = mDataSize + sizeof(ssmTimeT) + sizeof(SSM_tid);
 	void* buf = malloc(size);
 
-	int len = recv(dsock, buf, size, 0);
+	int len = 0;
+
+	while ((len += recv(dsock, &((char*)buf)[len], size - len, 0)) != size);
 
 	printf("len -> %d\n", len);
 
@@ -313,10 +449,10 @@ bool PConnector::recvData() {
 	/* recv data print */
 	printf("\nfull size = %d\n", mFullDataSize);
 	char *p = (char*)buf;
-
+	/*
 	for (int i = 0; i < size; ++i) {
 		printf("%02x ", p[i] & 0xff);
-	}
+	}*/
 	printf("\n");
 
 	free(buf);
@@ -331,23 +467,6 @@ ssmTimeT PConnector::getRealTime() {
 
 // prototype time = getTimeSSM()
 bool PConnector::write( ssmTimeT time ) {
-	/*
-	printf("\nfull size = %d\n", mFullDataSize);
-	char *p = &((char*)mFullData)[8];
-
-	for (int i = 0; i < 8; ++i) {
-		printf("%02x ", p[i] & 0xff);
-	}
-	printf("\n");
-	*/
-	/*
-	if (time == 0) {
-		struct timeval current;
-		gettimeofday( &current, NULL );
-		time = current.tv_sec + current.tv_sec / 1000000.0;;
-	}
-	*/
-
 	// 先頭にアドレスを入れたい
 	*((ssmTimeT*)mFullData) = time;
 	printf("mFullData: %p\n", (ssmTimeT *)mFullData);
@@ -361,6 +480,35 @@ bool PConnector::write( ssmTimeT time ) {
 		perror("send");
 		return false;
 	}
+
+	return true;
+}
+
+bool PConnector::requestSSMId() {
+	READ_packet_type type = SSM_ID;
+	uint64_t size = sizeof(READ_packet_type) + sizeof(double);
+	void *buf = malloc(size);
+	((READ_packet_type*)buf)[0] = type;
+
+	if (send(dsock, buf, size, 0) == -1) {
+		fprintf(stderr, "send ssmid");
+		return false;
+	}
+
+	free(buf);
+	return recvSSMId();
+}
+
+bool PConnector::recvSSMId() {
+	void* buf;
+	int len = recv(dsock, buf, sizeof(SSM_sid), 0);
+	std::cout << len << std::endl;
+	if (len == -1) {
+		fprintf(stderr, "error in recvSSMID\n");
+		return false;
+	}
+	printf("okokokokokok\n");
+	sid = *((SSM_sid*)buf);
 
 	return true;
 }
@@ -641,7 +789,11 @@ bool PConnector::getPropertyRemoteSSM(const char *name, int sensor_uid, const vo
 		// propertyのサイズ
 		int size = msg.ssize;
 		// property取得
-		int len = recv(sock, data, size, 0);
+
+		// int len = recv(sock, data, size, 0);
+		int len = 0;
+		while ((len += recv(sock, &data[len], size - len, 0)) != size);
+
 		if (len != size) {
 			fprintf(stderr, "fail recv property\n");
 			r = false;
@@ -694,6 +846,10 @@ bool PConnector::createDataCon() {
 	//connectToDataServer("127.0.0.1", msg.suid);
 
 	return true;
+}
+
+bool PConnector::release() {
+	return terminate();
 }
 
 bool PConnector::terminate() {

@@ -56,6 +56,8 @@ public:
 	READ_packet_type receiveTimeIdData(double* buf);
 
 	bool sendToReadData();
+	bool sendToSSMId();
+	bool sendToTimeId(READ_packet_type type, ssmTimeT ytime = 0);
 
 	SSM_open_mode switchMode();
 };

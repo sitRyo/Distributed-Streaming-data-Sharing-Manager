@@ -26,6 +26,7 @@ private:
 
 	const char *streamName;
 	int streamId;
+	SSM_sid sid;							///< sid
 	void *mData;								///< データのポインタ
 	uint64_t mDataSize;						///< データ構造体のサイズ
 	void *mProperty;							///< プロパティのポインタ
@@ -34,6 +35,8 @@ private:
 	uint64_t mFullDataSize;
 	ssmtime *timecontrol;					///< for get real time
 	char *ipaddr;
+	bool isVerbose;
+	bool isBlocking;
 
 	void writeInt(char **p, int v);
 	void writeLong(char **p, uint64_t v);
@@ -49,6 +52,9 @@ private:
 	bool createRemoteSSM( const char *name, int stream_id, uint64_t ssm_size, ssmTimeT life, ssmTimeT cycle );
 	bool setPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata, uint64_t size);
 	bool getPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata);
+
+	bool requestSSMId();
+	bool recvSSMId();
 
 	bool sendData(const char *data, uint64_t size);
 
@@ -85,7 +91,31 @@ public:
 	bool getProperty();
 	void setOffset(ssmTimeT offset);
 	bool createDataCon();
+	bool release();
 	bool terminate();
+
+	/* getter */
+	const char *getStreamName() const;
+	const char *getSensorName() const;
+	bool isUpdate();
+	void setVerbose(bool verbose);
+	void setBlocking(bool isBlocking);
+	int getStreamId() const;
+	int getSensorId() const;
+	SSM_sid getSSMId();
+	void *data();
+	uint64_t dataSize();
+	void *property();
+	uint64_t propertySize();
+	uint64_t sharedSize();
+
+	SSM_tid getTID(SSM_sid sid, ssmTimeT ytime);
+	SSM_tid getTID(ssmTimeT ytime);
+	SSM_tid getTID_top(SSM_sid sid);
+	SSM_tid getTID_top();
+	SSM_tid getTID_bottom(SSM_sid sid);
+	SSM_tid getTID_bottom();
+	SSM_tid recvTID();
 
 	double timettof( struct timespec t ); // 使わないかも
 	static ssmTimeT getRealTime(); // 現在時刻の取得
