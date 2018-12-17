@@ -60,15 +60,12 @@ private:
 	bool setPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata, uint64_t size);
 	bool getPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata);
 
-	bool requestSSMId();
-	bool recvSSMId();
-
 	bool sendData(const char *data, uint64_t size);
 	bool recvData(); // read data recv        
 
 public:
 	SSM_tid timeId; // データのTimeID (SSM_tid == int)
-	ssmTimeT time = 0;  // データのタイムスタンプ (ssmTimeT == double)
+	ssmTimeT time; // = 0;  // データのタイムスタンプ (ssmTimeT == double)
 
 
 	PConnector();
@@ -121,13 +118,8 @@ public:
 	uint64_t propertySize();
 	uint64_t sharedSize();
 
-	SSM_tid getTID(SSM_sid sid, ssmTimeT ytime);
-	SSM_tid getTID(ssmTimeT ytime);
 	SSM_tid getTID_top(SSM_sid sid);
 	SSM_tid getTID_top();
-	SSM_tid getTID_bottom(SSM_sid sid);
-	SSM_tid getTID_bottom();
-	SSM_tid recvTID();
 
 	double timettof( struct timespec t ); // 使わないかも
 	static ssmTimeT getRealTime(); // 現在時刻の取得

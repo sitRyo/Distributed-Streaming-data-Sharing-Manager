@@ -60,11 +60,7 @@ DataCommunicator::~DataCommunicator() {
 bool DataCommunicator::receiveData() {
   int len = 0;
   while ((len += recv(this->client.data_socket, &mData[len], mFullDataSize-len, 0)) != mFullDataSize);
-  /*int len = recv(this->client.data_socket, mData, mFullDataSize, 0);
-    if (len != mFullDataSize) {
-		return false;
-    }*/
-	return true;
+  return true;
 }
 
 bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
@@ -80,20 +76,16 @@ bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
     printf("res_type = %d\n", tmsg->res_type);
     printf("tid      = %d\n", tmsg->tid);
     printf("time     = %f\n", tmsg->time);
-     */
-    
+     */    
     return true;
 }
 
 bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
-//    printf("serialize buf1 = %p\n", this->buf);    
     char* p = this->buf;
     proxy->writeLong(&p, tmsg->msg_type);
     proxy->writeLong(&p, tmsg->res_type);
     proxy->writeInt(&p, tmsg->tid);
     proxy->writeDouble(&p, tmsg->time);
-//    printf("serialize buf2 = %p\n", this->buf);
-    
     /*
     for (int i = 0; i < sizeof(thrd_msg); ++i) {
         if (i % 16 == 0) printf("\n");
@@ -121,75 +113,23 @@ bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
     return false;    
 }
 
-
-
-
-READ_packet_type DataCommunicator::receiveTimeIdData(double* value) {
-	// argsのbufは  sizeof(double) のメモリを確保しているとする
-	// 先頭は必ずパケットのタイプ, タイプによってその後のデータを決定する
-	// パケットのサイズは常にsizeof(int) + sizeof(double) (基本的に12)
-	// type->READ_NEXT or TIME_ID: time_id (int) (buf + sizeof(int)*2)以降は余白(読み込んだらバグる)
-	// type->READ_TIME: ssmTimeT (double)
-	// 注意! bufのメモリ解放
-
-	READ_packet_type ret;
-	uint64_t size = sizeof(int) + sizeof(double);
-	char* buf = (char*)malloc(size);
-	int len = recv(this->client.data_socket, buf, size, 0);
-	printf("len: %d\n", len); // 8(int2つ分)になるはず
-
-	if (len != size) {
-		std::cout << "error : when data recieve" << std::endl;
-		free(buf);
-		return PACKET_FAILED;
-	}
-
-	// recv packet
-	ret = ((READ_packet_type *)buf)[0];
-
-	if (ret == TIME_ID or ret == READ_NEXT) {
-		int ttt = ((SSM_tid *)buf)[1];
-		printf("recv len -> %d\n", len);
-		printf("recv val -> %d\n", ttt);
-		*value = ttt;
-	} else if (ret == REAL_TIME){
-		double* ddd = (ssmTimeT*)&buf[sizeof(READ_packet_type)];
-		printf("recv len -> %d\n", len);
-		printf("recv val -> %f\n", ddd);
-		*value = *ddd;
-	} else if (ret == SSM_ID) {
-		printf("requested ssmid\n");
-	} else if (ret == TID_REQ) {
-		printf("requested tid\n");
-		double* ddd = (ssmTimeT*)&buf[sizeof(READ_packet_type)];
-		*value = *ddd;
-	} else if (ret == BOTTOM_TID_REQ) {
-		printf("requested tid bottom\n");
-	} else if (ret == TOP_TID_REQ) {
-		printf("requested tid top\n");
-	}
-
-	free(buf);
-	return ret;
-}
-
 void DataCommunicator::handleData() {
 	char *p;
 	ssmTimeT time;
 	while(true) {
-		if (!receiveData()) {
-			fprintf(stderr, "receiveData Error happends\n");
-			break;
-		}
-		p = &mData[8];
-		time = *(reinterpret_cast<ssmTimeT*>(mData));
-		// printf("time = %f\n", time);
-		pstream->write(time);
-		printf("timeId: %d\n", pstream->timeId);
-		/*for (int i = 0; i < 8; ++i) {
-			printf("%02x ", p[i] & 0xff);
-		}*/
-		// printf("\n");
+            if (!receiveData()) {
+                fprintf(stderr, "receiveData Error happends\n");
+                break;
+            }
+            p = &mData[8];
+            time = *(reinterpret_cast<ssmTimeT*>(mData));
+            // printf("time = %f\n", time);
+            pstream->write(time);
+            printf("timeId: %d\n", pstream->timeId);
+            /*for (int i = 0; i < 8; ++i) {
+             * 			printf("%02x ", p[i] & 0xff);
+             * 		}*/
+            // printf("\n");
 	}
 	pstream->showRawData();
 }
@@ -204,35 +144,31 @@ bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
 void DataCommunicator::handleRead() {
     thrd_msg tmsg;
     std::cout << "handleRead called" << std::endl;
-
+    
     while(true) {
         if (receiveTMsg(&tmsg)) {
             switch(tmsg.msg_type) {
                 case TOP_TID_REQ: {
                     tmsg.tid = getTID_top(pstream->getSSMId());
                     tmsg.res_type = TMC_RES;                    
-//                    printf("tid = %d\n", tmsg.tid);                    
                     sendTMsg(&tmsg);
                     break;
                 }
                 case TIME_ID: {                    
                     SSM_tid req_tid = (SSM_tid)tmsg.tid;
-//                    printf("time id requested %d\n", req_tid);
                     pstream->read(req_tid);
                     tmsg.tid = pstream->timeId;
                     tmsg.time = pstream->time;
                     tmsg.res_type = TMC_RES;
-                    printf("tid = %d\n", tmsg.tid);
-//                    printf("time = %f\n", tmsg.time);                
-                    if (sendTMsg(&tmsg)) {
-                        
-                        printf("mDataSize = %d\n", mDataSize);
+                    printf("tid = %d\n", (int)tmsg.tid);
+                    if (sendTMsg(&tmsg)) {                        
+                        printf("mDataSize = %d\n", (int)mDataSize);
                         for(int i = 0; i < 16; ++i) {
                             printf("%02x ", mData[i] & 0xff);
                         }
                         printf("\n");
-                        if (sendBulkData(mData, mDataSize)) {
-//                            std::cout << "send complete" << std::endl;
+                        if (!sendBulkData(mData, mDataSize)) {
+                            perror("send bulk Error");
                         }                                                
                     }
                     break;
@@ -246,146 +182,6 @@ void DataCommunicator::handleRead() {
             break;
         }
     }   
-}
-
-void DataCommunicator::readData() {
-	double buf;
-
-	printf("readreadreadread\n");
-	printf("mData pointer(pstream) : %p\n", mData);
-
-	while(true) {
-		READ_packet_type type;
-
-		// typeにはパケットの種類が、bufにはデータ(timeかtimeid)が入っている
-		if ((type = receiveTimeIdData(&buf)) == PACKET_FAILED) {
-			printf("can't recv data\n");
-			break;
-		}
-		// value "buf" has real time
-		if (type == TIME_ID) {
-			int tid = (SSM_tid)buf;
-			printf("recv timeid -> %d\n", tid);
-			pstream->read(tid);
-		} else if (type == READ_NEXT) {
-			int tid = (SSM_tid)buf;
-			printf("recv timeid -> %d (readNext)\n", tid);
-			pstream->readNext(tid - pstream->timeId);
-		} else if (type == REAL_TIME) {
-			printf("recv ssmtime -> %f\n", (ssmTimeT)buf);
-			pstream->readTime((ssmTimeT)buf); // 明示的にしておく
-		} else if (type == SSM_ID) {
-			printf("send back ssm id\n");
-			sendToSSMId();
-			continue;
-		} else if (type == TID_REQ) {
-			printf("send back time id\n");
-			sendToTimeId(type, buf);
-			continue;
-		} else if (type == BOTTOM_TID_REQ || type == TOP_TID_REQ) {
-			printf("send back time id\n");
-			sendToTimeId(type);
-			continue;
-		}
-
-		if (!sendToReadData()) {
-			std::cout << "error : DataCommunicator -> readData, failed to send stream data back to client." << std::endl;
-			break;
-		}
-	}
-}
-
-/* ssmIdを返す */
-bool DataCommunicator::sendToSSMId() {
-	uint64_t size = sizeof(SSM_sid);
-	SSM_sid s = pstream->getSSMId();
-
-	std::cout << "send ssmid: " << sizeof(s) << std::endl;
-
-	if (send(this->client.data_socket, (char*)s, size, 0) == -1) {
-		fprintf(stderr, "error in sendToSSMId\n");
-		return false;
-	}
-
-	std::cout << "send ssmID is successful" << std::endl;
-	return true;
-}
-
-/* timeidをlibssm.hにssmidを渡して返す */
-bool DataCommunicator::sendToTimeId(READ_packet_type type, ssmTimeT ytime) {
-	SSM_sid id = pstream->getSSMId();
-	SSM_tid* tid;
-	SSM_tid tmp_id;
-	tid = &tmp_id;
-
-	switch (type) {
-		case TID_REQ:
-		{
-			tmp_id = getTID(id, ytime);
-			break;
-		}
-		case TOP_TID_REQ:
-		{
-			tmp_id = getTID_top(id);
-			break;
-		}
-		case BOTTOM_TID_REQ:
-		{
-			tmp_id = getTID_bottom(id);
-		}
-	}
-	printf("timeid -> -L %d\n", *tid);
-	for (int i = 0; i < sizeof(SSM_tid); ++i) {
-		printf("%02x ", ((char*)tid)[i] & 0xff);
-	}
-	printf("\n");
-	if (send(this->client.data_socket, (char*)tid, sizeof(SSM_tid), 0) == -1) {
-		perror("sendtoTimeId");
-		fprintf(stderr, "error in sendToTimeId\n");
-		return false;
-	}
-	return true;
-}
-
-bool DataCommunicator::sendToReadData() {
-	// 相手のソケットにreadしたデータを送信 (this->client.data_socket)
-	// 送信するデータ: mData(データ本体), time(タイムスタンプ), tid(タイムID)
-
-	std::cout << "send mData" << std::endl;
-	uint64_t size = mDataSize + sizeof(ssmTimeT) + sizeof(SSM_tid);
-	printf("size: %d", size);
-	// char buf[mDataSize];
-	void* buf = malloc(size);
-	ssmTimeT t = pstream->time;
-	SSM_tid ttid = pstream->timeId;
-
-	// printf("\ntime -> %f, timeid -> %d, mDataSize -> %d\n", t, ttid, mDataSize);
-
-	// mDataSizeが大きくなったらループで時間を食う気がする
-	for (int i = 0; i < mDataSize; i++) {
-		((char *)buf)[i] = *(mData + sizeof(ssmTimeT) + i);
-	}
-
-	// 時間をパケットにセット (mDataSize > sizeof(int) + sizeof(double)が怖いので, char*で1byteずつ見る)
-	*((ssmTimeT *)&(((char *)buf)[mDataSize])) = t;
-	// timeidをパケットにセット
-	*((SSM_tid *)&(((char *)buf)[mDataSize + sizeof(ssmTimeT)])) = ttid;
-
-	printf("time -> %f\n", *((ssmTimeT *)&(((char *)buf)[mDataSize])));
-	printf("timeid -> %d\n", *((SSM_tid *)&(((char *)buf)[mDataSize + sizeof(ssmTimeT)])));
-
-
-	if (send(this->client.data_socket, buf, size, 0) == -1) {
-		std::cout << "error when send mData" << std::endl;
-		free(buf);
-		return false;
-	}
-
-	std::cout << mFullDataSize + sizeof(SSM_tid) << std::endl;
-	std::cout << "finished\n" << std::endl;
-	free(buf);
-
-	return true;
 }
 
 void* DataCommunicator::run(void* args) {
@@ -408,22 +204,7 @@ void* DataCommunicator::run(void* args) {
         }
         printf("end of thread\n");        
     }
-    
-    /*
-    
-	// ReadかWriteで分岐させる。
-	if(rwait()) {
-		if (mType == WRITE_MODE) {
-			std::cout << "write..." << std::endl;
-			handleData();
-		} else {
-			std::cout << "...read" << std::endl;
-			readData();
-		}
-		printf("end of thread\n");
-	}
-     */
-	return nullptr;
+    return nullptr;
 }
 
 bool DataCommunicator::sopen() {
@@ -640,58 +421,8 @@ void ProxyServer::deserializeMessage(ssm_msg *msg, char *buf) {
 	msg->suid = readInt(&buf);
 	msg->ssize = readLong(&buf);
 	msg->hsize = readLong(&buf);
-	//msg->time = readLong(&buf);
 	msg->time = readDouble(&buf);
 	msg->saveTime = readDouble(&buf);
-
-
-	/*
-	printf("msg_type = %d\n", msg->msg_type);
-	printf("res_type = %d\n", msg->res_type);
-	printf("cmd_type = %d\n", msg->cmd_type);
-
-
-	for (int i = 0; i < 10; ++i) {
-		printf("%02x ", msg->name[i] & 0xff);
-	}
-	printf("\n");
-	printf("suid = %d\n", msg->suid);
-	printf("ssize = %d\n", msg->ssize);
-	printf("hsize = %d\n", msg->hsize);
-	printf("time = %f\n", msg->time);
-	*/
-}
-
-bool ProxyServer::receiveData() {
-  int len = 0;
-  while ((len += recv(this->client.data_socket, &mData[len], mFullDataSize-len, 0)) != mFullDataSize);
-  /*int len = recv(this->client.data_socket, mData, mFullDataSize, 0);
-    if (len != mFullDataSize) {
-		return false;
-    }*/
-	return true;
-}
-void ProxyServer::handleData() {
-	char *p;
-	int cnt = 0;
-	ssmTimeT time;
-	while(true) {
-		printf("wait bulk data\n");
-		if (!receiveData()) {
-			fprintf(stderr, "receiveData error happens!\n");
-			break;
-		}
-		p = &mData[8];
-		time = *(reinterpret_cast<ssmTimeT*>(mData));
-		printf("%d, time = %f\n", ++cnt, time);
-		stream.write(time);
-		for (int i = 0; i < 8; ++i) {
-			printf("%02x ", p[i] & 0xff);
-		}
-		printf("\n");
-	}
-	printf("--- raw data ---\n");
-	stream.showRawData();
 }
 
 int ProxyServer::receiveMsg(ssm_msg *msg, char *buf) {
@@ -709,7 +440,6 @@ int ProxyServer::sendMsg(int cmd_type, ssm_msg *msg) {
 	if (msg == NULL) {
 		msg = &msgbuf;
 	}
-
 	msg->cmd_type = cmd_type;
 	buf = (char*)malloc(sizeof(ssm_msg));
 	p = buf;
@@ -732,7 +462,7 @@ int ProxyServer::sendMsg(int cmd_type, ssm_msg *msg) {
 }
 
 void ProxyServer::handleCommand() {
-	printf("handlecommand\n");
+//	printf("handlecommand\n");
 	fprintf(stderr, "nport = %d\n", nport);
 	ssm_msg msg;
 	// SSM_List *slist;
@@ -766,71 +496,71 @@ void ProxyServer::handleCommand() {
 			std::cout << "********************************" << std::endl;
 			printf("strean name = %s\n", msg.name);
 			printf("stream_id = %d\n", msg.suid);
-			printf("ssm_size = %d\n", msg.ssize);
-			printf("hsize =  %d\n", msg.hsize);
+			printf("ssm_size = %d\n", (int)msg.ssize);
+			printf("hsize =  %d\n", (int)msg.hsize);
 			printf("msg.time(cycle) = %f\n", msg.time);
 			printf("msg.saveTime = %f\n", msg.saveTime);
 			std::cout << "********************************" << std::endl;
 			mDataSize = msg.ssize;
 			mFullDataSize = mDataSize + sizeof(ssmTimeT);
 			if (mData) {
-				free(mData);
+                            free(mData);
 			}
 			mData = (char*)malloc(mFullDataSize);
-
+                        
 			// メモリ番地を調べる
 			printf("mData's pointer %p\n", mData);
 			printf("sizeof(ssmTimeT): %d\n", sizeof(ssmTimeT));
 			printf("mData[sizeof(ssmTimeT)] is %p\n", &mData[sizeof(ssmTimeT)]);
 			std::cout << "*******************************" << std::endl;
-
+                        
 			if (mData == NULL) {
-				fprintf(stderr, "fail to create mData\n");
-				sendMsg(MC_FAIL, &msg);
+                            fprintf(stderr, "fail to create mData\n");
+                            sendMsg(MC_FAIL, &msg);
 			} else {
-				stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
-				if (!stream.create(msg.name, msg.suid, msg.saveTime, msg.time)) {
-					sendMsg(MC_FAIL, &msg);
-					break;
-				}
-				printf("stream is created\n");
-				sendMsg(MC_RES, &msg);
+                            stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
+                            if (!stream.create(msg.name, msg.suid, msg.saveTime, msg.time)) {
+                                sendMsg(MC_FAIL, &msg);
+                                break;
+                            }
+                            printf("stream is created\n");
+                            sendMsg(MC_RES, &msg);
 			}
 			break;
 		}
-		case MC_OPEN: {
+                    case MC_OPEN: {
 			printf("MC_OPEN\n");
-
+                        
 			/* Todo: READ 機能の実装 */
 			// mDataSizeに値を入力 -> setDataBuffer (ssm.hpp) -> msg.ssize?
 			// ReadにもmDataが必要 -> 計算する必要がある mDataはなぜ char* ?
-
+                        
 			setSSMType(READ_MODE);
-
+                        
 			mDataSize = msg.ssize;
 			mFullDataSize = mDataSize + sizeof(ssmTimeT);
 			if (mData) {
-				free(mData);
+                            free(mData);
 			}
 			mData = (char*) malloc(mFullDataSize);
 			printf("MC_OPEN mData -> %p\n", mData);
 			if (mData == NULL) {
-				std::cout << "fail to create mData" << std::endl;
-				sendMsg(MC_FAIL, &msg);
+                            std::cout << "fail to create mData" << std::endl;
+                            sendMsg(MC_FAIL, &msg);
 			} else {
-				stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
-				printf("?mData pointer: %p\n", stream.data());
-				if (!stream.open(msg.name, msg.suid)) {
-					std::cout << "stream open failed" << std::endl;
-					endSSM();
-					sendMsg(MC_FAIL, &msg);
-				} else {
-					printf("stream open\n");
-					sendMsg(MC_RES, &msg);
-				}
+                            stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
+                            printf("?mData pointer: %p\n", stream.data());
+                            if (!stream.open(msg.name, msg.suid)) {
+                                std::cout << "stream open failed" << std::endl;
+                                endSSM();
+                                sendMsg(MC_FAIL, &msg);
+                            } else {
+                                printf("stream open\n");
+                                sendMsg(MC_RES, &msg);
+                            }
 			}
 			break;
-		}
+                    }
 		case MC_STREAM_PROPERTY_SET: {
 			printf("MC_STREAM_PROPERTY_SET\n");
 			mPropertySize = msg.ssize;
@@ -846,16 +576,6 @@ void ProxyServer::handleCommand() {
 
 			sendMsg(MC_RES, &msg);
 			int len = recv(this->client.data_socket, mProperty, msg.ssize, 0);
-			/*
-			for (int i = 0; i < 8; ++i) {
-				printf("%02x ", mProperty[i]);
-			}
-			printf("\n");
-			ssmTimeT t = gettimeOffset();
-			printf("time = %f\n", t);
-			*/
-
-
 			if (len > 0) {
 				printf("receive property\n");
 				if (mPropertySize && !stream.setProperty()) {
@@ -906,16 +626,11 @@ void ProxyServer::handleCommand() {
 		}
 		case MC_OFFSET: {
 			printf("MC_OFFSET\n");
-
 			ssmTimeT offset = msg.time;
-			printf("time  = %f\n", offset);
+//			printf("time  = %f\n", offset);
 			settimeOffset(offset);
-			printf("time2 = %f\n", gettimeOffset());
-
+//			printf("time2 = %f\n", gettimeOffset());
 			sendMsg(MC_RES, &msg);
-
-			//handleData();
-			//com->wait();
 			break;
 		}
 		case MC_CONNECTION: {

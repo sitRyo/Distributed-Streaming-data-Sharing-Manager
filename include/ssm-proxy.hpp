@@ -56,6 +56,9 @@ private:
         bool sendTMsg(thrd_msg *tmsg);
         bool sendBulkData(char* buf, uint64_t size);
         
+        void handleData();
+        void handleRead();
+	bool receiveData();                        
         
 public:
 	DataCommunicator() = delete;
@@ -63,19 +66,6 @@ public:
         SSMApiBase *pstream, PROXY_open_mode type, ProxyServer* proxy);
 	~DataCommunicator();
 	void* run(void *args);
-
-	void handleData();
-        void handleRead();
-	void readData();  
-
-	bool receiveData();
-	READ_packet_type receiveTimeIdData(double* buf);
-
-	bool sendToReadData();
-	bool sendToSSMId();
-	bool sendToTimeId(READ_packet_type type, ssmTimeT ytime = 0);
-
-	SSM_open_mode switchMode();
 };
 
 
@@ -100,26 +90,10 @@ private:
 	bool open();
 	bool wait();
 
-
-
-        /*
-	int  readInt(char **p);
-	uint64_t readLong(char **p);
-	double readDouble(char **p);
-	void readRawData(char **p, char *d, int len);
-
-	void writeInt(char **p, int v);
-	void writeLong(char **p, uint64_t v);
-	void writeDouble(char **p, double v);
-	void writeRawData(char **p, char *d, int len);
-        */
 	void setSSMType(PROXY_open_mode mode);
 
 	int receiveMsg(ssm_msg *msg, char *buf);
 	int sendMsg(int cmd_type, ssm_msg *msg);
-
-	bool receiveData();
-	void handleData();
 
 	void setupSigHandler();
 	static void catchSignal(int signo);
