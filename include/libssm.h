@@ -51,8 +51,10 @@ typedef enum {
 	TID_REQ, // request time id
 	TOP_TID_REQ, // request timeid top
 	BOTTOM_TID_REQ, // request timeid bottom
-	PACKET_FAILED // falied
-
+	PACKET_FAILED, // falied
+        
+        TMC_RES,
+        TMC_FAIL
 } READ_packet_type;
 
 /**
@@ -132,6 +134,15 @@ extern "C"
 		ssmTimeT time;							///< ストリーム周期
 		ssmTimeT saveTime;                       ///< saveTime
 	} ssm_msg;
+        
+        /* Threadでやり取りするメッセージ */
+        typedef struct 
+        {
+            uint64_t msg_type;
+            uint64_t res_type;
+            uint32_t tid;   
+            ssmTimeT time;   //
+        } thrd_msg;
 	
 	/** SSMのエッジ取得メッセージ */
 	typedef struct

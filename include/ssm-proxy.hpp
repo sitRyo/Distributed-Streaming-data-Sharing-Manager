@@ -27,6 +27,8 @@ typedef struct {
 
 #include "Thread.hpp"
 
+class ProxyServer;
+
 class DataCommunicator : public Thread {
 private:
 	TCPSERVER_INFO server;
@@ -37,20 +39,34 @@ private:
 	uint64_t ssmTimeSize;
 	uint64_t mFullDataSize;
 	PROXY_open_mode mType;
+        
+        char* buf;
 
 	SSMApiBase *pstream;
+        ProxyServer* proxy;
+        
 
 	bool sopen();
 	bool rwait();
 	bool sclose();
+        
+        bool receiveTMsg(thrd_msg *tmsg);
+        bool deserializeTmsg(thrd_msg *tmsg);
+        bool serializeTmsg(thrd_msg *tmsg);
+        bool sendTMsg(thrd_msg *tmsg);
+        bool sendBulkData(char* buf, uint64_t size);
+        
+        
 public:
 	DataCommunicator() = delete;
-	DataCommunicator(uint16_t nport, char* mData, uint64_t d_size, uint64_t t_size, SSMApiBase *pstream, PROXY_open_mode type);
+	DataCommunicator(uint16_t nport, char* mData, uint64_t d_size, uint64_t t_size, 
+        SSMApiBase *pstream, PROXY_open_mode type, ProxyServer* proxy);
 	~DataCommunicator();
 	void* run(void *args);
 
 	void handleData();
-	void readData();
+        void handleRead();
+	void readData();  
 
 	bool receiveData();
 	READ_packet_type receiveTimeIdData(double* buf);
@@ -84,8 +100,9 @@ private:
 	bool open();
 	bool wait();
 
-	void serializeMessage(ssm_msg *msg, char *buf);
 
+
+        /*
 	int  readInt(char **p);
 	uint64_t readLong(char **p);
 	double readDouble(char **p);
@@ -95,7 +112,7 @@ private:
 	void writeLong(char **p, uint64_t v);
 	void writeDouble(char **p, double v);
 	void writeRawData(char **p, char *d, int len);
-
+        */
 	void setSSMType(PROXY_open_mode mode);
 
 	int receiveMsg(ssm_msg *msg, char *buf);
@@ -117,8 +134,17 @@ public:
 	void handleCommand();
 
 
+        int  readInt(char **p);
+	uint64_t readLong(char **p);
+	double readDouble(char **p);
+	void readRawData(char **p, char *d, int len);
 
+	void writeInt(char **p, int v);
+	void writeLong(char **p, uint64_t v);
+	void writeDouble(char **p, double v);
+	void writeRawData(char **p, char *d, int len);
 
+        void deserializeMessage(ssm_msg *msg, char *buf);
 };
 
 #endif

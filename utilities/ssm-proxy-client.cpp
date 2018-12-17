@@ -15,11 +15,11 @@
 
 #define FOR_DEBUG 0
 
-PConnector::PConnector() {
+PConnector::PConnector() : tbuf(nullptr) {
 	initPConnector();
 }
 
-PConnector::PConnector(const char *streamName, int streamId) {
+PConnector::PConnector(const char *streamName, int streamId): tbuf(nullptr) {
 	initPConnector();
 	setStream(streamName, streamId);
 }
@@ -27,8 +27,11 @@ PConnector::PConnector(const char *streamName, int streamId) {
 PConnector::~PConnector() {
 	printf("PConnector destructor\n");
 	if (sock != -1) {
-		close(sock);
+		close(sock);                
 	}
+        if (this->tbuf) {
+            free(this->tbuf);
+        }
 }
 
 void PConnector::initPConnector() {
@@ -50,6 +53,9 @@ void PConnector::initPConnector() {
 	timecontrol = NULL;
 	isVerbose = false;
 	isBlocking = false;
+        tbuf = (char*)malloc(sizeof(thrd_msg));
+        memset(tbuf, 0, sizeof(thrd_msg));
+        
 }
 
 int PConnector::readInt(char **p) {
@@ -176,7 +182,7 @@ uint64_t PConnector::sharedSize() {
 }
 
 SSM_sid PConnector::getSSMId() {
-	printf("in getSSMId\n");
+//	printf("in getSSMId\n");
 	sid = 0;
 	/*
 	if (sid == 0) {
@@ -206,12 +212,56 @@ SSM_tid PConnector::getTID(ssmTimeT ytime) {
 }
 
 SSM_tid PConnector::getTID_top(SSM_sid sid) {
-	printf("timeid: %d\n", timeId);
-	SSM_tid temp_timeid = getTID_top();
-	printf("timeid: %d\n", temp_timeid);
-	return temp_timeid;
+//	printf("timeid: %d\n", timeId);
+//	SSM_tid temp_timeid = getTID_top();
+//	printf("timeid: %d\n", temp_timeid);
+//	return temp_timeid;
+        
+        return timeId = getTID_top();
 }
 
+bool PConnector::sendTMsg(thrd_msg *tmsg) {
+    char *p = tbuf;
+    serializeTMessage(tmsg, &p);
+    if (send(dsock, tbuf, sizeof(thrd_msg), 0) == -1) {
+        perror("socket error");
+        return false;
+    }    
+    return true;
+}
+
+bool PConnector::recvTMsg(thrd_msg *tmsg) {        
+    int len = recv(dsock, tbuf, sizeof(thrd_msg), 0);
+    if (len == sizeof(thrd_msg)) {
+//        printf("receive OK\n");
+        char* p = tbuf;
+        return deserializeTMessage(tmsg, &p);
+    }    
+    return false;
+}
+
+SSM_tid PConnector:: getTID_top() {
+//    std::cout << "getTID_top is called" << std::endl;
+    thrd_msg tmsg;
+    memset(&tmsg, 0, sizeof(thrd_msg));
+    
+    tmsg.msg_type = TOP_TID_REQ;
+    tmsg.res_type = 4;
+    tmsg.tid = 12;
+    tmsg.time = 13.6;
+    
+    if(!sendTMsg(&tmsg)) {
+        return -1;
+    }
+    if (recvTMsg(&tmsg)) {
+        if (tmsg.res_type == TMC_RES) {
+//            printf("tid = %d\n", tmsg.tid);
+            return tmsg.tid;
+        } 
+    } 
+    return -1;    
+}
+/*
 SSM_tid PConnector::getTID_top() {
 	READ_packet_type type = TOP_TID_REQ;
 	uint64_t size = sizeof(READ_packet_type) + sizeof(double);
@@ -233,6 +283,7 @@ SSM_tid PConnector::getTID_top() {
 	free(buf);
 	return recvTID();
 }
+*/
 
 SSM_tid PConnector::recvTID() {
 	SSM_tid *buf;
@@ -321,7 +372,7 @@ bool PConnector::initSSM() {
 	return initRemote();
 }
 
-void PConnector::serializeMessage(ssm_msg *msg, char *buf) {
+void PConnector::deserializeMessage(ssm_msg *msg, char *buf) {
 	printf("serialize message\n");
 	msg->msg_type = readLong(&buf);
 	msg->res_type = readLong(&buf);
@@ -334,11 +385,33 @@ void PConnector::serializeMessage(ssm_msg *msg, char *buf) {
 	msg->saveTime = readDouble(&buf);
 }
 
+bool PConnector:: serializeTMessage(thrd_msg *tmsg, char **p) {
+    if (tmsg == NULL) {
+        return false;
+    }
+//    std::cout << "serialize called" << std::endl;
+    writeLong(p, tmsg->msg_type);
+    writeLong(p, tmsg->res_type);    
+    writeInt(p, tmsg->tid);
+    writeDouble(p,  tmsg->time);
+    return true;
+}
+
+bool PConnector:: deserializeTMessage(thrd_msg *tmsg, char **p) {
+    if (tmsg == NULL) return false;
+//    std::cout << "deserialize called" << std::endl;
+    tmsg->msg_type = readLong(p);
+    tmsg->res_type = readLong(p);
+    tmsg->tid      = readInt(p);
+    tmsg->time     = readDouble(p);
+    return true;
+}
+
 bool PConnector::recvMsgFromServer(ssm_msg *msg, char *buf) {
 	printf("ready to receive\n");
 	int len = recv(sock, buf, sizeof(ssm_msg), 0);
 	if (len > 0) {
-		serializeMessage(msg, buf);
+		deserializeMessage(msg, buf);
 		return true;
 	}
 	return false;
@@ -393,6 +466,36 @@ bool PConnector::readTime(ssmTimeT t) {
 }
 
 // timeidをproxyに送信 -> proxy側でtimeidを更新してもらう
+
+bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
+    thrd_msg tmsg;
+    tmsg.msg_type = type;
+    tmsg.tid = tmid;
+//    printf("tid = %d\n", tmid);
+//    printf("tmsg.tid = %d\n", tmsg.tid);
+    
+    if (!sendTMsg(&tmsg)) {
+        return false;
+    }
+    if (recvTMsg(&tmsg)) {
+        if (tmsg.res_type == TMC_RES) {
+            printf("tid = %d\n", tmsg.tid);
+//            printf("time = %f\n", tmsg.time);
+            
+            if (recvData()) {
+                time = tmsg.time;
+                timeId = tmsg.tid;
+                return true;
+            }
+//            return tmsg.tid;
+        } 
+    } 
+    
+    
+    return false;
+}
+
+/*
 bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	uint64_t len = sizeof(int) + sizeof(ssmTimeT);
 	void* buf = malloc(len);
@@ -413,10 +516,26 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	free(buf);
 	return recvData();
 }
-
+*/
 /* read ここまで　*/
 
+bool PConnector::recvData() {
+    int len = 0;
+    while((len += recv(dsock, &((char*)mData)[len], mDataSize-len, 0)) != mDataSize);
 
+
+    printf("mDataSize = %d\n", mDataSize);
+    for(int i = 0; i < 16; ++i) {
+        printf("%02x ", ((char*)mData)[i] & 0xff);
+    }
+    printf("\n");    
+
+    
+    return true;
+
+}
+
+/*
 bool PConnector::recvData() {
 	// 受信するデータ, mData, timestamp, timeid
 	// サイズ: mDataSize + sizeof(ssmTimeT) + sizeof(SSM_tid)
@@ -446,19 +565,19 @@ bool PConnector::recvData() {
 	time = *((ssmTimeT *)&(((char *)buf)[mDataSize]));
 	timeId = *((SSM_tid *)&(((char *)buf)[mDataSize + sizeof(ssmTimeT)]));
 
-	/* recv data print */
+//	 recv data print 
 	printf("\nfull size = %d\n", mFullDataSize);
 	char *p = (char*)buf;
-	/*
-	for (int i = 0; i < size; ++i) {
-		printf("%02x ", p[i] & 0xff);
-	}*/
+//	
+//	for (int i = 0; i < size; ++i) {
+//		printf("%02x ", p[i] & 0xff);
+//	}
 	printf("\n");
 
 	free(buf);
 	return true;
 }
-
+*/
 ssmTimeT PConnector::getRealTime() {
 	struct timeval current;
 	gettimeofday( &current, NULL );

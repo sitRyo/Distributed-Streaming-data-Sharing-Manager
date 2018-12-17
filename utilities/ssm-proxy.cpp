@@ -27,7 +27,8 @@
 
 extern pid_t my_pid; // for debug
 
-DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size, uint64_t t_size, SSMApiBase *pstream, PROXY_open_mode type) {
+DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size, uint64_t t_size, 
+        SSMApiBase *pstream, PROXY_open_mode type, ProxyServer* proxy) {
 	printf("DataCommunicatir new\n");
 	this->mData = mData;
 	this->mDataSize = d_size;
@@ -37,6 +38,9 @@ DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
 	// streamはコピーされる.
 	this->pstream = pstream;
 	this->mType = type;
+        this->proxy = proxy;
+        
+        this->buf = (char*)malloc(sizeof(thrd_msg));
 
 	this->server.wait_socket = -1;
 	this->server.server_addr.sin_family      = AF_INET;
@@ -50,6 +54,7 @@ DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
 
 DataCommunicator::~DataCommunicator() {
 	this->sclose();
+        if(this->buf) free(this->buf);
 }
 
 bool DataCommunicator::receiveData() {
@@ -62,6 +67,63 @@ bool DataCommunicator::receiveData() {
 	return true;
 }
 
+bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
+    char* p = this->buf;
+    tmsg->msg_type = proxy->readLong(&p);
+    tmsg->res_type = proxy->readLong(&p);
+    tmsg->tid      = proxy->readInt(&p);
+    tmsg->time     = proxy->readDouble(&p);
+
+//    printf("deserialize buf = %p\n", this->buf);
+    /*
+    printf("msg_type = %d\n", tmsg->msg_type);
+    printf("res_type = %d\n", tmsg->res_type);
+    printf("tid      = %d\n", tmsg->tid);
+    printf("time     = %f\n", tmsg->time);
+     */
+    
+    return true;
+}
+
+bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
+//    printf("serialize buf1 = %p\n", this->buf);    
+    char* p = this->buf;
+    proxy->writeLong(&p, tmsg->msg_type);
+    proxy->writeLong(&p, tmsg->res_type);
+    proxy->writeInt(&p, tmsg->tid);
+    proxy->writeDouble(&p, tmsg->time);
+//    printf("serialize buf2 = %p\n", this->buf);
+    
+    /*
+    for (int i = 0; i < sizeof(thrd_msg); ++i) {
+        if (i % 16 == 0) printf("\n");
+        printf("%02x ", this->buf[i]);
+    }
+    printf("\n");
+    */
+    return true;
+}
+
+bool DataCommunicator::sendTMsg(thrd_msg *tmsg) {
+    if (serializeTmsg(tmsg)) {
+        if (send(this->client.data_socket, this->buf, sizeof(thrd_msg), 0) != -1) {
+            return true;
+        }        
+    }
+    return false;
+}
+
+bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
+    int len;
+    if ((len = recv(this->client.data_socket, this->buf, sizeof(thrd_msg), 0)) > 0) {
+            return deserializeTmsg(tmsg);
+    }
+    return false;    
+}
+
+
+
+
 READ_packet_type DataCommunicator::receiveTimeIdData(double* value) {
 	// argsのbufは  sizeof(double) のメモリを確保しているとする
 	// 先頭は必ずパケットのタイプ, タイプによってその後のデータを決定する
@@ -72,7 +134,7 @@ READ_packet_type DataCommunicator::receiveTimeIdData(double* value) {
 
 	READ_packet_type ret;
 	uint64_t size = sizeof(int) + sizeof(double);
-	void* buf = malloc(size);
+	char* buf = (char*)malloc(size);
 	int len = recv(this->client.data_socket, buf, size, 0);
 	printf("len: %d\n", len); // 8(int2つ分)になるはず
 
@@ -91,7 +153,7 @@ READ_packet_type DataCommunicator::receiveTimeIdData(double* value) {
 		printf("recv val -> %d\n", ttt);
 		*value = ttt;
 	} else if (ret == REAL_TIME){
-		double* ddd = (ssmTimeT*)(buf + sizeof(READ_packet_type));
+		double* ddd = (ssmTimeT*)&buf[sizeof(READ_packet_type)];
 		printf("recv len -> %d\n", len);
 		printf("recv val -> %f\n", ddd);
 		*value = *ddd;
@@ -99,7 +161,7 @@ READ_packet_type DataCommunicator::receiveTimeIdData(double* value) {
 		printf("requested ssmid\n");
 	} else if (ret == TID_REQ) {
 		printf("requested tid\n");
-		double* ddd = (ssmTimeT*)(buf + sizeof(READ_packet_type));
+		double* ddd = (ssmTimeT*)&buf[sizeof(READ_packet_type)];
 		*value = *ddd;
 	} else if (ret == BOTTOM_TID_REQ) {
 		printf("requested tid bottom\n");
@@ -130,6 +192,60 @@ void DataCommunicator::handleData() {
 		// printf("\n");
 	}
 	pstream->showRawData();
+}
+
+bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
+    if (send(this->client.data_socket, buf, size, 0) != -1) {
+        return true;
+    }
+    return false;
+}
+
+void DataCommunicator::handleRead() {
+    thrd_msg tmsg;
+    std::cout << "handleRead called" << std::endl;
+
+    while(true) {
+        if (receiveTMsg(&tmsg)) {
+            switch(tmsg.msg_type) {
+                case TOP_TID_REQ: {
+                    tmsg.tid = getTID_top(pstream->getSSMId());
+                    tmsg.res_type = TMC_RES;                    
+//                    printf("tid = %d\n", tmsg.tid);                    
+                    sendTMsg(&tmsg);
+                    break;
+                }
+                case TIME_ID: {                    
+                    SSM_tid req_tid = (SSM_tid)tmsg.tid;
+//                    printf("time id requested %d\n", req_tid);
+                    pstream->read(req_tid);
+                    tmsg.tid = pstream->timeId;
+                    tmsg.time = pstream->time;
+                    tmsg.res_type = TMC_RES;
+                    printf("tid = %d\n", tmsg.tid);
+//                    printf("time = %f\n", tmsg.time);                
+                    if (sendTMsg(&tmsg)) {
+                        
+                        printf("mDataSize = %d\n", mDataSize);
+                        for(int i = 0; i < 16; ++i) {
+                            printf("%02x ", mData[i] & 0xff);
+                        }
+                        printf("\n");
+                        if (sendBulkData(mData, mDataSize)) {
+//                            std::cout << "send complete" << std::endl;
+                        }                                                
+                    }
+                    break;
+                }
+                defualt: {  
+                    fprintf(stderr, "NOTICE : unknown msg_type %d", tmsg.msg_type);
+                    break;
+                }
+            }
+        } else {
+            break;
+        }
+    }   
 }
 
 void DataCommunicator::readData() {
@@ -273,8 +389,28 @@ bool DataCommunicator::sendToReadData() {
 }
 
 void* DataCommunicator::run(void* args) {
-	printf("runrunrun\n");
-
+    
+    if (rwait()) {
+        switch(mType) {
+            case WRITE_MODE: {
+                std::cout << "write..." << std::endl;                
+                handleData();
+                break;
+            }
+            case READ_MODE: {
+                std::cout << "...read" << std::endl;
+                handleRead();
+                break;
+            }
+            default: {
+                perror("no such mode");
+            }
+        }
+        printf("end of thread\n");        
+    }
+    
+    /*
+    
 	// ReadかWriteで分岐させる。
 	if(rwait()) {
 		if (mType == WRITE_MODE) {
@@ -286,6 +422,7 @@ void* DataCommunicator::run(void* args) {
 		}
 		printf("end of thread\n");
 	}
+     */
 	return nullptr;
 }
 
@@ -495,7 +632,7 @@ void ProxyServer::writeRawData(char **p, char *d, int len) {
 }
 
 
-void ProxyServer::serializeMessage(ssm_msg *msg, char *buf) {
+void ProxyServer::deserializeMessage(ssm_msg *msg, char *buf) {
 	msg->msg_type = readLong(&buf);
 	msg->res_type = readLong(&buf);
 	msg->cmd_type = readInt(&buf);
@@ -560,7 +697,7 @@ void ProxyServer::handleData() {
 int ProxyServer::receiveMsg(ssm_msg *msg, char *buf) {
 	int len = recv(this->client.data_socket, buf, sizeof(ssm_msg), 0);
 	if (len > 0) {
-		serializeMessage(msg, buf);
+		deserializeMessage(msg, buf);
 	}
 	return len;
 }
@@ -682,7 +819,7 @@ void ProxyServer::handleCommand() {
 				sendMsg(MC_FAIL, &msg);
 			} else {
 				stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
-				printf("mData pointer: %p\n", stream.data());
+				printf("?mData pointer: %p\n", stream.data());
 				if (!stream.open(msg.name, msg.suid)) {
 					std::cout << "stream open failed" << std::endl;
 					endSSM();
@@ -785,7 +922,7 @@ void ProxyServer::handleCommand() {
 			printf("MC_CONNECTION\n");
 			msg.suid = nport;
 			// DataCommunicatorはThreadを継承
-			com = new DataCommunicator(nport, mData, mDataSize, ssmTimeSize, &stream, mType);
+			com = new DataCommunicator(nport, mData, mDataSize, ssmTimeSize, &stream, mType, this);
 			com->start(nullptr);
 			sendMsg(MC_RES, &msg);
 			break;

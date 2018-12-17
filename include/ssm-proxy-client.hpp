@@ -23,6 +23,9 @@ private:
 	int sock;
 	int dsock;                              // データ送信用
 	PROXY_open_mode openMode;
+        
+        char *tbuf;
+        
 
 	const char *streamName;
 	int streamId;
@@ -48,7 +51,11 @@ private:
 	double readDouble(char **p);
 	void readRawData(char **p, char *d, int len);
 
-	void serializeMessage(ssm_msg *msg, char *buf);
+	void deserializeMessage(ssm_msg *msg, char *buf);
+
+        bool serializeTMessage(thrd_msg *tmsg, char **buf);
+        bool deserializeTMessage(thrd_msg *tmsg, char **buf);
+        
 	bool createRemoteSSM( const char *name, int stream_id, uint64_t ssm_size, ssmTimeT life, ssmTimeT cycle );
 	bool setPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata, uint64_t size);
 	bool getPropertyRemoteSSM(const char *name, int sensor_uid, const void *adata);
@@ -57,6 +64,7 @@ private:
 	bool recvSSMId();
 
 	bool sendData(const char *data, uint64_t size);
+	bool recvData(); // read data recv        
 
 public:
 	SSM_tid timeId; // データのTimeID (SSM_tid == int)
@@ -72,6 +80,10 @@ public:
 	bool connectToServer(const char* serverName, int port);
 	bool sendMsgToServer(int cmd_type, ssm_msg *msg);
 	bool recvMsgFromServer(ssm_msg *msg, char *buf);
+        
+        bool sendTMsg(thrd_msg *tmsg);
+        bool recvTMsg(thrd_msg *tmsg);
+        
 
 	bool connectToDataServer(const char* serverName, int port);
 
@@ -121,7 +133,6 @@ public:
 	static ssmTimeT getRealTime(); // 現在時刻の取得
 
 	bool write( ssmTimeT time = gettimeSSM()); // write bulkdata with time
-
 	bool read( SSM_tid tmid = -1, READ_packet_type type = TIME_ID ); // read
 	bool readNew(); // 最新であり、前回読み込んだデータと違うデータのときに読み込む
 	bool readNext(int dt); // 前回読み込んだデータの次のデータを読み込む dt -> 移動量
@@ -129,7 +140,7 @@ public:
 	bool readLast(); // 最新データの読み込み
 	bool readTime(ssmTimeT t); // 時間指定, packet control
 
-	bool recvData(); // read data recv
+
 };
 
 #endif
