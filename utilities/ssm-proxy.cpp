@@ -13,7 +13,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+//#include <openssl/md5.h> // debug
+
 #include <errno.h>
+#include <sys/fcntl.h>
 
 #include "libssm.h"
 #include "ssm-time.h"
@@ -26,7 +29,15 @@
 #include "ssm-proxy.hpp"
 
 extern pid_t my_pid; // for debug
-
+/*
+static void CalcurateMD5Hash(unsigned char *buffer, long size, unsigned char* hash)
+{
+    MD5_CTX ctx;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, buffer, size);
+    MD5_Final(hash, &ctx);
+}
+*/
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size, uint64_t t_size, 
         SSMApiBase *pstream, PROXY_open_mode type, ProxyServer* proxy) {
 	printf("DataCommunicatir new\n");
@@ -116,6 +127,10 @@ bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
 void DataCommunicator::handleData() {
 	char *p;
 	ssmTimeT time;
+//        unsigned char hash[MD5_DIGEST_LENGTH];
+        
+//        FILE* fp = fopen("recv.log", "w");
+        
 	while(true) {
             if (!receiveData()) {
                 fprintf(stderr, "receiveData Error happends\n");
@@ -123,14 +138,21 @@ void DataCommunicator::handleData() {
             }
             p = &mData[8];
             time = *(reinterpret_cast<ssmTimeT*>(mData));
-            // printf("time = %f\n", time);
+            printf("time:%f\n", time);
+//            fprintf(fp, "time:%f\n", time);            
             pstream->write(time);
-            printf("timeId: %d\n", pstream->timeId);
-            /*for (int i = 0; i < 8; ++i) {
-             * 			printf("%02x ", p[i] & 0xff);
-             * 		}*/
-            // printf("\n");
+            printf("tid(%d): ", pstream->timeId);            
+//            fprintf(fp, "tid(%d): ", pstream->timeId);             
+                                    
+            for (int i = 0; i < 8; ++i) {
+                printf("%02x ", p[i] & 0xff);
+//                fprintf(fp, "%02x ", p[i] & 0xff);                
+            }
+            printf("\n");
+//            fprintf(fp, "\n");
+//            fflush(fp);
 	}
+//        fclose(fp);
 	pstream->showRawData();
 }
 
@@ -161,13 +183,15 @@ void DataCommunicator::handleRead() {
                     tmsg.time = pstream->time;
                     tmsg.res_type = TMC_RES;
                     printf("tid = %d\n", (int)tmsg.tid);
-                    if (sendTMsg(&tmsg)) {                        
+                    if (sendTMsg(&tmsg)) {
+
                         printf("mDataSize = %d\n", (int)mDataSize);
-                        for(int i = 0; i < 16; ++i) {
-                            printf("%02x ", mData[i] & 0xff);
+                        for(int i = 0; i < 8; ++i) {
+                            printf("%02x ", mData[i + sizeof(ssmTimeT)] & 0xff);
                         }
+
                         printf("\n");
-                        if (!sendBulkData(mData, mDataSize)) {
+                        if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
                             perror("send bulk Error");
                         }                                                
                     }

@@ -414,6 +414,7 @@ bool PConnector::recvData() {
         printf("%02x ", ((char*)mData)[i] & 0xff);
     }
     printf("\n");        
+
     return true;
 }
 
@@ -430,8 +431,8 @@ bool PConnector::write( ssmTimeT time ) {
 	*((ssmTimeT*)mFullData) = time;
 //	printf("mFullData: %p\n", (ssmTimeT *)mFullData);
 
-	printf("%f\n", *(ssmTimeT *)mFullData);
-	std::cout << "write!" << std::endl;
+	printf("time:%f\n", *(ssmTimeT *)mFullData);
+//	std::cout << "write!" << std::endl;
 
 	if (send(dsock, mFullData, mFullDataSize, 0) == -1) { // データ送信用経路を使う
 		// fprintf(stderr, "write data send error happen!!!!\n");

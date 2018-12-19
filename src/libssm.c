@@ -489,7 +489,19 @@ int closeSSM( SSM_sid *sid )
 static void write_data( void *ssmp, const void *data, void *user_data )
 {
 	uint64_t size = *( uint64_t *)user_data;
-	// printf("datasize... %zu\n", size);
+//	printf("datasize... %llu\n", size);
+        /*        
+        char* p = (char*)data;
+
+        printf("data(%p)\n", data);
+        printf("-------> ");
+        for (int i = 0; i < 8; ++i) {
+            printf("%02x ", p[i] & 0xff);
+        }
+        printf("\n");
+        */
+        
+        
 	memcpy( ssmp, data, size );
 }
 
