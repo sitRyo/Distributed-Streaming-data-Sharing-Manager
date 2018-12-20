@@ -393,7 +393,7 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
     }
     if (recvTMsg(&tmsg)) {
         if (tmsg.res_type == TMC_RES) {
-            printf("tid = %d\n", tmsg.tid);
+//            printf("tid = %d\n", tmsg.tid);
             if (recvData()) {
                 time = tmsg.time;
                 timeId = tmsg.tid;
@@ -409,12 +409,13 @@ bool PConnector::recvData() {
     int len = 0;
     while((len += recv(dsock, &((char*)mData)[len], mDataSize-len, 0)) != mDataSize);
 
+    /*
     printf("mDataSize = %d\n", mDataSize);
-    for(int i = 0; i < 16; ++i) {
+    for(int i = 0; i < 8; ++i) {
         printf("%02x ", ((char*)mData)[i] & 0xff);
     }
     printf("\n");        
-
+    */
     return true;
 }
 
