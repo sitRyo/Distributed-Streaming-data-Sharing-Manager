@@ -9,7 +9,7 @@ LIBNAME=libssm.so.0
 pt=`pwd`
 
 ${MKDIR} ../build2
-./configure --preifx=${pt}/../${DIR}/lib64/${LIBNAME}.org
+./configure --preifx=${pt}/../${DIR}/lib64/
 ${MAKE}
 ${MAKE} install
 
