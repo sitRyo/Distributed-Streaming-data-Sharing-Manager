@@ -1,7 +1,7 @@
 # set the include path found by configure
 INCLUDES= $(all_includes) -I../include
 
-AM_CFLAGS   = -Wall -std=c++11 -L/lib64 -lpthread
+AM_CFLAGS   = -Wall -std=c++11 -L/lib64
 AM_CXXFLAGS = $(AM_CFLAGS)
 
 bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph
@@ -25,7 +25,7 @@ ssm_logger_LDADD = ../src/libssm.la -lm
 ## ssm-player
 ssm_player_SOURCES = ssm-player.cpp ssm-proxy-client.cpp
 ssm_player_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
-ssm_player_CXXFLAGS = $(ssm_advance_player_CFLAGS)
+ssm_player_CXXFLAGS = $(ssm_advance_player_CFLAGS) -std=c++11
 ssm_player_LDADD = ../src/libssm.la -lm
 
 ## ssm-proxy
