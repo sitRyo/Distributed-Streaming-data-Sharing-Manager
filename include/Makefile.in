@@ -97,7 +97,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(include_HEADERS) \
-	$(nobase_include_HEADERS) $(noinst_HEADERS) $(am__DIST_COMMON)
+	$(nobase_include_HEADERS) $(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES =
@@ -149,8 +149,7 @@ am__uninstall_files_from_dir = { \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
 am__installdirs = "$(DESTDIR)$(includedir)" "$(DESTDIR)$(includedir)"
-HEADERS = $(include_HEADERS) $(nobase_include_HEADERS) \
-	$(noinst_HEADERS)
+HEADERS = $(include_HEADERS) $(nobase_include_HEADERS)
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) \
 	$(LISP)config.h.in
 # Read a list of newline-separated strings from the standard input,
@@ -295,10 +294,9 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-include_HEADERS = ssm.h ssm-time.h ssm.hpp ssmp.hpp ssm-log.hpp ssm-proxy.hpp ssm-proxy-client.hpp ssm-proxy-client-child.hpp
+include_HEADERS = ssm.h ssm-time.h ssm.hpp ssmp.hpp ssm-log.hpp ssm-proxy.hpp ssm-proxy-client.hpp ssm-proxy-client-child.hpp libssm.h
 #pkginclude_HEADERS = ssm.h ssm-time.h
 nobase_include_HEADERS = ssmtype/bumper.h ssmtype/ultrasonic.h
-noinst_HEADERS = libssm.h
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -606,6 +604,8 @@ uninstall-am: uninstall-includeHEADERS uninstall-nobase_includeHEADERS
 
 .PRECIOUS: Makefile
 
+
+#noinst_HEADERS = libssm.h
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
