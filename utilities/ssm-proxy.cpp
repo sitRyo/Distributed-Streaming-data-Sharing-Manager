@@ -642,11 +642,11 @@ void ProxyServer::handleCommand() {
 				}
 				printf("set property\n");
 
-				/* memory dump */
+				/* memory dump 
 				for (int i = 0; i < 8; ++i) {
 					printf("%02x ", ((char*)mProperty)[i] & 0xff);
 				}
-				printf("\n");
+				printf("\n"); */
 
 				if (mProperty != NULL) {
 					printf("mProperty is not null\n");
@@ -661,15 +661,14 @@ void ProxyServer::handleCommand() {
 		}
 		case MC_STREAM_PROPERTY_GET: {
 			printf("MC_STREAM_PROPERTY_GET\n");
-
-			// mPropertyを確保しているか？
+			if (mProperty) {
+				free(mProperty);
+			}
+			mPropertySize = msg.ssize;
+			mProperty = (char*) malloc(mPropertySize);
 			if (mProperty == NULL) {
-				mPropertySize = msg.ssize;
-				mProperty = (char*) malloc(mPropertySize);
-				if (mProperty == NULL) {
-					sendMsg(MC_FAIL, &msg);
-					break;
-				}
+				sendMsg(MC_FAIL, &msg);
+				break;
 			}
 
 			// propertyを取得
