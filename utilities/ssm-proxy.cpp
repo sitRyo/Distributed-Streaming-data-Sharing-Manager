@@ -144,21 +144,9 @@ void DataCommunicator::handleData() {
 		}
 		p = &mData[8];
 		time = *(reinterpret_cast<ssmTimeT*>(mData));
-		printf("time:%f\n", time);
-//            fprintf(fp, "time:%f\n", time);            
 		pstream->write(time);
 		printf("tid(%d): ", pstream->timeId);
-//            fprintf(fp, "tid(%d): ", pstream->timeId);             
-
-		for (int i = 0; i < 8; ++i) {
-			printf("%02x ", p[i] & 0xff);
-//                fprintf(fp, "%02x ", p[i] & 0xff);                
-		}
-		printf("\n");
-//            fprintf(fp, "\n");
-//            fflush(fp);
 	}
-//        fclose(fp);
 	pstream->showRawData();
 }
 
@@ -188,15 +176,14 @@ void DataCommunicator::handleRead() {
 				tmsg.tid = pstream->timeId;
 				tmsg.time = pstream->time;
 				tmsg.res_type = TMC_RES;
-				printf("tid = %d\n", (int) tmsg.tid);
 				if (sendTMsg(&tmsg)) {
 
-					printf("mDataSize = %d\n", (int) mDataSize);
+					/*printf("mDataSize = %d\n", (int) mDataSize);
 					for (int i = 0; i < 8; ++i) {
 						printf("%02x ", mData[i + sizeof(ssmTimeT)] & 0xff);
-					}
+					}*/
 
-					printf("\n");
+					// printf("\n");
 					if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
 						perror("send bulk Error");
 					}
@@ -220,12 +207,12 @@ void* DataCommunicator::run(void* args) {
 	if (rwait()) {
 		switch (mType) {
 		case WRITE_MODE: {
-			std::cout << "write..." << std::endl;
+			// std::cout << "write..." << std::endl;
 			handleData();
 			break;
 		}
 		case READ_MODE: {
-			std::cout << "...read" << std::endl;
+			// std::cout << "...read" << std::endl;
 			handleRead();
 			break;
 		}
