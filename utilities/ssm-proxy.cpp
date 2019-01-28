@@ -164,35 +164,79 @@ void DataCommunicator::handleRead() {
 	while (true) {
 		if (receiveTMsg(&tmsg)) {
 			switch (tmsg.msg_type) {
-			case TOP_TID_REQ: {
-				tmsg.tid = getTID_top(pstream->getSSMId());
-				tmsg.res_type = TMC_RES;
-				sendTMsg(&tmsg);
-				break;
-			}
-			case TIME_ID: {
-				SSM_tid req_tid = (SSM_tid) tmsg.tid;
-				pstream->read(req_tid);
-				tmsg.tid = pstream->timeId;
-				tmsg.time = pstream->time;
-				tmsg.res_type = TMC_RES;
-				if (sendTMsg(&tmsg)) {
+				case TID_REQ: {
+					tmsg.tid = getTID(pstream->getSSMId(), tmsg.time);
+					tmsg.res_type = TMC_RES;
+					sendTMsg(&tmsg);
+					break;
+				}
+				case TOP_TID_REQ: {
+					tmsg.tid = getTID_top(pstream->getSSMId());
+					tmsg.res_type = TMC_RES;
+					sendTMsg(&tmsg);
+					break;
+				}
+				case BOTTOM_TID_REQ: {
+					tmsg.tid = getTID_bottom(pstream->getSSMId());
+					tmsg.res_type = TMC_RES;
+					sendTMsg(&tmsg);
+					break;
+				}
+				case READ_NEXT: {
+					int dt = tmsg.tid;
+					pstream->readNext(dt);
+					tmsg.tid = pstream->timeId;
+					tmsg.time = pstream->time;
+					tmsg.res_type = TMC_RES;
+					if (sendTMsg(&tmsg)) {
 
-					/*printf("mDataSize = %d\n", (int) mDataSize);
-					for (int i = 0; i < 8; ++i) {
-						printf("%02x ", mData[i + sizeof(ssmTimeT)] & 0xff);
-					}*/
+						/*printf("mDataSize = %d\n", (int) mDataSize);
+						 for (int i = 0; i < 8; ++i) {
+						 printf("%02x ", mData[i + sizeof(ssmTimeT)] & 0xff);
+						 }*/
 
-					// printf("\n");
+						// printf("\n");
+						if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
+							perror("send bulk Error");
+						}
+					}
+					break;
+				}
+				case TIME_ID: {
+					SSM_tid req_tid = (SSM_tid) tmsg.tid;
+					pstream->read(req_tid);
+					tmsg.tid = pstream->timeId;
+					tmsg.time = pstream->time;
+					tmsg.res_type = TMC_RES;
+					if (sendTMsg(&tmsg)) {
+
+						/*printf("mDataSize = %d\n", (int) mDataSize);
+						 for (int i = 0; i < 8; ++i) {
+						 printf("%02x ", mData[i + sizeof(ssmTimeT)] & 0xff);
+						 }*/
+
+						// printf("\n");
+						if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
+							perror("send bulk Error");
+						}
+					}
+					break;
+				}
+				case REAL_TIME: {
+					ssmTimeT t = tmsg.time;
+					pstream->readTime(t);
+					tmsg.tid = pstream->timeId;
+					tmsg.time = pstream->time;
+					tmsg.res_type = TMC_RES;
+
 					if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
 						perror("send bulk Error");
 					}
+
+					break;
 				}
-				break;
-			}
-				defualt: {
-					fprintf(stderr, "NOTICE : unknown msg_type %d",
-							tmsg.msg_type);
+				default: {
+					fprintf(stderr, "NOTICE : unknown msg_type %d", tmsg.msg_type);
 					break;
 				}
 			}
@@ -615,10 +659,11 @@ void ProxyServer::handleCommand() {
 			printf("mProperty size: %ld\n", mPropertySize);
 			printf("ready to receive property\n");
 
-
 			sendMsg(MC_RES, &msg);
 			uint64_t len = 0;
-			while ((len += recv(this->client.data_socket, &mProperty[len], mPropertySize - len, 0)) != mPropertySize) ;
+			while ((len += recv(this->client.data_socket, &mProperty[len],
+					mPropertySize - len, 0)) != mPropertySize)
+				;
 			// int len = recv(this->client.data_socket, mProperty, msg.ssize, 0);
 
 			if (len == mPropertySize) {
@@ -630,10 +675,10 @@ void ProxyServer::handleCommand() {
 				printf("set property\n");
 
 				/* memory dump 
-				for (int i = 0; i < 8; ++i) {
-					printf("%02x ", ((char*)mProperty)[i] & 0xff);
-				}
-				printf("\n"); */
+				 for (int i = 0; i < 8; ++i) {
+				 printf("%02x ", ((char*)mProperty)[i] & 0xff);
+				 }
+				 printf("\n"); */
 
 				if (mProperty != NULL) {
 					printf("mProperty is not null\n");
@@ -668,10 +713,10 @@ void ProxyServer::handleCommand() {
 			}
 
 			/* memory dump
-			for (int i = 0; i < 8; ++i) {
-				printf("%02x ", ((char*)mProperty)[i] & 0xff);
-			}
-			printf("\n"); */
+			 for (int i = 0; i < 8; ++i) {
+			 printf("%02x ", ((char*)mProperty)[i] & 0xff);
+			 }
+			 printf("\n"); */
 
 			sendMsg(MC_RES, &msg);
 			printf("send property\n");
@@ -732,7 +777,6 @@ void ProxyServer::setSSMType(PROXY_open_mode mode) {
 
 bool ProxyServer::run() {
 	printf("run\n");
-	std::cout << "runrun" << std::endl;
 	while (wait()) {
 		++nport;
 		pid_t child_pid = fork();
@@ -775,7 +819,6 @@ void ProxyServer::catchSignal(int signo) {
 
 int main(void) {
 	ProxyServer server;
-	printf("uint64_t size = %d\n", (int) sizeof(uint64_t));
 	server.init();
 	server.run();
 	test();

@@ -212,6 +212,10 @@ SSM_tid PConnector::getTID_top(SSM_sid sid) {
 	return timeId = getTID_top();
 }
 
+SSM_tid PConnector::getTID_bottom(SSM_sid sid) {
+	return timeId = getTID_bottom();
+}
+
 bool PConnector::sendTMsg(thrd_msg *tmsg) {
 	char *p = tbuf;
 	serializeTMessage(tmsg, &p);
@@ -229,6 +233,43 @@ bool PConnector::recvTMsg(thrd_msg *tmsg) {
 		return deserializeTMessage(tmsg, &p);
 	}
 	return false;
+}
+
+SSM_tid PConnector::getTID(SSM_sid sid, ssmTimeT ytime) {
+	thrd_msg tmsg;
+	memset(&tmsg, 0, sizeof(thrd_msg));
+
+	tmsg.msg_type = TID_REQ;
+	tmsg.time = ytime;
+
+	if (!sendTMsg(&tmsg)) {
+		return -1;
+	}
+
+	if (recvTMsg(&tmsg)) {
+		if (tmsg.res_type == TMC_RES) {
+			return tmsg.tid;
+		}
+	}
+	return -1;
+}
+
+SSM_tid PConnector::getTID_bottom() {
+	thrd_msg tmsg;
+	memset(&tmsg, 0, sizeof(thrd_msg));
+
+	tmsg.msg_type = BOTTOM_TID_REQ;
+
+	if (!sendTMsg(&tmsg)) {
+		return -1;
+	}
+
+	if (recvTMsg(&tmsg)) {
+		if (tmsg.res_type == TMC_RES) {
+			return tmsg.tid;
+		}
+	}
+	return -1;
 }
 
 SSM_tid PConnector::getTID_top() {
@@ -367,15 +408,24 @@ bool PConnector::readLast() {
 
 // 前回のデータの1つ(以上)あとのデータを読み込む
 bool PConnector::readNext(int dt = 1) {
-	if (!isOpen()) {
+	thrd_msg tmsg;
+	tmsg.msg_type = READ_NEXT;
+	tmsg.tid = dt;
+
+	if (!sendTMsg(&tmsg)) {
 		return false;
 	}
-	SSM_tid rtid;
-	if (timeId < 0) {
-		return read(-1);
+	if (recvTMsg(&tmsg)) {
+		if (tmsg.res_type == TMC_RES) {
+			//            printf("tid = %d\n", tmsg.tid);
+			if (recvData()) {
+				time = tmsg.time;
+				timeId = tmsg.tid;
+				return true;
+			}
+		}
 	}
-	rtid = timeId + dt;
-	return read(rtid, READ_NEXT);
+	return false;
 }
 
 bool PConnector::readNew() {
@@ -383,26 +433,48 @@ bool PConnector::readNew() {
 	return (isOpen() ? read(-1) : false);
 }
 
-// 時間で取得
 bool PConnector::readTime(ssmTimeT t) {
-	READ_packet_type type = REAL_TIME; // 時間を送る -> libssm.h
-	uint64_t len = sizeof(int) + sizeof(ssmTimeT);
-	void* buf = malloc(len);
-	((READ_packet_type *) buf)[0] = type;
-	*((ssmTimeT *) &(((READ_packet_type *) buf)[1])) = t;
+	thrd_msg tmsg;
+	memset(&tmsg, 0, sizeof(thrd_msg));
 
-	if (send(dsock, buf, len, 0) == -1) {
-		std::cout << "error : PConnector::readTime" << std::endl;
-		free(buf);
-		return false;
+	tmsg.msg_type = REAL_TIME;
+	tmsg.time = t;
+
+	if (!sendTMsg(&tmsg)) {
+		return -1;
 	}
 
-	free(buf);
-	return recvData();
+	if (recvTMsg(&tmsg)) {
+		if (tmsg.res_type == TMC_RES) {
+			if (recvData()) {
+				time = tmsg.time;
+				timeId = tmsg.tid;
+				return true;
+			}
+		}
+	}
+	return -1;
 }
 
-// timeidをproxyに送信 -> proxy側でtimeidを更新してもらう
+// 時間で取得
+/*bool PConnector::readTime(ssmTimeT t) {
+ READ_packet_type type = REAL_TIME; // 時間を送る -> libssm.h
+ uint64_t len = sizeof(int) + sizeof(ssmTimeT);
+ void* buf = malloc(len);
+ ((READ_packet_type *) buf)[0] = type;
+ *((ssmTimeT *) &(((READ_packet_type *) buf)[1])) = t;
 
+ if (send(dsock, buf, len, 0) == -1) {
+ std::cout << "error : PConnector::readTime" << std::endl;
+ free(buf);
+ return false;
+ }
+
+ free(buf);
+ return recvData();
+ }*/
+
+// timeidをproxyに送信 -> proxy側でtimeidを更新してもらう
 bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	thrd_msg tmsg;
 	tmsg.msg_type = type;
@@ -454,7 +526,7 @@ bool PConnector::write(ssmTimeT time) {
 	*((ssmTimeT*) mFullData) = time;
 //	printf("mFullData: %p\n", (ssmTimeT *)mFullData);
 
-	// printf("time:%f\n", *(ssmTimeT *) mFullData);
+// printf("time:%f\n", *(ssmTimeT *) mFullData);
 //	std::cout << "write!" << std::endl;
 
 	if (send(dsock, mFullData, mFullDataSize, 0) == -1) { // データ送信用経路を使う
@@ -693,10 +765,10 @@ bool PConnector::setPropertyRemoteSSM(const char *name, int sensor_uid,
 		}
 
 		/*
-		for (int i = 0; i < 8; ++i) {
-			printf("%02x ", ((char*)data)[i] & 0xff);
-		}
-		*/
+		 for (int i = 0; i < 8; ++i) {
+		 printf("%02x ", ((char*)data)[i] & 0xff);
+		 }
+		 */
 
 		if (!sendData(data, size)) {
 			r = false;
@@ -752,13 +824,14 @@ bool PConnector::getPropertyRemoteSSM(const char *name, int sensor_uid,
 		}
 		// property取得
 		uint64_t len = 0;
-		while ((len += recv(sock, &data[len], mPropertySize - len, 0)) != mPropertySize)
+		while ((len += recv(sock, &data[len], mPropertySize - len, 0))
+				!= mPropertySize)
 			;
 		/*
-		for (int i = 0; i < 8; ++i) {
-			printf("%02f", ((char*)data)[i] & 0xff);
-		}
-		printf("\n"); */
+		 for (int i = 0; i < 8; ++i) {
+		 printf("%02f", ((char*)data)[i] & 0xff);
+		 }
+		 printf("\n"); */
 
 		if (len != mPropertySize) {
 			fprintf(stderr, "fail recv property\n");

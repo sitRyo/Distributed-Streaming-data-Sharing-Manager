@@ -18,7 +18,7 @@
 #  define  __attribute__(x)  /*NOTHING*/
 #endif
 
-	/* ---- defines ---- */
+/* ---- defines ---- */
 
 #define SHM_KEY 0x3292							/**< 共有メモリアクセス用キー */
 #define SHM_TIME_KEY (SHM_KEY - 1)				/**< 時刻同期用の共有メモリアクセスキー */
@@ -52,16 +52,15 @@ typedef enum {
 	TOP_TID_REQ, // request timeid top
 	BOTTOM_TID_REQ, // request timeid bottom
 	PACKET_FAILED, // falied
-        
-        TMC_RES,
-        TMC_FAIL
+
+	TMC_RES,
+	TMC_FAIL
 } READ_packet_type;
 
 /**
  * @brief メッセージで送るコマンド
  */
-enum
-{
+enum {
 	MC_NULL = 0,								///< コマンド無し
 
 	MC_VERSION_GET,								///< SSMのバージョンを確認（未実装）
@@ -87,7 +86,7 @@ enum
 	MC_NODE_LIST_INFO,							///< ノード情報の取得
 	MC_EDGE_LIST_NUM,							///< ノードを繋ぐエッジの数
 	MC_EDGE_LIST_INFO,							///< エッジ情報の取得
-	
+
 	MC_OFFSET,                               // オフセットの設定
 	MC_CONNECTION,                           // バルク通信用経路の確立
 
@@ -103,119 +102,113 @@ enum
 // #define SSM_MSG_SIZE (sizeof(ssm_msg))
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-	/* ---- typedefs ---- */
-	/** SSMのヘッダ */
-	typedef struct
-	{
-		SSM_tid tid_top;						///< 最新のTID(rp = tid_top wp = tid_top+1 )
-		int num;								///< 履歴数
-		uint64_t size;							///< データサイズ
-		double cycle;							///< データの入力される周期（最低値）
-		int data_off;							///< データまでのオフセット
-		int times_off;							///< 時刻データまでのオフセット
-		pthread_mutex_t mutex;					///< 同期用mutex lock
-		pthread_cond_t cond;					///< 同期用pthread condition
-	} ssm_header;
+/* ---- typedefs ---- */
+/** SSMのヘッダ */
+typedef struct {
+	SSM_tid tid_top;				///< 最新のTID(rp = tid_top wp = tid_top+1 )
+	int num;								///< 履歴数
+	uint64_t size;							///< データサイズ
+	double cycle;							///< データの入力される周期（最低値）
+	int data_off;							///< データまでのオフセット
+	int times_off;							///< 時刻データまでのオフセット
+	pthread_mutex_t mutex;					///< 同期用mutex lock
+	pthread_cond_t cond;					///< 同期用pthread condition
+} ssm_header;
 
-	/** SSMコマンドメッセージ */
-	typedef struct
-	{
-		uint64_t msg_type;							///< 宛先
-		uint64_t res_type;							///< 返信用
-		int cmd_type;							///< コマンドの種類
-		char name[SSM_SNAME_MAX];				///< ストリーム名
-		int suid;								///< ID
-		uint64_t ssize;							///< データサイズ
-		uint64_t hsize;							///< 履歴数
-		ssmTimeT time;							///< ストリーム周期
-		ssmTimeT saveTime;                       ///< saveTime
-	} ssm_msg;
-        
-        /* Threadでやり取りするメッセージ */
-        typedef struct 
-        {
-            uint64_t msg_type;
-            uint64_t res_type;
-            uint32_t tid;   
-            ssmTimeT time;   //
-        } thrd_msg;
-	
-	/** SSMのエッジ取得メッセージ */
-	typedef struct
-	{
-		uint64_t msg_type;							///< 宛先
-		int cmd_type;							///< コマンドの種類
-		char name[SSM_SNAME_MAX];				///< ストリーム名
-		int suid;								///< ID
-		int node1, node2;						///< エッジにつながっているノード
-	} ssm_msg_edge;	
-	
-	/** 時刻同期用の構造体 */
-	struct ssmtime
-	{
-		ssmTimeT offset;						///< 時刻のオフセット
-		double speed;							///< 再生速度
-		int is_pause;							///< ポーズをしているかどうか 
-		ssmTimeT pausetime;						///< ポーズを開始した時刻
-	};
+/** SSMコマンドメッセージ */
+typedef struct {
+	uint64_t msg_type;							///< 宛先
+	uint64_t res_type;							///< 返信用
+	int cmd_type;							///< コマンドの種類
+	char name[SSM_SNAME_MAX];				///< ストリーム名
+	int suid;								///< ID
+	uint64_t ssize;							///< データサイズ
+	uint64_t hsize;							///< 履歴数
+	ssmTimeT time;							///< ストリーム周期
+	ssmTimeT saveTime;                       ///< saveTime
+} ssm_msg;
 
-	extern struct ssmtime *timecontrol;
+/* Threadでやり取りするメッセージ */
+typedef struct {
+	uint64_t msg_type;
+	uint64_t res_type;
+	uint32_t tid;
+	ssmTimeT time;   //
+} thrd_msg;
 
-	int calcSSM_table( ssmTimeT life, ssmTimeT cycle );
-	ssmTimeT calcSSM_life( int table_num, ssmTimeT cycle );
+/** SSMのエッジ取得メッセージ */
+typedef struct {
+	uint64_t msg_type;							///< 宛先
+	int cmd_type;							///< コマンドの種類
+	char name[SSM_SNAME_MAX];				///< ストリーム名
+	int suid;								///< ID
+	int node1, node2;						///< エッジにつながっているノード
+} ssm_msg_edge;
 
-	int getSSM_node_num( void );
-	int getSSM_node_info( int n, int *node_num );
-	int getSSM_edge_num( void );
-	int getSSM_edge_info( int n, char *name, uint64_t name_size, int *id, int *node1, int *node2, int *dir );
-	
-	/* open */
-	int opentimeSSM( void ) __attribute__ ((warn_unused_result));
-	void closetimeSSM( void );
-	int createtimeSSM( void ) __attribute__ ((warn_unused_result));
-	int destroytimeSSM( void );
+/** 時刻同期用の構造体 */
+struct ssmtime {
+	ssmTimeT offset;						///< 時刻のオフセット
+	double speed;							///< 再生速度
+	int is_pause;							///< ポーズをしているかどうか
+	ssmTimeT pausetime;						///< ポーズを開始した時刻
+};
 
-	/* shm functions */
-	void shm_init_header( ssm_header * header, int ssize, int hsize, ssmTimeT cycle );
-	void shm_dest_header( ssm_header * header );
-	/* shared memory address */
-	ssm_header *shm_get_address( SSM_sid sid );
-	/* data */
-	void *shm_get_data_address( ssm_header * shm_p );
-	void *shm_get_data_ptr( ssm_header * shm_p, SSM_tid tid );
-	uint64_t shm_get_data_size( ssm_header *shm_p );
-	/* ssmtime */
-	ssmTimeT *shm_get_time_address( ssm_header * shm_p );
-	void shm_init_time( ssm_header * shm_p );
-	ssmTimeT shm_get_time( ssm_header * shm_p, SSM_tid tid );
-	void shm_set_time( ssm_header * shm_p, SSM_tid tid, ssmTimeT time );
-	/* tid */
-	// SSM_tid *shm_get_timetable_address( ssm_header *shm_p );
-	// void shm_init_timetable( ssm_header *shm_p );
-	SSM_tid shm_get_tid_top( ssm_header * shm_p );
-	SSM_tid shm_get_tid_bottom( ssm_header * shm_p );
-	/* mutex */
-	int shm_lock( ssm_header * shm_p );
-	int shm_unlock( ssm_header * shm_p );
-	int shm_cond_wait( ssm_header * shm_p, SSM_tid tid );
-	int shm_cond_broadcast( ssm_header * shm_p );
+extern struct ssmtime *timecontrol;
 
-	/** ssm time control */
-	void inittimeSSM( void );
-	int settimeSSM( ssmTimeT time );
-	int settimeSSM_speed( double speed );
-	double gettimeSSM_speed( void );
-	int settimeSSM_is_pause( int is_pause );
-	int gettimeSSM_is_pause( void );
-	int settimeSSM_is_reverse( int is_reverse );
-	int gettimeSSM_is_reverse( void );
-	ssmTimeT gettimeOffset();
-	void settimeOffset(ssmTimeT offset);
-	
+int calcSSM_table(ssmTimeT life, ssmTimeT cycle);
+ssmTimeT calcSSM_life(int table_num, ssmTimeT cycle);
+
+int getSSM_node_num(void);
+int getSSM_node_info(int n, int *node_num);
+int getSSM_edge_num(void);
+int getSSM_edge_info(int n, char *name, uint64_t name_size, int *id, int *node1,
+		int *node2, int *dir);
+
+/* open */
+int opentimeSSM(void) __attribute__ ((warn_unused_result));
+void closetimeSSM(void);
+int createtimeSSM(void) __attribute__ ((warn_unused_result));
+int destroytimeSSM(void);
+
+/* shm functions */
+void shm_init_header(ssm_header * header, int ssize, int hsize, ssmTimeT cycle);
+void shm_dest_header(ssm_header * header);
+/* shared memory address */
+ssm_header *shm_get_address(SSM_sid sid);
+/* data */
+void *shm_get_data_address(ssm_header * shm_p);
+void *shm_get_data_ptr(ssm_header * shm_p, SSM_tid tid);
+uint64_t shm_get_data_size(ssm_header *shm_p);
+/* ssmtime */
+ssmTimeT *shm_get_time_address(ssm_header * shm_p);
+void shm_init_time(ssm_header * shm_p);
+ssmTimeT shm_get_time(ssm_header * shm_p, SSM_tid tid);
+void shm_set_time(ssm_header * shm_p, SSM_tid tid, ssmTimeT time);
+/* tid */
+// SSM_tid *shm_get_timetable_address( ssm_header *shm_p );
+// void shm_init_timetable( ssm_header *shm_p );
+SSM_tid shm_get_tid_top(ssm_header * shm_p);
+SSM_tid shm_get_tid_bottom(ssm_header * shm_p);
+/* mutex */
+int shm_lock(ssm_header * shm_p);
+int shm_unlock(ssm_header * shm_p);
+int shm_cond_wait(ssm_header * shm_p, SSM_tid tid);
+int shm_cond_broadcast(ssm_header * shm_p);
+
+/** ssm time control */
+void inittimeSSM(void);
+int settimeSSM(ssmTimeT time);
+int settimeSSM_speed(double speed);
+double gettimeSSM_speed(void);
+int settimeSSM_is_pause(int is_pause);
+int gettimeSSM_is_pause(void);
+int settimeSSM_is_reverse(int is_reverse);
+int gettimeSSM_is_reverse(void);
+ssmTimeT gettimeOffset();
+void settimeOffset(ssmTimeT offset);
 
 #ifdef __cplusplus
 }

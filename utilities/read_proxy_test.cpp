@@ -82,6 +82,9 @@ int main() {
 			cout << "NUM = " << con.data.num << endl;
 		}
 
+		con.readNext(1);
+		cout << "NUM = " << con.data.num << endl;
+
 		// 1秒前のデータを取得
 		if (con.readTime(con.time - 1)) {
 			printf("\n");
