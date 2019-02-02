@@ -86,12 +86,13 @@ bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
 	tmsg->time = proxy->readDouble(&p);
 
 //    printf("deserialize buf = %p\n", this->buf);
-	/*
-	 printf("msg_type = %d\n", tmsg->msg_type);
+/*
+	 printf("\nmsg_type = %d\n", tmsg->msg_type);
 	 printf("res_type = %d\n", tmsg->res_type);
 	 printf("tid      = %d\n", tmsg->tid);
 	 printf("time     = %f\n", tmsg->time);
 	 */
+	
 	return true;
 }
 
@@ -125,8 +126,10 @@ bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
 	int len;
 	if ((len = recv(this->client.data_socket, this->buf, sizeof(thrd_msg), 0))
 			> 0) {
+		printf("\nreceive packet size -> %d\n", len);
 		return deserializeTmsg(tmsg);
 	}
+	
 	return false;
 }
 
@@ -236,7 +239,14 @@ void DataCommunicator::handleRead() {
 					break;
 				}
 				default: {
-					fprintf(stderr, "NOTICE : unknown msg_type %d", tmsg.msg_type);
+					thrd_msg* ptr = &tmsg;
+					printf("data: ");
+					for(int i = 0; i < 8; ++i) {
+						printf("%02x ", ((char*)ptr)[i] & 0xff);
+					}
+					printf("\n");
+
+					//fprintf(stderr, "NOTICE : unknown msg_type %d", tmsg.msg_type);
 					break;
 				}
 			}

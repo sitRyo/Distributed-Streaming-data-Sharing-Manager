@@ -456,24 +456,6 @@ bool PConnector::readTime(ssmTimeT t) {
 	return -1;
 }
 
-// 時間で取得
-/*bool PConnector::readTime(ssmTimeT t) {
- READ_packet_type type = REAL_TIME; // 時間を送る -> libssm.h
- uint64_t len = sizeof(int) + sizeof(ssmTimeT);
- void* buf = malloc(len);
- ((READ_packet_type *) buf)[0] = type;
- *((ssmTimeT *) &(((READ_packet_type *) buf)[1])) = t;
-
- if (send(dsock, buf, len, 0) == -1) {
- std::cout << "error : PConnector::readTime" << std::endl;
- free(buf);
- return false;
- }
-
- free(buf);
- return recvData();
- }*/
-
 // timeidをproxyに送信 -> proxy側でtimeidを更新してもらう
 bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	thrd_msg tmsg;
@@ -520,17 +502,16 @@ ssmTimeT PConnector::getRealTime() {
 	return current.tv_sec + current.tv_sec / 1000000.0;
 }
 
-// prototype time = getTimeSSM()
 bool PConnector::write(ssmTimeT time) {
-	// 先頭にアドレスを入れたい
 	*((ssmTimeT*) mFullData) = time;
-//	printf("mFullData: %p\n", (ssmTimeT *)mFullData);
-
-// printf("time:%f\n", *(ssmTimeT *) mFullData);
-//	std::cout << "write!" << std::endl;
+	void* p = mFullData;
+	printf("size -> %lld, time -> %lf\n", mFullDataSize, time);
+	for (int i = 0; i < 8; ++i) {
+		printf("%02x ", ((char*)p)[i] & 0xff);
+	}
+	printf("\n");
 
 	if (send(dsock, mFullData, mFullDataSize, 0) == -1) { // データ送信用経路を使う
-		// fprintf(stderr, "write data send error happen!!!!\n");
 		perror("send");
 		return false;
 	}

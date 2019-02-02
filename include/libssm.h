@@ -52,7 +52,9 @@ typedef enum {
 	TOP_TID_REQ, // request timeid top
 	BOTTOM_TID_REQ, // request timeid bottom
 	PACKET_FAILED, // falied
-
+	
+	WRITE_PACKET, // writemode packet
+	
 	TMC_RES,
 	TMC_FAIL
 } READ_packet_type;
