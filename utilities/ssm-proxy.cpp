@@ -637,19 +637,25 @@ void ProxyServer::handleCommand() {
 			}
 			mData = (char*) malloc(mFullDataSize);
 
-			switch (msg.openMode) {
+			// cmd_typeは8bitに色々入れてる
+	 		// 先頭3bitはSSM_open_mode, 4 ~ 8bitはコマンドタイプ
+			// SSM_open_mode取るには 0xe0 との論理積取ればいい
+			// 注) SSM_open_modeにmaskあるじゃん...
+			SSM_open_mode openMode = (SSM_open_mode) (msg.cmd_type & SSM_MODE_MASK);
+
+			switch (openMode) {
 				case SSM_READ: {
 					setSSMType(READ_MODE);
 					break;
 				}
+
 				case SSM_WRITE: {
 					setSSMType(WRITE_MODE);
 					break;
 				}
+
 				default: {
-					fprintf(stderr, "openmode error\n");
-					sendMsg(MC_FAIL, &msg);
-					break;
+					fprintf(stderr, "unknown ssm_open_mode\n");
 				}
 			}
 

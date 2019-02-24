@@ -131,7 +131,6 @@ typedef struct {
 	uint64_t hsize;							///< 履歴数
 	ssmTimeT time;							///< ストリーム周期
 	ssmTimeT saveTime;                       ///< saveTime
-	SSM_open_mode openMode;     ///< SSMのオープンモード
 } ssm_msg;
 
 /* Threadでやり取りするメッセージ */
