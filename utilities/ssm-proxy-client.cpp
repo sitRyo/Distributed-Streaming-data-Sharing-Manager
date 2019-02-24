@@ -665,6 +665,7 @@ bool PConnector::open(SSM_open_mode openMode) {
 	msg.suid = streamId;
 	strncpy(msg.name, streamName, SSM_SNAME_MAX);
 	msg.ssize = mDataSize;
+	msg.openMode = openMode;
 
 	// ssmOpen( streamName, streamId, openMode )の実装
 	// 内部のcommunicatorでMC_OPENを発行。
