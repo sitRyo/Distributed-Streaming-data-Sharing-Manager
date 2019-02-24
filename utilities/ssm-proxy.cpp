@@ -587,7 +587,7 @@ void ProxyServer::handleCommand() {
 			printf("MC_CREATE\n");
 
 			setSSMType(WRITE_MODE);
-
+			/*
 			std::cout << "********************************" << std::endl;
 			printf("strean name = %s\n", msg.name);
 			printf("stream_id = %d\n", msg.suid);
@@ -596,6 +596,7 @@ void ProxyServer::handleCommand() {
 			printf("msg.time(cycle) = %f\n", msg.time);
 			printf("msg.saveTime = %f\n", msg.saveTime);
 			std::cout << "********************************" << std::endl;
+			*/
 			mDataSize = msg.ssize;
 			mFullDataSize = mDataSize + sizeof(ssmTimeT);
 			if (mData) {
@@ -604,10 +605,12 @@ void ProxyServer::handleCommand() {
 			mData = (char*) malloc(mFullDataSize);
 
 			// メモリ番地を調べる
+			/*
 			printf("mData's pointer %p\n", mData);
 			printf("sizeof(ssmTimeT): %d\n", sizeof(ssmTimeT));
 			printf("mData[sizeof(ssmTimeT)] is %p\n", &mData[sizeof(ssmTimeT)]);
 			std::cout << "*******************************" << std::endl;
+			*/
 
 			if (mData == NULL) {
 				fprintf(stderr, "fail to create mData\n");
@@ -627,21 +630,42 @@ void ProxyServer::handleCommand() {
 		case MC_OPEN: {
 			printf("MC_OPEN\n");
 
-			setSSMType(READ_MODE);
-
 			mDataSize = msg.ssize;
 			mFullDataSize = mDataSize + sizeof(ssmTimeT);
 			if (mData) {
 				free(mData);
 			}
 			mData = (char*) malloc(mFullDataSize);
-			printf("MC_OPEN mData -> %p\n", mData);
+
+			// cmd_typeは8bitに色々入れてる
+	 		// 先頭3bitはSSM_open_mode, 4 ~ 8bitはコマンドタイプ
+			// SSM_open_mode取るには 0xe0 との論理積取ればいい
+			// 注) SSM_open_modeにmaskあるじゃん...
+			SSM_open_mode openMode = (SSM_open_mode) (msg.cmd_type & SSM_MODE_MASK);
+
+			switch (openMode) {
+				case SSM_READ: {
+					setSSMType(READ_MODE);
+					break;
+				}
+
+				case SSM_WRITE: {
+					setSSMType(WRITE_MODE);
+					break;
+				}
+
+				default: {
+					fprintf(stderr, "unknown ssm_open_mode\n");
+				}
+			}
+
+			// printf("MC_OPEN mData -> %p\n", mData);
 			if (mData == NULL) {
 				std::cout << "fail to create mData" << std::endl;
 				sendMsg(MC_FAIL, &msg);
 			} else {
 				stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
-				printf("?mData pointer: %p\n", stream.data());
+				// printf("?mData pointer: %p\n", stream.data());
 				if (!stream.open(msg.name, msg.suid)) {
 					std::cout << "stream open failed" << std::endl;
 					endSSM();

@@ -387,6 +387,7 @@ bool PConnector::deserializeTMessage(thrd_msg *tmsg, char **p) {
 bool PConnector::recvMsgFromServer(ssm_msg *msg, char *buf) {
 	printf("ready to receive\n");
 	int len = recv(sock, buf, sizeof(ssm_msg), 0);
+	printf("len: %d\n", len);
 	if (len > 0) {
 		deserializeMessage(msg, buf);
 		return true;
@@ -670,7 +671,7 @@ bool PConnector::open(SSM_open_mode openMode) {
 	// 内部のcommunicatorでMC_OPENを発行。
 	// PConnector::sendMsgToServer(int cmd_type, ssm_msg *msg)を実装
 	if (!sendMsgToServer(MC_OPEN | (int) openMode, &msg)) {
-		std::cout << "PConnector::open: error" << std::endl;
+		fprintf(stderr, "PConnector::open error send\n");
 		return false;
 	}
 
@@ -679,7 +680,7 @@ bool PConnector::open(SSM_open_mode openMode) {
 	if (recvMsgFromServer(&msg, msg_buf)) {
 		printf("msg %d\n", (int) msg.cmd_type);
 		if (!(msg.cmd_type == MC_RES)) {
-			std::cout << "PConnector::open : error" << std::endl;
+			fprintf(stderr, "PConnector::open error recv\n");
 			return false;
 		}
 	}
