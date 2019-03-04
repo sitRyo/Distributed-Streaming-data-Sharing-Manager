@@ -148,7 +148,7 @@ void DataCommunicator::handleData() {
 		p = &mData[8];
 		time = *(reinterpret_cast<ssmTimeT*>(mData));
 		pstream->write(time);
-		printf("tid(%d): ", pstream->timeId);
+		// printf("tid(%d): ", pstream->timeId);
 	}
 	pstream->showRawData();
 }

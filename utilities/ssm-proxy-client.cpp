@@ -56,7 +56,6 @@ void PConnector::initPConnector() {
 	isBlocking = false;
 	tbuf = (char*) malloc(sizeof(thrd_msg));
 	memset(tbuf, 0, sizeof(thrd_msg));
-
 }
 
 int PConnector::readInt(char **p) {
