@@ -747,17 +747,8 @@ int main( int aArgc, char **aArgv )
 		bool isWorking;
 		int playCnt; // 再生中のログの個数
 		printTime = gettimeSSM_real(  );
-		int count = 0;
 		while( !gShutOff )
 		{
-			++count;
-			if (write_count >= 31) {
-				printf("end of log play\n");
-				printf("count = %d\n", count);
-				log = param.logArray.begin(  );
-				log->showRawData(); // show shared memory for debug
-				ctrlC(1);
-			}
 			isWorking = false;
 			playCnt = 0;
 			// 現在時刻の取得
