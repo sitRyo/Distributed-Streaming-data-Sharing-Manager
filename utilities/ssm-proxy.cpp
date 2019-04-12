@@ -85,14 +85,6 @@ bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
 	tmsg->tid = proxy->readInt(&p);
 	tmsg->time = proxy->readDouble(&p);
 
-//    printf("deserialize buf = %p\n", this->buf);
-/*
-	 printf("\nmsg_type = %d\n", tmsg->msg_type);
-	 printf("res_type = %d\n", tmsg->res_type);
-	 printf("tid      = %d\n", tmsg->tid);
-	 printf("time     = %f\n", tmsg->time);
-	 */
-	
 	return true;
 }
 
@@ -102,13 +94,6 @@ bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
 	proxy->writeLong(&p, tmsg->res_type);
 	proxy->writeInt(&p, tmsg->tid);
 	proxy->writeDouble(&p, tmsg->time);
-	/*
-	 for (int i = 0; i < sizeof(thrd_msg); ++i) {
-	 if (i % 16 == 0) printf("\n");
-	 printf("%02x ", this->buf[i]);
-	 }
-	 printf("\n");
-	 */
 	return true;
 }
 
@@ -126,7 +111,7 @@ bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
 	int len;
 	if ((len = recv(this->client.data_socket, this->buf, sizeof(thrd_msg), 0))
 			> 0) {
-		printf("\nreceive packet size -> %d\n", len);
+		// printf("\nreceive packet size -> %d\n", len);
 		return deserializeTmsg(tmsg);
 	}
 	
@@ -136,10 +121,6 @@ bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
 void DataCommunicator::handleData() {
 	char *p;
 	ssmTimeT time;
-//        unsigned char hash[MD5_DIGEST_LENGTH];
-
-//        FILE* fp = fopen("recv.log", "w");
-
 	while (true) {
 		if (!receiveData()) {
 			fprintf(stderr, "receiveData Error happends\n");
@@ -148,7 +129,6 @@ void DataCommunicator::handleData() {
 		p = &mData[8];
 		time = *(reinterpret_cast<ssmTimeT*>(mData));
 		pstream->write(time);
-		// printf("tid(%d): ", pstream->timeId);
 	}
 	pstream->showRawData();
 }
@@ -192,13 +172,6 @@ void DataCommunicator::handleRead() {
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;
 					if (sendTMsg(&tmsg)) {
-
-						/*printf("mDataSize = %d\n", (int) mDataSize);
-						 for (int i = 0; i < 8; ++i) {
-						 printf("%02x ", mData[i + sizeof(ssmTimeT)] & 0xff);
-						 }*/
-
-						// printf("\n");
 						if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
 							perror("send bulk Error");
 						}
@@ -212,13 +185,6 @@ void DataCommunicator::handleRead() {
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;
 					if (sendTMsg(&tmsg)) {
-
-						/*printf("mDataSize = %d\n", (int) mDataSize);
-						 for (int i = 0; i < 8; ++i) {
-						 printf("%02x ", mData[i + sizeof(ssmTimeT)] & 0xff);
-						 }*/
-
-						// printf("\n");
 						if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
 							perror("send bulk Error");
 						}
@@ -240,13 +206,6 @@ void DataCommunicator::handleRead() {
 				}
 				default: {
 					thrd_msg* ptr = &tmsg;
-					printf("data: ");
-					for(int i = 0; i < 8; ++i) {
-						printf("%02x ", ((char*)ptr)[i] & 0xff);
-					}
-					printf("\n");
-
-					//fprintf(stderr, "NOTICE : unknown msg_type %d", tmsg.msg_type);
 					break;
 				}
 			}
@@ -261,12 +220,10 @@ void* DataCommunicator::run(void* args) {
 	if (rwait()) {
 		switch (mType) {
 		case WRITE_MODE: {
-			// std::cout << "write..." << std::endl;
 			handleData();
 			break;
 		}
 		case READ_MODE: {
-			// std::cout << "...read" << std::endl;
 			handleRead();
 			break;
 		}
@@ -295,7 +252,7 @@ bool DataCommunicator::sopen() {
 		perror("data com open");
 		return false;
 	}
-	printf("Data Communicagtor open!!\n");
+	printf("Data Communicator open!!\n");
 	return true;
 }
 
@@ -317,10 +274,10 @@ bool DataCommunicator::rwait() {
 	this->client.data_socket = -1;
 	for (;;) {
 		socklen_t client_addr_len = sizeof(this->client.client_addr);
-		printf("wait!!!\n");
+		// printf("wait!!!\n");
 		this->client.data_socket = accept(this->server.wait_socket,
 				(struct sockaddr*) &this->client.client_addr, &client_addr_len);
-		printf("pppppp\n");
+		// printf("pppppp\n");
 		if (this->client.data_socket != -1)
 			break;
 		if (errno == EINTR)
@@ -328,7 +285,7 @@ bool DataCommunicator::rwait() {
 		perror("server open accept");
 		return false;
 	}
-	printf("wait2!!!\n");
+	// printf("wait2!!!\n");
 	return true;
 }
 
@@ -355,7 +312,6 @@ ProxyServer::~ProxyServer() {
 }
 
 bool ProxyServer::init() {
-	printf("init\n");
 	setupSigHandler();
 	memset(&this->server, 0, sizeof(this->server));
 	this->server.wait_socket = -1;
@@ -562,9 +518,9 @@ void ProxyServer::handleCommand() {
 	// SSM_List *slist;
 	char *buf = (char*) malloc(sizeof(ssm_msg));
 	while (true) {
-		printf("wait recv\n");
+		// printf("wait recv\n");
 		int len = receiveMsg(&msg, buf);
-		printf("len in process = %d\n", len);
+		// printf("len in process = %d\n", len);
 		if (len == 0)
 			break;
 		switch (msg.cmd_type & 0x1f) {
@@ -587,30 +543,12 @@ void ProxyServer::handleCommand() {
 			printf("MC_CREATE\n");
 
 			setSSMType(WRITE_MODE);
-			/*
-			std::cout << "********************************" << std::endl;
-			printf("strean name = %s\n", msg.name);
-			printf("stream_id = %d\n", msg.suid);
-			printf("ssm_size = %d\n", (int) msg.ssize);
-			printf("hsize =  %d\n", (int) msg.hsize);
-			printf("msg.time(cycle) = %f\n", msg.time);
-			printf("msg.saveTime = %f\n", msg.saveTime);
-			std::cout << "********************************" << std::endl;
-			*/
 			mDataSize = msg.ssize;
 			mFullDataSize = mDataSize + sizeof(ssmTimeT);
 			if (mData) {
 				free(mData);
 			}
 			mData = (char*) malloc(mFullDataSize);
-
-			// メモリ番地を調べる
-			/*
-			printf("mData's pointer %p\n", mData);
-			printf("sizeof(ssmTimeT): %d\n", sizeof(ssmTimeT));
-			printf("mData[sizeof(ssmTimeT)] is %p\n", &mData[sizeof(ssmTimeT)]);
-			std::cout << "*******************************" << std::endl;
-			*/
 
 			if (mData == NULL) {
 				fprintf(stderr, "fail to create mData\n");
@@ -661,13 +599,13 @@ void ProxyServer::handleCommand() {
 
 			// printf("MC_OPEN mData -> %p\n", mData);
 			if (mData == NULL) {
-				std::cout << "fail to create mData" << std::endl;
+				fprintf(stderr, "fail to create mData");
 				sendMsg(MC_FAIL, &msg);
 			} else {
 				stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
 				// printf("?mData pointer: %p\n", stream.data());
 				if (!stream.open(msg.name, msg.suid)) {
-					std::cout << "stream open failed" << std::endl;
+					fprintf(stderr, "stream open failed");
 					endSSM();
 					sendMsg(MC_FAIL, &msg);
 				} else {
@@ -746,12 +684,6 @@ void ProxyServer::handleCommand() {
 				break;
 			}
 
-			/* memory dump
-			 for (int i = 0; i < 8; ++i) {
-			 printf("%02x ", ((char*)mProperty)[i] & 0xff);
-			 }
-			 printf("\n"); */
-
 			sendMsg(MC_RES, &msg);
 			printf("send property\n");
 			if (send(this->client.data_socket, mProperty, mPropertySize, 0)
@@ -763,9 +695,7 @@ void ProxyServer::handleCommand() {
 		case MC_OFFSET: {
 			printf("MC_OFFSET\n");
 			ssmTimeT offset = msg.time;
-//			printf("time  = %f\n", offset);
 			settimeOffset(offset);
-//			printf("time2 = %f\n", gettimeOffset());
 			sendMsg(MC_RES, &msg);
 			break;
 		}

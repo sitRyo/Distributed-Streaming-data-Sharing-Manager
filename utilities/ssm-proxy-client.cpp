@@ -272,7 +272,6 @@ SSM_tid PConnector::getTID_bottom() {
 }
 
 SSM_tid PConnector::getTID_top() {
-//    std::cout << "getTID_top is called" << std::endl;
 	thrd_msg tmsg;
 	memset(&tmsg, 0, sizeof(thrd_msg));
 
@@ -386,7 +385,6 @@ bool PConnector::deserializeTMessage(thrd_msg *tmsg, char **p) {
 bool PConnector::recvMsgFromServer(ssm_msg *msg, char *buf) {
 	printf("ready to receive\n");
 	int len = recv(sock, buf, sizeof(ssm_msg), 0);
-	printf("len: %d\n", len);
 	if (len > 0) {
 		deserializeMessage(msg, buf);
 		return true;
@@ -461,14 +459,12 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	thrd_msg tmsg;
 	tmsg.msg_type = type;
 	tmsg.tid = tmid;
-//    printf("tid = %d\n", tmid);
-//    printf("tmsg.tid = %d\n", tmsg.tid);    
 	if (!sendTMsg(&tmsg)) {
 		return false;
 	}
 	if (recvTMsg(&tmsg)) {
 		if (tmsg.res_type == TMC_RES) {
-//            printf("tid = %d\n", tmsg.tid);
+
 			if (recvData()) {
 				time = tmsg.time;
 				timeId = tmsg.tid;
@@ -485,14 +481,6 @@ bool PConnector::recvData() {
 	while ((len += recv(dsock, &((char*) mData)[len], mDataSize - len, 0))
 			!= mDataSize)
 		;
-
-	/*
-	 printf("mDataSize = %d\n", mDataSize);
-	 for(int i = 0; i < 8; ++i) {
-	 printf("%02x ", ((char*)mData)[i] & 0xff);
-	 }
-	 printf("\n");
-	 */
 	return true;
 }
 
@@ -505,11 +493,6 @@ ssmTimeT PConnector::getRealTime() {
 bool PConnector::write(ssmTimeT time) {
 	*((ssmTimeT*) mFullData) = time;
 	void* p = mFullData;
-	printf("size -> %lld, time -> %lf\n", mFullDataSize, time);
-	for (int i = 0; i < 8; ++i) {
-		printf("%02x ", ((char*)p)[i] & 0xff);
-	}
-	printf("\n");
 
 	if (send(dsock, mFullData, mFullDataSize, 0) == -1) { // データ送信用経路を使う
 		perror("send");
@@ -625,15 +608,8 @@ bool PConnector::createRemoteSSM(const char *name, int stream_id,
 	msg.time = cycle;
 	msg.saveTime = life;
 
-	/*
-	 printf("msg.suid  = %d\n", msg.suid);
-	 printf("msg.ssize = %d\n", msg.ssize);
-	 printf("msg.hsize  = %d\n", msg.hsize);
-	 printf("msg.time  = %f\n", msg.time);
-	 */
 	bool r = true;
 	char *msg_buf = (char*) malloc(sizeof(ssm_msg));
-	//printf("msg_buf: %p\n", msg_buf);
 	if (!sendMsgToServer(MC_CREATE | open_mode, &msg)) {
 		fprintf(stderr, "error in createRemoteSSM\n");
 		r = false;
@@ -739,17 +715,10 @@ bool PConnector::setPropertyRemoteSSM(const char *name, int sensor_uid,
 		r = false;
 	}
 	if (recvMsgFromServer(&msg, msg_buf)) {
-		printf("msg %d\n", (int) msg.cmd_type);
 		if (msg.cmd_type != MC_RES) {
 			//r = false;
 			return false;
 		}
-
-		/*
-		 for (int i = 0; i < 8; ++i) {
-		 printf("%02x ", ((char*)data)[i] & 0xff);
-		 }
-		 */
 
 		if (!sendData(data, size)) {
 			r = false;
@@ -808,12 +777,6 @@ bool PConnector::getPropertyRemoteSSM(const char *name, int sensor_uid,
 		while ((len += recv(sock, &data[len], mPropertySize - len, 0))
 				!= mPropertySize)
 			;
-		/*
-		 for (int i = 0; i < 8; ++i) {
-		 printf("%02f", ((char*)data)[i] & 0xff);
-		 }
-		 printf("\n"); */
-
 		if (len != mPropertySize) {
 			fprintf(stderr, "fail recv property\n");
 			r = false;

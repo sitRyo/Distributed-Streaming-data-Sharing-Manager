@@ -268,11 +268,7 @@ public:
 
 			} else {
 				stream.write( log.time(  ) );
-				printf("tid = %d\n", stream.timeId);
 			}
-
-
-
 			writeCnt = readCnt;
 			return true;
 		}
