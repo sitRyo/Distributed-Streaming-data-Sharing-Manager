@@ -5,6 +5,9 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+
 #include <iostream>
 #include <string>
 
@@ -297,6 +300,13 @@ bool PConnector::connectToServer(const char* serverName, int port) {
 
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 
+	int flag = 1;
+	int ret = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	if (ret == -1) {
+		perror("client setsockopt\n");
+		exit(1);
+	}
+
 	server.sin_family = AF_INET;
 	server.sin_port = htons(port);
 	server.sin_addr.s_addr = inet_addr(serverName);
@@ -309,6 +319,12 @@ bool PConnector::connectToServer(const char* serverName, int port) {
 
 bool PConnector::connectToDataServer(const char* serverName, int port) {
 	dsock = socket(AF_INET, SOCK_STREAM, 0);
+	int flag = 1;
+	int ret = setsockopt(dsock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	if (ret == -1) {
+		perror("client setsockopt\n");
+		exit(1);
+	}
 	dserver.sin_family = AF_INET;
 	dserver.sin_port = htons(port);
 	dserver.sin_addr.s_addr = inet_addr(serverName);
@@ -459,13 +475,15 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	thrd_msg tmsg;
 	tmsg.msg_type = type;
 	tmsg.tid = tmid;
+	double s1 = gettimeSSM_real(), s2;
 	if (!sendTMsg(&tmsg)) {
 		return false;
 	}
 	if (recvTMsg(&tmsg)) {
 		if (tmsg.res_type == TMC_RES) {
-
 			if (recvData()) {
+				s2 = gettimeSSM_real();
+				printf("diff: %f\n", s2 - s1);
 				time = tmsg.time;
 				timeId = tmsg.tid;
 				return true;
@@ -630,7 +648,6 @@ bool PConnector::createRemoteSSM(const char *name, int stream_id,
 
 bool PConnector::open(SSM_open_mode openMode) {
 	ssm_msg msg;
-
 	if (!mDataSize) {
 		std::cerr << "ssm-proxy-client: data buffer of" << streamName
 				<< "', id = " << streamId << " is not allocked." << std::endl;

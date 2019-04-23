@@ -13,7 +13,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-//#include <openssl/md5.h> // debug
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 
 #include <errno.h>
 #include <sys/fcntl.h>
@@ -24,20 +25,10 @@
 
 #include "printlog.hpp"
 
-//#include "ssm-coordinator.h"
 #include "libssm.h"
 #include "ssm-proxy.hpp"
 
 extern pid_t my_pid; // for debug
-/*
- static void CalcurateMD5Hash(unsigned char *buffer, long size, unsigned char* hash)
- {
- MD5_CTX ctx;
- MD5_Init(&ctx);
- MD5_Update(&ctx, buffer, size);
- MD5_Final(hash, &ctx);
- }
- */
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
 		uint64_t t_size, SSMApiBase *pstream, PROXY_open_mode type,
 		ProxyServer* proxy) {
@@ -111,7 +102,6 @@ bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
 	int len;
 	if ((len = recv(this->client.data_socket, this->buf, sizeof(thrd_msg), 0))
 			> 0) {
-		// printf("\nreceive packet size -> %d\n", len);
 		return deserializeTmsg(tmsg);
 	}
 	
@@ -130,7 +120,7 @@ void DataCommunicator::handleData() {
 		time = *(reinterpret_cast<ssmTimeT*>(mData));
 		pstream->write(time);
 	}
-	pstream->showRawData();
+	// pstream->showRawData();
 }
 
 bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
@@ -142,7 +132,6 @@ bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
 
 void DataCommunicator::handleRead() {
 	thrd_msg tmsg;
-	std::cout << "handleRead called" << std::endl;
 
 	while (true) {
 		if (receiveTMsg(&tmsg)) {
@@ -238,6 +227,12 @@ void* DataCommunicator::run(void* args) {
 
 bool DataCommunicator::sopen() {
 	this->server.wait_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int flag = 1;
+	int ret = setsockopt(this->server.wait_socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	if (ret == -1) {
+		printf("server setsocket");
+		exit(1);
+	}
 	if (this->server.wait_socket == -1) {
 		perror("open socket error");
 		return false;
@@ -324,6 +319,13 @@ bool ProxyServer::init() {
 
 bool ProxyServer::open() {
 	this->server.wait_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	int flag = 1;
+	int ret = setsockopt(this->server.wait_socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	if (ret == -1) {
+		perror("proxy setsockopt");
+		exit(1);
+	}
+	
 	if (this->server.wait_socket == -1) {
 		perror("open socket error");
 		return false;
@@ -512,15 +514,11 @@ int ProxyServer::sendMsg(int cmd_type, ssm_msg *msg) {
 }
 
 void ProxyServer::handleCommand() {
-//	printf("handlecommand\n");
-	fprintf(stderr, "nport = %d\n", nport);
 	ssm_msg msg;
-	// SSM_List *slist;
 	char *buf = (char*) malloc(sizeof(ssm_msg));
 	while (true) {
-		// printf("wait recv\n");
 		int len = receiveMsg(&msg, buf);
-		// printf("len in process = %d\n", len);
+		printf("cmd_type: %d\n", msg.cmd_type);
 		if (len == 0)
 			break;
 		switch (msg.cmd_type & 0x1f) {
@@ -575,10 +573,6 @@ void ProxyServer::handleCommand() {
 			}
 			mData = (char*) malloc(mFullDataSize);
 
-			// cmd_typeは8bitに色々入れてる
-	 		// 先頭3bitはSSM_open_mode, 4 ~ 8bitはコマンドタイプ
-			// SSM_open_mode取るには 0xe0 との論理積取ればいい
-			// 注) SSM_open_modeにmaskあるじゃん...
 			SSM_open_mode openMode = (SSM_open_mode) (msg.cmd_type & SSM_MODE_MASK);
 
 			switch (openMode) {
@@ -603,7 +597,6 @@ void ProxyServer::handleCommand() {
 				sendMsg(MC_FAIL, &msg);
 			} else {
 				stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
-				// printf("?mData pointer: %p\n", stream.data());
 				if (!stream.open(msg.name, msg.suid)) {
 					fprintf(stderr, "stream open failed");
 					endSSM();
@@ -627,16 +620,11 @@ void ProxyServer::handleCommand() {
 				break;
 			}
 			stream.setPropertyBuffer(mProperty, mPropertySize);
-
-			printf("mProperty size: %ld\n", mPropertySize);
-			printf("ready to receive property\n");
-
 			sendMsg(MC_RES, &msg);
 			uint64_t len = 0;
 			while ((len += recv(this->client.data_socket, &mProperty[len],
 					mPropertySize - len, 0)) != mPropertySize)
 				;
-			// int len = recv(this->client.data_socket, mProperty, msg.ssize, 0);
 
 			if (len == mPropertySize) {
 				printf("receive property\n");
@@ -644,13 +632,6 @@ void ProxyServer::handleCommand() {
 					sendMsg(MC_FAIL, &msg);
 					break;
 				}
-				printf("set property\n");
-
-				/* memory dump 
-				 for (int i = 0; i < 8; ++i) {
-				 printf("%02x ", ((char*)mProperty)[i] & 0xff);
-				 }
-				 printf("\n"); */
 
 				if (mProperty != NULL) {
 					printf("mProperty is not null\n");
@@ -785,7 +766,6 @@ int main(void) {
 	ProxyServer server;
 	server.init();
 	server.run();
-	test();
 
 	return 0;
 }
