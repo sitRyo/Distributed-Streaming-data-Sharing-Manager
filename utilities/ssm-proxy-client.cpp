@@ -339,14 +339,11 @@ bool PConnector::initRemote() {
 	bool r = true;
 	ssm_msg msg;
 	char *msg_buf = (char*) malloc(sizeof(ssm_msg));
-	// Todo change IPAddress
 	connectToServer(ipaddr, 8080);
-	//connectToServer("127.0.0.1", 8080);
 	if (!sendMsgToServer(MC_INITIALIZE, NULL)) {
 		fprintf(stderr, "error in initRemote\n");
 	}
 	if (recvMsgFromServer(&msg, msg_buf)) {
-		//		printf("msg = %d\n", (int)msg.cmd_type);
 		if (msg.cmd_type != MC_RES) {
 			r = false;
 		}
@@ -379,7 +376,6 @@ bool PConnector::serializeTMessage(thrd_msg *tmsg, char **p) {
 	if (tmsg == NULL) {
 		return false;
 	}
-//    std::cout << "serialize called" << std::endl;
 	writeLong(p, tmsg->msg_type);
 	writeLong(p, tmsg->res_type);
 	writeInt(p, tmsg->tid);
@@ -390,7 +386,6 @@ bool PConnector::serializeTMessage(thrd_msg *tmsg, char **p) {
 bool PConnector::deserializeTMessage(thrd_msg *tmsg, char **p) {
 	if (tmsg == NULL)
 		return false;
-//    std::cout << "deserialize called" << std::endl;
 	tmsg->msg_type = readLong(p);
 	tmsg->res_type = readLong(p);
 	tmsg->tid = readInt(p);
@@ -431,7 +426,6 @@ bool PConnector::readNext(int dt = 1) {
 	}
 	if (recvTMsg(&tmsg)) {
 		if (tmsg.res_type == TMC_RES) {
-			//            printf("tid = %d\n", tmsg.tid);
 			if (recvData()) {
 				time = tmsg.time;
 				timeId = tmsg.tid;
@@ -443,7 +437,6 @@ bool PConnector::readNext(int dt = 1) {
 }
 
 bool PConnector::readNew() {
-	// isBlockingは考えなくて良い(proxy側でやるから)
 	return (isOpen() ? read(-1) : false);
 }
 
@@ -470,7 +463,6 @@ bool PConnector::readTime(ssmTimeT t) {
 	return -1;
 }
 
-// timeidをproxyに送信 -> proxy側でtimeidを更新してもらう
 bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	thrd_msg tmsg;
 	tmsg.msg_type = type;
@@ -841,9 +833,7 @@ bool PConnector::createDataCon() {
 	free(msg_buf);
 
 	printf("connectToDataServer!\n");
-	// Todo: change IPAddress
 	connectToDataServer(ipaddr, msg.suid);
-	//connectToDataServer("127.0.0.1", msg.suid);
 
 	return true;
 }

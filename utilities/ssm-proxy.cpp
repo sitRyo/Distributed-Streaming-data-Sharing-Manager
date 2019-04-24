@@ -580,18 +580,15 @@ void ProxyServer::handleCommand() {
 					setSSMType(READ_MODE);
 					break;
 				}
-
 				case SSM_WRITE: {
 					setSSMType(WRITE_MODE);
 					break;
 				}
-
 				default: {
 					fprintf(stderr, "unknown ssm_open_mode\n");
 				}
 			}
 
-			// printf("MC_OPEN mData -> %p\n", mData);
 			if (mData == NULL) {
 				fprintf(stderr, "fail to create mData");
 				sendMsg(MC_FAIL, &msg);
@@ -655,8 +652,6 @@ void ProxyServer::handleCommand() {
 				sendMsg(MC_FAIL, &msg);
 				break;
 			}
-
-			// propertyを取得
 			stream.setPropertyBuffer(mProperty, mPropertySize);
 
 			if (!stream.getProperty()) {
@@ -683,7 +678,6 @@ void ProxyServer::handleCommand() {
 		case MC_CONNECTION: {
 			printf("MC_CONNECTION\n");
 			msg.suid = nport;
-			// DataCommunicatorはThreadを継承
 			com = new DataCommunicator(nport, mData, mDataSize, ssmTimeSize,
 					&stream, mType, this);
 			com->start(nullptr);
@@ -710,8 +704,6 @@ void ProxyServer::handleCommand() {
 	}
 	free(com);
 
-	// SSMの終了
-	// 時間の初期化
 	inittimeSSM();
 	endSSM();
 }
