@@ -47,8 +47,6 @@ int main() {
 	// ssm関連の初期化
 	con.initSSM();
 
-
-	SSM_open_mode SSM_READ = SSM_READ;
 	// 共有メモリにすでにある領域を開く
 	// 失敗するとfalseを返す
 	if (!con.open(SSM_READ)) {
@@ -81,7 +79,7 @@ int main() {
 			printf("now -> %f\n", con.time);
 			cout << "NUM = " << con.data.num << endl;
 		}
-
+/*
 		con.readNext(1);
 		cout << "NUM = " << con.data.num << endl;
 
@@ -93,7 +91,7 @@ int main() {
 		}
 
 		// SSM時間に合わせたsleep...だが，speedを1以外に変更できないので引数がそのまま停止時間になる
-		sleepSSM(1);
+		sleepSSM(1);*/
 	}
 
 	// プログラム終了後は切断
