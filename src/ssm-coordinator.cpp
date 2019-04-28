@@ -67,7 +67,7 @@ int msq_id = -1;								/* メッセージキューのID */
 key_t shm_key_num = 0;							/* 共有メモリの数 */
 SSM_List *ssm_top = 0;
 pid_t my_pid;									/* 自分のプロセスID */
-int verbosity_mode = 2;							/* メッセージ表示 */
+int verbosity_mode = 1;							/* メッセージ表示 */
 int is_check_msgque = 1;						/* メッセージキューがすでに存在しているかを確認しない */
 
 void escape_road( void );

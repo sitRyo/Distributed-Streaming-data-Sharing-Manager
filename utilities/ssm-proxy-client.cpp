@@ -18,18 +18,17 @@
 #define FOR_DEBUG 0
 
 PConnector::PConnector() :
-		tbuf(nullptr), time(0.0) {
+		tbuf(nullptr), time(0.0), ipaddr("127.0.0.1") {
 	initPConnector();
 }
 
 PConnector::PConnector(const char *streamName, int streamId) :
-		tbuf(nullptr), time(0.0) {
+		tbuf(nullptr), time(0.0), ipaddr("127.0.0.1") {
 	initPConnector();
 	setStream(streamName, streamId);
 }
 
 PConnector::~PConnector() {
-	printf("PConnector destructor\n");
 	if (sock != -1) {
 		close(sock);
 	}
@@ -39,7 +38,6 @@ PConnector::~PConnector() {
 }
 
 void PConnector::initPConnector() {
-	printf("PConnector constructor\n");
 	sock = -1;
 	dsock = -1;
 	mDataSize = 0;
@@ -279,17 +277,14 @@ SSM_tid PConnector::getTID_top() {
 	memset(&tmsg, 0, sizeof(thrd_msg));
 
 	tmsg.msg_type = TOP_TID_REQ;
-//    tmsg.res_type = 4;
-//    tmsg.tid = 12;
-//    tmsg.time = 13.6;
 
 	if (!sendTMsg(&tmsg)) {
 		return -1;
 	}
 	if (recvTMsg(&tmsg)) {
-		if (tmsg.res_type == TMC_RES) {
-			return tmsg.tid;
-		}
+            if (tmsg.res_type == TMC_RES) {
+		return tmsg.tid;
+            }
 	}
 	return -1;
 }
@@ -339,6 +334,7 @@ bool PConnector::initRemote() {
 	bool r = true;
 	ssm_msg msg;
 	char *msg_buf = (char*) malloc(sizeof(ssm_msg));
+        
 	connectToServer(ipaddr, 8080);
 	if (!sendMsgToServer(MC_INITIALIZE, NULL)) {
 		fprintf(stderr, "error in initRemote\n");
@@ -360,7 +356,6 @@ bool PConnector::initSSM() {
 }
 
 void PConnector::deserializeMessage(ssm_msg *msg, char *buf) {
-	printf("serialize message\n");
 	msg->msg_type = readLong(&buf);
 	msg->res_type = readLong(&buf);
 	msg->cmd_type = readInt(&buf);
@@ -394,7 +389,6 @@ bool PConnector::deserializeTMessage(thrd_msg *tmsg, char **p) {
 }
 
 bool PConnector::recvMsgFromServer(ssm_msg *msg, char *buf) {
-	printf("ready to receive\n");
 	int len = recv(sock, buf, sizeof(ssm_msg), 0);
 	if (len > 0) {
 		deserializeMessage(msg, buf);
@@ -467,7 +461,8 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	thrd_msg tmsg;
 	tmsg.msg_type = type;
 	tmsg.tid = tmid;
-	double s1 = gettimeSSM_real(), s2;
+        double s2;
+//	double s1 = gettimeSSM_real(), s2;
 	if (!sendTMsg(&tmsg)) {
 		return false;
 	}
@@ -475,7 +470,6 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 		if (tmsg.res_type == TMC_RES) {
 			if (recvData()) {
 				s2 = gettimeSSM_real();
-				printf("diff: %f\n", s2 - s1);
 				time = tmsg.time;
 				timeId = tmsg.tid;
 				return true;
@@ -502,8 +496,6 @@ ssmTimeT PConnector::getRealTime() {
 
 bool PConnector::write(ssmTimeT time) {
 	*((ssmTimeT*) mFullData) = time;
-	void* p = mFullData;
-
 	if (send(dsock, mFullData, mFullDataSize, 0) == -1) { // データ送信用経路を使う
 		perror("send");
 		return false;
@@ -625,7 +617,7 @@ bool PConnector::createRemoteSSM(const char *name, int stream_id,
 		r = false;
 	}
 	if (recvMsgFromServer(&msg, msg_buf)) {
-		printf("msg %d\n", (int) msg.cmd_type);
+//		printf("msg %d\n", (int) msg.cmd_type);
 		if (msg.cmd_type != MC_RES) {
 			fprintf(stderr, "MC_CREATE Remote RES is not MC_RES\n");
 			r = false;
@@ -662,7 +654,6 @@ bool PConnector::open(SSM_open_mode openMode) {
 	// proxyからのメッセージを受信
 	char *msg_buf = (char*) malloc(sizeof(ssm_msg));
 	if (recvMsgFromServer(&msg, msg_buf)) {
-		printf("msg %d\n", (int) msg.cmd_type);
 		if (!(msg.cmd_type == MC_RES)) {
 			fprintf(stderr, "PConnector::open error recv\n");
 			return false;
@@ -732,8 +723,7 @@ bool PConnector::setPropertyRemoteSSM(const char *name, int sensor_uid,
 		if (!sendData(data, size)) {
 			r = false;
 		}
-		if (recvMsgFromServer(&msg, msg_buf)) {
-			printf("sendData ack msg %d\n", (int) msg.cmd_type);
+		if (recvMsgFromServer(&msg, msg_buf)) {			
 			if (msg.cmd_type != MC_RES) {
 				r = false;
 			}
@@ -799,8 +789,6 @@ bool PConnector::getPropertyRemoteSSM(const char *name, int sensor_uid,
 }
 
 void PConnector::setOffset(ssmTimeT offset) {
-
-	printf("offset = %f\n", offset);
 	ssm_msg msg;
 	msg.hsize = 0;
 	msg.ssize = 0;
@@ -811,7 +799,7 @@ void PConnector::setOffset(ssmTimeT offset) {
 		fprintf(stderr, "error in setOffset\n");
 	}
 	if (recvMsgFromServer(&msg, msg_buf)) {
-		printf("msg res offset %d\n", (int) msg.cmd_type);
+		fprintf(stderr, "msg res offset %d\n", (int) msg.cmd_type);
 	}
 	free(msg_buf);
 }
@@ -827,12 +815,10 @@ bool PConnector::createDataCon() {
 		fprintf(stderr, "error in createDataCon\n");
 	}
 	if (recvMsgFromServer(&msg, msg_buf)) {
-		printf("msg res offset %d\n", (int) msg.cmd_type);
-		printf("msg res suid(port) %d\n", (int) msg.suid);
+//            fprintf(stderr, "create data connection error\n");
 	}
 	free(msg_buf);
 
-	printf("connectToDataServer!\n");
 	connectToDataServer(ipaddr, msg.suid);
 
 	return true;
@@ -850,7 +836,7 @@ bool PConnector::terminate() {
 		fprintf(stderr, "error in setOffset\n");
 	}
 	if (recvMsgFromServer(&msg, msg_buf)) {
-		printf("msg terminate %d\n", (int) msg.cmd_type);
+		fprintf(stderr, "msg terminate %d\n", (int) msg.cmd_type);
 	}
 	free(msg_buf);
 

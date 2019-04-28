@@ -157,8 +157,7 @@ ssm_player_DEPENDENCIES = ../src/libssm.la
 ssm_player_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(ssm_player_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-am_ssm_proxy_OBJECTS = ssm_proxy-ssm-proxy.$(OBJEXT) \
-	ssm_proxy-test.$(OBJEXT)
+am_ssm_proxy_OBJECTS = ssm_proxy-ssm-proxy.$(OBJEXT)
 ssm_proxy_OBJECTS = $(am_ssm_proxy_OBJECTS)
 ssm_proxy_DEPENDENCIES = ../src/libssm.la
 ssm_proxy_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -234,7 +233,6 @@ am__depfiles_remade = ./$(DEPDIR)/lsssm.Po \
 	./$(DEPDIR)/ssm_player-ssm-player.Po \
 	./$(DEPDIR)/ssm_player-ssm-proxy-client.Po \
 	./$(DEPDIR)/ssm_proxy-ssm-proxy.Po \
-	./$(DEPDIR)/ssm_proxy-test.Po \
 	./$(DEPDIR)/ssm_transporter-ssm-transporter.Po \
 	./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po \
 	./$(DEPDIR)/write_proxy_test-write_proxy_test.Po
@@ -437,7 +435,9 @@ top_srcdir = @top_srcdir@
 
 # set the include path found by configure
 INCLUDES = $(all_includes) -I../include
-AM_CFLAGS = -Wall -std=c++11 -L/lib64
+
+#AM_CFLAGS   = -Wall -std=c++11 -L/lib64
+AM_CFLAGS = -Wall 
 AM_CXXFLAGS = $(AM_CFLAGS)
 noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h
 
@@ -454,7 +454,8 @@ ssm_player_SOURCES = ssm-player.cpp ssm-proxy-client.cpp
 ssm_player_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 ssm_player_CXXFLAGS = $(ssm_advance_player_CFLAGS) -std=c++11
 ssm_player_LDADD = ../src/libssm.la -lm
-ssm_proxy_SOURCES = ssm-proxy.cpp test.cpp
+ssm_proxy_SOURCES = ssm-proxy.cpp 
+#ssm_proxy_SOURCES = ssm-proxy.cpp test.cpp
 ssm_proxy_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 ssm_proxy_CXXFLAGS = $(ssm_proxy_CFLAGS)
 ssm_proxy_LDADD = ../src/libssm.la -lm
@@ -665,7 +666,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_player-ssm-player.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_player-ssm-proxy-client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_proxy-ssm-proxy.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_proxy-test.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_transporter-ssm-transporter.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/write_proxy_test-write_proxy_test.Po@am__quote@ # am--include-marker
@@ -858,20 +858,6 @@ ssm_proxy-ssm-proxy.obj: ssm-proxy.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -c -o ssm_proxy-ssm-proxy.obj `if test -f 'ssm-proxy.cpp'; then $(CYGPATH_W) 'ssm-proxy.cpp'; else $(CYGPATH_W) '$(srcdir)/ssm-proxy.cpp'; fi`
 
-ssm_proxy-test.o: test.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -MT ssm_proxy-test.o -MD -MP -MF $(DEPDIR)/ssm_proxy-test.Tpo -c -o ssm_proxy-test.o `test -f 'test.cpp' || echo '$(srcdir)/'`test.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/ssm_proxy-test.Tpo $(DEPDIR)/ssm_proxy-test.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test.cpp' object='ssm_proxy-test.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -c -o ssm_proxy-test.o `test -f 'test.cpp' || echo '$(srcdir)/'`test.cpp
-
-ssm_proxy-test.obj: test.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -MT ssm_proxy-test.obj -MD -MP -MF $(DEPDIR)/ssm_proxy-test.Tpo -c -o ssm_proxy-test.obj `if test -f 'test.cpp'; then $(CYGPATH_W) 'test.cpp'; else $(CYGPATH_W) '$(srcdir)/test.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/ssm_proxy-test.Tpo $(DEPDIR)/ssm_proxy-test.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='test.cpp' object='ssm_proxy-test.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -c -o ssm_proxy-test.obj `if test -f 'test.cpp'; then $(CYGPATH_W) 'test.cpp'; else $(CYGPATH_W) '$(srcdir)/test.cpp'; fi`
-
 write_proxy_test-write_proxy_test.o: write_proxy_test.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_test_CXXFLAGS) $(CXXFLAGS) -MT write_proxy_test-write_proxy_test.o -MD -MP -MF $(DEPDIR)/write_proxy_test-write_proxy_test.Tpo -c -o write_proxy_test-write_proxy_test.o `test -f 'write_proxy_test.cpp' || echo '$(srcdir)/'`write_proxy_test.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/write_proxy_test-write_proxy_test.Tpo $(DEPDIR)/write_proxy_test-write_proxy_test.Po
@@ -1044,7 +1030,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ssm_player-ssm-player.Po
 	-rm -f ./$(DEPDIR)/ssm_player-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/ssm_proxy-ssm-proxy.Po
-	-rm -f ./$(DEPDIR)/ssm_proxy-test.Po
 	-rm -f ./$(DEPDIR)/ssm_transporter-ssm-transporter.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-write_proxy_test.Po
@@ -1103,7 +1088,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ssm_player-ssm-player.Po
 	-rm -f ./$(DEPDIR)/ssm_player-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/ssm_proxy-ssm-proxy.Po
-	-rm -f ./$(DEPDIR)/ssm_proxy-test.Po
 	-rm -f ./$(DEPDIR)/ssm_transporter-ssm-transporter.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-write_proxy_test.Po

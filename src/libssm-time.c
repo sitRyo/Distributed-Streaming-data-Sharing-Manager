@@ -101,15 +101,6 @@ unsigned int sleepSSM( double sec )
 /* ssm時刻の速度に応じたusleep */
 int usleepSSM( useconds_t usec )
 {
-	/*
-	if (timecontrol == NULL) {
-		printf("timecontrol is null\n");
-	} else {
-		printf("timecontrol is not null\n");
-	}
-
-	printf("timecontrol->speed : %lg\n", timecontrol->speed);
-	*/
 
 	if(timecontrol != NULL && timecontrol->speed != 0.0)
 	{
@@ -156,8 +147,6 @@ int settimeSSM( ssmTimeT time )
 	if(timecontrol != NULL)
 	{
 		timecontrol->offset = time - timecontrol->speed * gettimeSSM_real();
-		printf("timecontrol is not null!\n");
-		printf("offset = %f", timecontrol->offset);
 		timecontrol->pausetime = time;
 		return 1;
 	}

@@ -320,7 +320,6 @@ SSM_sid createSSM( const char *name, int stream_id, uint64_t ssm_size, ssmTimeT 
 	int open_mode = SSM_READ | SSM_WRITE;
 	ssm_header *shm_p;
 	uint64_t len;
-
 	/* initialize check */
 	if( !name )
 	{
@@ -360,6 +359,7 @@ SSM_sid createSSM( const char *name, int stream_id, uint64_t ssm_size, ssmTimeT 
 		strcpy( err_msg, "arg err : life, c" );
 		return 0;
 	}
+
 
 	/* prepare message packet */
 	strncpy( msg.name, name, SSM_SNAME_MAX );

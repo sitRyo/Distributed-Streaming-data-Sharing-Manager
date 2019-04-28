@@ -84,7 +84,6 @@ class LogPlayer
 	bool mIsPlaying;
 	void init(  )
 	{
-		printf("init!!!\n");
 		data = NULL;
 		property = NULL;
 		fulldata = NULL;
@@ -151,11 +150,13 @@ public:
 		fulldata = malloc(dataSize + sizeof(ssmTimeT));
 		char *p = &((char*)fulldata)[8];
 		
+                /*
 		cout << "\nprint memory (ssm-player)" << endl;
 		printf("data: %p\n", data);
 		printf("full: %p\n", fulldata);
 		printf("pppp: %p\n", p);
 		cout << "print end" << endl;
+                */
 
 		if( ( data == NULL ) || (fulldata == NULL) || ( propertySize && property == NULL ))
 		{
@@ -174,14 +175,7 @@ public:
 			con->setBuffer(data, dataSize, property, propertySize, fulldata);
 		}
 		
-		log.readProperty(  );
-		/* For Network*/
-		if (useNetwork) {
-			//log.readFull();
-			//exit(1);
-		} else { // これはバグじゃないか？
-			//log.readNext(  );
-		}
+		log.readProperty(  );		
 
 		ssmTimeT saveTime;
 		saveTime = calcSSM_life( log.getBufferNum(  ), log.getCycle(  ) );
@@ -189,9 +183,6 @@ public:
 
 		/* For Network */
 		if (useNetwork) {
-			printf("use network\n");
-			printf("saveTime = %f\n", saveTime);
-			printf("cycle = %f\n", log.getCycle());
 			if (!con->create(log.getStreamName(), log.getStreamId(), saveTime, log.getCycle())) {
 				return false;
 			}
@@ -200,15 +191,7 @@ public:
 				fprintf(stderr, "error in setProperty\n");
 				return false;
 			}
-
-			//exit(1); // for test
 		} else {
-			/*
-			printf("streamName = %s\n", log.getStreamName());
-			printf("streamId   = %d\n", log.getStreamId());
-			printf("saveTime   = %f\n", saveTime);
-			printf("cycle      = %f\n", log.getCycle());
-			*/
 			if( !stream.create( log.getStreamName(), log.getStreamId(), saveTime, log.getCycle() ) )
 				return false;
 
@@ -262,9 +245,7 @@ public:
 			write_count++; // for test
 			// log時間でのstreamへの書き込み
 			if (useNetwork) {
-				//printf("write---\n");
 				con->write(log.time());
-//				exit(1);
 
 			} else {
 				stream.write( log.time(  ) );
@@ -305,7 +286,6 @@ public:
 	}
 
 	bool initRemote() {
-		printf("init remote\n");
 		if (useNetwork) {
 			return con->initRemote();
 		}
@@ -602,21 +582,20 @@ void nproc_start(MyParam& param) {
 	char command[128];
 
 	if(!opentimeSSM() ){
-		fprintf(stderr, "errororororo!\n");
-	} else {
-		printf("init opentimeSSM\n");
-	}
+		fprintf(stderr, "opentimeSSM error!\n");
+	} 
 
 	log = param.logArray.begin();
 	while (log != param.logArray.end()) {
 		log->setUseNetwork(true);
 		if (!log->initRemote()) {
-			printf("init fail!\n");
+			fprintf(stderr, "initRemote error!\n");
 			return; // init fail
 		}
 		// logの中のPConnectorからMC_INITIALIZEを発行する
 		log++;
 	}
+
 
 	setSigInt();
 
@@ -640,14 +619,14 @@ void nproc_start(MyParam& param) {
 	bool isWorking;
 	int playCnt; // 再生中のログの個数
 	printTime = gettimeSSM_real(  );
-	int count = 0;  // test
+//	int count = 0;  // test
 	while( !gShutOff ) {
-		++count;
-		if (write_count >= 31) {
-			printf("end of log play\n");
-			printf("count = %d\n", count);
-			ctrlC(1);
-		}
+//		++count;
+//		if (write_count >= 31) {
+//			printf("end of log play\n");
+//			printf("count = %d\n", count);
+//			ctrlC(1);
+//		}
 
 		isWorking = false;
 		playCnt = 0;

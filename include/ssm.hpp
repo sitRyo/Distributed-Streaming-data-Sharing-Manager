@@ -217,7 +217,7 @@ public:
 		}
 
 		ssmId = createSSM( streamName, streamId, sharedSize(  ), saveTime, cycle );
-
+                
 		if( ssmId == 0 )
 		{
 			if( isVerbose )
@@ -488,7 +488,6 @@ public:
 	 */
 	bool getProperty(  )
 	{
-		printf("mPropertySize: %d\n", mPropertySize);
 		if( mPropertySize > 0 )
 			return static_cast < bool > ( get_propertySSM( streamName, streamId, mProperty ) );
 		else
@@ -535,7 +534,7 @@ public:
 		//SSM_tid tid = writeSSM( ssmId, mData, time );
 		shm_p = shm_get_address(ssmId);
 		printf("--- show row data ---\n");
-		printf("size = 0x%x\n", shm_p->size);
+		printf("size = 0x%llx\n", shm_p->size);
 		printf("num = %d\n", shm_p->num);
 		char *p = NULL;
 		for (int i = 0; i < shm_p->num; ++i) {

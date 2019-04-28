@@ -244,54 +244,11 @@ public:
 	}
 	
 	virtual bool readFull() {
-		// printf("readFull\n");
-
-		// これが今までのやり方を真似たやつ
-		/*
-		double mlTime;
-		mLogFile->read( (char *)&mTime, sizeof( ssmTimeT ) ); // この処理が重い．．なぜか．．
-		mLogFile->read( &((char *)mFullData)[8], mDataSize );
-		*((ssmTimeT*)mFullData) = mTime;
-		//mlTime = *(reinterpret_cast<double*>(mFullData));
-		printf("mlTime = %f\n", mTime);
-		char *p = &((char*)mFullData)[8];
-
-		for (int i = 0; i < 8; ++i) {
-			printf("%02x ", p[i] & 0xff);
-		}
-		printf("\n");
-		*/
-		// これが最も効率的だと思うやつ
-
-		double mlTime;
-		// mFullDataにsizeof(ssmTimeT) + mDataSize分読み出す
-		std::cout << "datasize: " << sizeof(ssmTimeT) + mDataSize << std::endl;
-		std::cout << sizeof(ssmTimeT) << " + " << mDataSize << std::endl;
-		mLogFile->read((char*)mFullData, sizeof(ssmTimeT) + mDataSize);
-		mlTime = *(reinterpret_cast<double*>(mFullData));
-		/*for (int i = 0; i < 8; i++) {
-			printf("%02x ", ((char*)mFullData)[i]);
-		}*/
-		printf("\n");
-		char *p = &((char*)mFullData)[8];
-
-		printf("mlTime = %f\n", mlTime);
-		for (int i = 0; i < 8; ++i) {
-			printf("%02x ", p[i] & 0xff);
-		}
-		printf("\n");
-
-
-		/*//いままでのやつ．参考にならず
-		mLogFile->read( (char *)&mTime, sizeof( ssmTimeT ) );
-		mLogFile->read( (char *)mData, mDataSize );
-		printf("mTime = %f\n", mTime);
-		for (int i = 0; i < 8; ++i) {
-			printf("%02x ", ((char*)mData)[i] & 0xff);
-		}
-		printf("\n");
-	*/
-		return mLogFile->good(  );
+            double mlTime;
+            mLogFile->read((char*)mFullData, sizeof(ssmTimeT) + mDataSize);
+            mlTime = *(reinterpret_cast<double*>(mFullData));
+            char *p = &((char*)mFullData)[8];		
+            return mLogFile->good(  );
 	}
 
 	

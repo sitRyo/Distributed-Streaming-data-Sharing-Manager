@@ -32,7 +32,6 @@ extern pid_t my_pid; // for debug
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
 		uint64_t t_size, SSMApiBase *pstream, PROXY_open_mode type,
 		ProxyServer* proxy) {
-	printf("DataCommunicatir new\n");
 	this->mData = mData;
 	this->mDataSize = d_size;
 	this->ssmTimeSize = t_size;
@@ -194,7 +193,7 @@ void DataCommunicator::handleRead() {
 					break;
 				}
 				default: {
-					thrd_msg* ptr = &tmsg;
+					//thrd_msg* ptr = &tmsg;                                        
 					break;
 				}
 			}
@@ -220,7 +219,7 @@ void* DataCommunicator::run(void* args) {
 			perror("no such mode");
 		}
 		}
-		printf("end of thread\n");
+//		printf("end of thread\n");
 	}
 	return nullptr;
 }
@@ -230,7 +229,7 @@ bool DataCommunicator::sopen() {
 	int flag = 1;
 	int ret = setsockopt(this->server.wait_socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 	if (ret == -1) {
-		printf("server setsocket");
+		fprintf(stderr, "server setsocket");
 		exit(1);
 	}
 	if (this->server.wait_socket == -1) {
@@ -247,7 +246,7 @@ bool DataCommunicator::sopen() {
 		perror("data com open");
 		return false;
 	}
-	printf("Data Communicator open!!\n");
+//	printf("Data Communicator open!!\n");
 	return true;
 }
 
@@ -285,7 +284,7 @@ bool DataCommunicator::rwait() {
 }
 
 ProxyServer::ProxyServer() {
-	printf("Proxy Server created\n");
+//	printf("Proxy Server created\n");
 	nport = SERVER_PORT;
 	mData = NULL;
 	mDataSize = 0;
@@ -298,7 +297,7 @@ ProxyServer::ProxyServer() {
 }
 
 ProxyServer::~ProxyServer() {
-	printf("proxy server deleted\n");
+//	printf("proxy server deleted\n");
 	this->server_close();
 	free(mData);
 	mData = NULL;
@@ -518,7 +517,7 @@ void ProxyServer::handleCommand() {
 	char *buf = (char*) malloc(sizeof(ssm_msg));
 	while (true) {
 		int len = receiveMsg(&msg, buf);
-		printf("cmd_type: %d\n", msg.cmd_type);
+//		printf("cmd_type: %d\n", msg.cmd_type);
 		if (len == 0)
 			break;
 		switch (msg.cmd_type & 0x1f) {
@@ -548,19 +547,21 @@ void ProxyServer::handleCommand() {
 			}
 			mData = (char*) malloc(mFullDataSize);
 
+
 			if (mData == NULL) {
 				fprintf(stderr, "fail to create mData\n");
 				sendMsg(MC_FAIL, &msg);
 			} else {
+
 				stream.setDataBuffer(&mData[sizeof(ssmTimeT)], mDataSize);
 				if (!stream.create(msg.name, msg.suid, msg.saveTime,
 						msg.time)) {
 					sendMsg(MC_FAIL, &msg);
 					break;
 				}
-				printf("stream is created\n");
 				sendMsg(MC_RES, &msg);
 			}
+
 			break;
 		}
 		case MC_OPEN: {
@@ -624,17 +625,18 @@ void ProxyServer::handleCommand() {
 				;
 
 			if (len == mPropertySize) {
-				printf("receive property\n");
+//				printf("receive property\n");
 				if (!stream.setProperty()) {
 					sendMsg(MC_FAIL, &msg);
 					break;
 				}
-
+                                /*
 				if (mProperty != NULL) {
 					printf("mProperty is not null\n");
 				} else {
 					printf("mProperty is null\n");
 				}
+                                 */
 				sendMsg(MC_RES, &msg);
 			} else {
 				sendMsg(MC_FAIL, &msg);
@@ -655,13 +657,12 @@ void ProxyServer::handleCommand() {
 			stream.setPropertyBuffer(mProperty, mPropertySize);
 
 			if (!stream.getProperty()) {
-				printf("can't get property on SSM\n");
+				fprintf(stderr, "can't get property on SSM\n");
 				sendMsg(MC_FAIL, &msg);
 				break;
 			}
 
 			sendMsg(MC_RES, &msg);
-			printf("send property\n");
 			if (send(this->client.data_socket, mProperty, mPropertySize, 0)
 					== -1) {
 				fprintf(stderr, "packet send error\n");
@@ -713,7 +714,7 @@ void ProxyServer::setSSMType(PROXY_open_mode mode) {
 }
 
 bool ProxyServer::run() {
-	printf("run\n");
+//	printf("run\n");
 	while (wait()) {
 		++nport;
 		pid_t child_pid = fork();
@@ -723,7 +724,7 @@ bool ProxyServer::run() {
 			this->server_close();
 			this->handleCommand();
 			this->client_close();
-			printf("end of process");
+			fprintf(stderr, "end of process");
 			exit(1);
 		} else { // parent
 			this->client_close();
