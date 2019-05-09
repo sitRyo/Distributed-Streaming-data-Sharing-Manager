@@ -6,6 +6,9 @@ Streaming data Sharing Manager
 Distributed Streaming data Sharing Manager
                 Hiroaki Fukuda, Ryota Gunji 2019/5/9
 
+このブランチは32bitと64bitでの通信に対応しておりません。  
+32-b4bit branchを使用することをおすすめします。  
+
 SSM is streaming sensor data management program.
 
 :Directory structrure
