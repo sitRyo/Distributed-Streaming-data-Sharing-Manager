@@ -79,9 +79,6 @@ int main() {
 			printf("now -> %f\n", con.time);
 			cout << "NUM = " << con.data.num << endl;
 		}
-/*
-		con.readNext(1);
-		cout << "NUM = " << con.data.num << endl;
 
 		// 1秒前のデータを取得
 		if (con.readTime(con.time - 1)) {
@@ -90,8 +87,7 @@ int main() {
 			cout << "old NUM = " << con.data.num << endl;
 		}
 
-		// SSM時間に合わせたsleep...だが，speedを1以外に変更できないので引数がそのまま停止時間になる
-		sleepSSM(1);*/
+		sleepSSM(1);
 	}
 
 	// プログラム終了後は切断
