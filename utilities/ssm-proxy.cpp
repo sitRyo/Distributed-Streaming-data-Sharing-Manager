@@ -89,6 +89,7 @@ bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
 
 bool DataCommunicator::sendTMsg(thrd_msg *tmsg) {
 	if (serializeTmsg(tmsg)) {
+	  puts("");
 		if (send(this->client.data_socket, this->buf, sizeof(thrd_msg), 0)
 				!= -1) {
 			return true;
@@ -116,6 +117,7 @@ void DataCommunicator::handleData() {
 			break;
 		}
 		p = &mData[8];
+
 		time = *(reinterpret_cast<ssmTimeT*>(mData));
 		pstream->write(time);
 	}
@@ -133,6 +135,7 @@ void DataCommunicator::handleRead() {
 	thrd_msg tmsg;
 
 	while (true) {
+	  printf("handle Read handleRead\n");
 		if (receiveTMsg(&tmsg)) {
 			switch (tmsg.msg_type) {
 				case TID_REQ: {
@@ -180,16 +183,17 @@ void DataCommunicator::handleRead() {
 					break;
 				}
 				case REAL_TIME: {
+				  printf("read time\n");
 					ssmTimeT t = tmsg.time;
-					pstream->readTime(t);
+					if (pstream->readTime(t))
 					tmsg.tid = pstream->timeId;
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;
-
-					if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
-						perror("send bulk Error");
+					if (sendTMsg(&tmsg)) {
+					  if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
+					    perror("send bulk Error");
+					  }
 					}
-
 					break;
 				}
 				default: {
