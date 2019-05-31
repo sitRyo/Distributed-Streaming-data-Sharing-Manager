@@ -2,7 +2,7 @@
 INCLUDES= $(all_includes) -I../include
 
 #AM_CFLAGS   = -Wall -std=c++11 -L/lib64
-AM_CFLAGS   = -Wall -std=c++11
+AM_CFLAGS   = -Wall -std=c++11 -lpthread -L/lib64
 AM_CXXFLAGS = $(AM_CFLAGS)
 
 bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph
