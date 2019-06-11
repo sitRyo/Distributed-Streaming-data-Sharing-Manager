@@ -185,7 +185,7 @@ void DataCommunicator::handleRead() {
 				case REAL_TIME: {
 				  printf("read time\n");
 					ssmTimeT t = tmsg.time;
-					if (pstream->readTime(t))
+					pstream->readTime(t);
 					tmsg.tid = pstream->timeId;
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;
