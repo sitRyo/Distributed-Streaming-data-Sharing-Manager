@@ -446,6 +446,10 @@ bool PConnector::readTime(ssmTimeT t) {
 	}
 
 	if (recvTMsg(&tmsg)) {
+		if (tmsg.tid == -1) {
+			fprintf(stderr, "readTime: recv -1");
+			return -1;
+		}
 		if (tmsg.res_type == TMC_RES) {
 			if (recvData()) {
 				time = tmsg.time;
