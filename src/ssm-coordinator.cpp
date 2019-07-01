@@ -495,14 +495,12 @@ int msq_loop( void )
 			break;
 
 		case MC_OPEN:							/* センサのオープン */
-			std::cout << "MC_OPEN" << std::endl;
 			if( verbosity_mode >= 2 )
 			{
 				printf( "message:open!\n" );
 				printf( "   |   :name=%s id=%d\n", msg.name, msg.suid );
 			}
 			slist = search_SSM_List( msg.name, msg.suid );
-			std::cout << msg.name << " " << msg.suid << std::endl;
 			if( slist )
 			{
 				if( verbosity_mode >= 2 )
