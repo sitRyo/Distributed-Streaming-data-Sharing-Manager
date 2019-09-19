@@ -4,6 +4,7 @@
 #include <string.h>
 #include <signal.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include <iostream>
 #include <string>
@@ -28,6 +29,93 @@
 
 #include "libssm.h"
 #include "ssm-proxy.hpp"
+
+
+/* Loggerで出力する
+ * LogTypeにLoggerで呼び出すレベルを設定する
+ * toStringメソッドを持たせて、Loggerの出力を簡単にできるようにする。
+ */
+class LogLevel {
+public:
+	enum LogType {
+		Info = 1,
+		Debug,
+		Warn,
+		Error,
+	};
+
+	static std::string toString(LogLevel::LogType logLevel) {
+		switch (logLevel) {
+			case LogLevel::Info: return "INFO ";
+			case LogLevel::Debug: return "DEBUG ";
+			case LogLevel::Warn: return "WARN ";
+			case LogLevel::Error: return "ERROR ";
+			default: return "UNKNOWN";
+		}
+	}
+};
+
+class Logger {
+private:
+	LogLevel::LogType m_TargetType;
+	std::string m_LogFilePath;
+	std::ofstream ofs;
+public:
+
+	Logger() : m_TargetType(LogLevel::Info) {
+		m_LogFilePath = "Logger.log";
+		ofs.open(m_LogFilePath);
+	}
+
+	~Logger() { ofs.close(); }
+
+	// Loggerのレベルを設定する。
+	void setLogLevel(const LogLevel::LogType& logLevel) {
+		m_TargetType = logLevel;
+	}
+	
+	/* 以下、ログ出力のレベルを指定して呼び出す。
+	 * @param fileName 定義済みラベル__FILE__を使用することを想定
+	 * @param lineNumber 定義済みラベル__LINE__を使用することを想定
+	 * @param funcName 定義済みラベル__func__を使用することを想定
+	 * @param logMessage 出力するログメッセージ。std::stringで受け取るが、将来的にint, float, doubleのみを受け取り、関数中でstringに変換するみたいな処理を書けたらいいね(SFINAEを使えばいけると思う)
+	 */
+	void LOG_INFO(const char* fileName, const char* lineNumber, const char* funcName, const std::string& logMessage) {
+		this->write(LogLevel::Info, fileName, lineNumber, funcName, logMessage);
+	}
+
+	void LOG_DEBUG(const char* fileName, const char* lineNumber, const char* funcName, const std::string& logMessage) {
+		this->write(LogLevel::Debug, fileName, lineNumber, funcName, logMessage);
+	}
+
+	void LOG_WARN(const char* fileName, const char* lineNumber, const char* funcName, const std::string& logMessage) {
+		this->write(LogLevel::Warn, fileName, lineNumber, funcName, logMessage);
+	}
+
+	void LOG_ERROR(const char* fileName, const char* lineNumber, const char* funcName, const std::string& logMessage) {
+		this->write(LogLevel::Error, fileName, lineNumber, funcName, logMessage);
+	}
+
+private:
+
+	void write(const LogLevel::LogType& type, const char* fileName, const char* lineNumber, const char* funcName, const std::string& logMessage) {
+		ofs << getTimeNow() << " "
+		<< "[" << LogLevel::toString(type) << "] "
+		<< "[" << fileName << "] " 
+		<< "[" << funcName << "] "
+		<< "[" << lineNumber << "] "
+		<< logMessage << "\n";
+	}
+
+	std::string getTimeNow() {
+		timeval tv;
+		gettimeofday(&tv, NULL);
+		return std::to_string(tv.tv_sec + tv.tv_usec / 1000000.0);
+	}
+};
+
+Logger mLogger;
+
 
 extern pid_t my_pid; // for debug
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
@@ -186,7 +274,9 @@ void DataCommunicator::handleRead() {
 				case REAL_TIME: {
 				  printf("read time\n");
 					ssmTimeT t = tmsg.time;
+					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET RECV " + std::string(pstream->getStreamName()) + " " + std::to_string(t));
 					pstream->readTime(t);
+					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET CHECKED " + std::string(pstream->getStreamName()) + " " + std::to_string(t));
 					tmsg.tid = pstream->timeId;
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;

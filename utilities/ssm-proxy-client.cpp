@@ -527,7 +527,7 @@ bool PConnector::readTime(ssmTimeT t) {
 
 	tmsg.msg_type = REAL_TIME;
 	tmsg.time = t;
-	mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME");
+	mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME SEND");
 	if (!sendTMsg(&tmsg)) {
 		return -1;
 	}
@@ -535,12 +535,19 @@ bool PConnector::readTime(ssmTimeT t) {
 	if (recvTMsg(&tmsg)) {
 		mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "MSG RECIEVE");
 		if (tmsg.tid == -1) {
+			mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, std::to_string(tmsg.tid));
 			fprintf(stderr, "readTime: recv -1");
 			return -1;
 		}
+
+		if (tmsg.tid == -2) {
+			mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, std::to_string(tmsg.tid));
+			fprintf(stderr, "readTime: recv -2");
+			return -2;
+		}
 		if (tmsg.res_type == TMC_RES) {
 			if (recvData()) {
-				mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "DATARECV");
+				mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "DATA RECEIVE");
 				time = tmsg.time;
 				timeId = tmsg.tid;
 				return true;

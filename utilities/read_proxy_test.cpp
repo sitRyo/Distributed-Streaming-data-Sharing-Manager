@@ -81,10 +81,10 @@ int main() {
 		}
 
 		// 1秒前のデータを取得
-		if (con.readTime(con.time - 1)) {
-			printf("\n");
-			printf("before 1 sec -> %f\n", con.time);
-			cout << "old NUM = " << con.data.num << endl;
+		if (con.readTime(con.time)) {
+			// printf("\n");
+			// printf("before 1 sec -> %f\n", con.time);
+			// cout << "old NUM = " << con.data.num << endl;
 		}
 
 		sleepSSM(1);
