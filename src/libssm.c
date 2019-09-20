@@ -534,8 +534,11 @@ SSM_tid readSSMP( SSM_sid sid, void *adata, ssmTimeT * ytime, SSM_tid tid,
 	/* region check */
 	if( tid < SSM_TID_SP )
 		return SSM_ERROR_NO_DATA;
-	if( tid > top )
+	if( tid > top ) {
+		fprintf(stderr, "tid > top bottom %d top %d\n", bottom, top);
 		return SSM_ERROR_FUTURE;
+	}
+
 	if( tid < bottom )
 		return SSM_ERROR_PAST;	
 	//memcpy( data, , shm_p->size );
@@ -583,14 +586,18 @@ SSM_tid readSSMP_time( SSM_sid sid, void *adata, ssmTimeT ytime, ssmTimeT *ret_t
 	/* テーブルからTIDを検索 */
 	if( ytime <= 0 )
 	{											/* timeが負の時は最新データの読み込みとする */
+		fprintf(stderr, "ytime == 0\n");
 		tid = -1;
 	}
 	else
 	{
 		tid = getTID_time( shm_get_address( sid ), ytime );
 		// sprintf(err_msg,"tid %d",tid);
-		if( tid < 0 )
+		if( tid < 0 ) {
+			fprintf(stderr, "getTID_time returned under 0 tid => %d\n", tid);
 			return tid;
+		}
+
 
 	}
 	return readSSMP( sid, adata, ret_time, tid, callback, &shm_get_address( sid )->size );

@@ -265,6 +265,7 @@ void DataCommunicator::handleRead() {
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;
 					if (sendTMsg(&tmsg)) {
+						mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "TIME_ID PACKET CHECKED " + std::string(pstream->getStreamName()) + " " + std::to_string(tmsg.time));
 						if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
 							perror("send bulk Error");
 						}
@@ -276,14 +277,20 @@ void DataCommunicator::handleRead() {
 					ssmTimeT t = tmsg.time;
 					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET RECV " + std::string(pstream->getStreamName()) + " " + std::to_string(t));
 					pstream->readTime(t);
-					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET CHECKED " + std::string(pstream->getStreamName()) + " " + std::to_string(t));
+					// 取得したTIDを出力
+					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET CHECKED tid" + std::string(pstream->getStreamName()) + " " + std::to_string(pstream->timeId));
 					tmsg.tid = pstream->timeId;
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;
 					if (sendTMsg(&tmsg)) {
+						mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET SENDBULKDATA tmsg res => " + std::string(pstream->getStreamName()) + " " + std::to_string(tmsg.res_type));
 					  if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
+							mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "BULKDATA is Failed " + std::to_string(tmsg.time));
 					    perror("send bulk Error");
 					  }
+					} else {
+						mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME sendTMsg is Failed, tmsg.res_type => " + std::to_string(tmsg.time));
+						mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME sendTMsg is Failed, tmsg.tid => " + std::to_string(tmsg.tid));
 					}
 					break;
 				}

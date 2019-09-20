@@ -533,7 +533,7 @@ bool PConnector::readTime(ssmTimeT t) {
 	}
 
 	if (recvTMsg(&tmsg)) {
-		mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "MSG RECIEVE");
+		mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "MSG RECIEVE res type => " + std::to_string(tmsg.res_type));
 		if (tmsg.tid == -1) {
 			mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, std::to_string(tmsg.tid));
 			fprintf(stderr, "readTime: recv -1");
@@ -545,6 +545,7 @@ bool PConnector::readTime(ssmTimeT t) {
 			fprintf(stderr, "readTime: recv -2");
 			return -2;
 		}
+		
 		if (tmsg.res_type == TMC_RES) {
 			if (recvData()) {
 				mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "DATA RECEIVE");
