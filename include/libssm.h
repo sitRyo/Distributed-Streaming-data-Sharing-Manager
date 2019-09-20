@@ -137,7 +137,7 @@ typedef struct {
 typedef struct {
 	uint64_t msg_type;
 	uint64_t res_type;
-	uint32_t tid;
+	int32_t tid;
 	ssmTimeT time;   //
 } thrd_msg;
 
