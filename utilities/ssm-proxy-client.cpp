@@ -553,6 +553,8 @@ bool PConnector::readTime(ssmTimeT t) {
 				timeId = tmsg.tid;
 				return true;
 			}
+		} else {
+			mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "DATA RECEIVE FAILED => " + std::to_string(tmsg.res_type));
 		}
 	}
 	return -1;

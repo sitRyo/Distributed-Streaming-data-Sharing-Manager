@@ -282,6 +282,7 @@ void DataCommunicator::handleRead() {
 					tmsg.tid = pstream->timeId;
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;
+					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET SENDBULKDATA tmsg res => " + std::string(pstream->getStreamName()) + " " + std::to_string(tmsg.res_type));
 					if (sendTMsg(&tmsg)) {
 						mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET SENDBULKDATA tmsg res => " + std::string(pstream->getStreamName()) + " " + std::to_string(tmsg.res_type));
 					  if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
