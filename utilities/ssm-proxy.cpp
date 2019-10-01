@@ -179,6 +179,9 @@ bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
 bool DataCommunicator::sendTMsg(thrd_msg *tmsg) {
 	if (serializeTmsg(tmsg)) {
 	  puts("");
+		// 遅延ACKを設定。
+		int flag = 1;
+		int ret = setsockopt(this->client.data_socket, IPPROTO_TCP, TCP_QUICKACK, (void*)&flag, sizeof(flag));
 		if (send(this->client.data_socket, this->buf, sizeof(thrd_msg), 0)
 				!= -1) {
 			return true;
@@ -214,6 +217,9 @@ void DataCommunicator::handleData() {
 }
 
 bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
+	// 遅延ACKを設定。
+	int flag = 1;
+	int ret = setsockopt(this->client.data_socket, IPPROTO_TCP, TCP_QUICKACK, (void*)&flag, sizeof(flag));
 	if (send(this->client.data_socket, buf, size, 0) != -1) {
 		return true;
 	}
@@ -607,6 +613,9 @@ int ProxyServer::sendMsg(int cmd_type, ssm_msg *msg) {
 	writeDouble(&p, msg->time);
 	writeDouble(&p, msg->saveTime);
 
+	// 遅延ACKを設定。
+	int flag = 1;
+	int ret = setsockopt(this->client.data_socket, IPPROTO_TCP, TCP_QUICKACK, (void*)&flag, sizeof(flag));
 	if ((len = send(this->client.data_socket, buf, sizeof(ssm_msg), 0)) == -1) {
 		fprintf(stderr, "error happens\n");
 	}
@@ -766,6 +775,9 @@ void ProxyServer::handleCommand() {
 			}
 
 			sendMsg(MC_RES, &msg);
+			// 遅延ACKを設定。
+			int flag = 1;
+			int ret = setsockopt(this->client.data_socket, IPPROTO_TCP, TCP_QUICKACK, (void*)&flag, sizeof(flag));
 			if (send(this->client.data_socket, mProperty, mPropertySize, 0)
 					== -1) {
 				fprintf(stderr, "packet send error\n");
