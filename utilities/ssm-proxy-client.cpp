@@ -8,6 +8,7 @@
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <sys/socket.h>
 
 #include <iostream>
 #include <string>
@@ -306,6 +307,11 @@ SSM_tid PConnector::getTID_bottom(SSM_sid sid) {
 bool PConnector::sendTMsg(thrd_msg *tmsg) {
 	char *p = tbuf;
 	serializeTMessage(tmsg, &p);
+
+	int flag = 1; // このオプションがいまいちわからない。1はout of bound data
+	// 遅延ACKを無効にする。
+	int ret = setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, (void*)&flag, sizeof(flag));
+
 	if (send(dsock, tbuf, sizeof(thrd_msg), 0) == -1) {
 		perror("socket error");
 		return false;
@@ -383,7 +389,8 @@ bool PConnector::connectToServer(const char* serverName, int port) {
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 
 	int flag = 1;
-	int ret = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	// int ret = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	int ret = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (void*)&flag, sizeof(flag));
 	if (ret == -1) {
 		perror("client setsockopt\n");
 		exit(1);
@@ -402,7 +409,8 @@ bool PConnector::connectToServer(const char* serverName, int port) {
 bool PConnector::connectToDataServer(const char* serverName, int port) {
 	dsock = socket(AF_INET, SOCK_STREAM, 0);
 	int flag = 1;
-	int ret = setsockopt(dsock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	// int ret = setsockopt(dsock, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+	int ret = setsockopt(dsock, IPPROTO_TCP, TCP_NODELAY, (void*)&flag, sizeof(flag));
 	if (ret == -1) {
 		perror("client setsockopt\n");
 		exit(1);
@@ -627,7 +635,10 @@ bool PConnector::sendMsgToServer(int cmd_type, ssm_msg *msg) {
 	writeLong(&p, msg->hsize);
 	writeDouble(&p, msg->time);
 	writeDouble(&p, msg->saveTime);
-
+	
+	// 遅延ACKを設定。
+	int flag = 1;
+	int ret = setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, (void*)&flag, sizeof(flag));
 	if (send(sock, buf, sizeof(ssm_msg), 0) == -1) {
 		fprintf(stderr, "error happens\n");
 		free(buf);
@@ -638,6 +649,9 @@ bool PConnector::sendMsgToServer(int cmd_type, ssm_msg *msg) {
 }
 
 bool PConnector::sendData(const char *data, uint64_t size) {
+	// 遅延ACKを設定。
+	int flag = 1;
+	int ret = setsockopt(sock, IPPROTO_TCP, TCP_QUICKACK, (void*)&flag, sizeof(flag));
 	if (send(sock, data, size, 0) == -1) {
 		fprintf(stderr, "error in sendData\n");
 		return false;
