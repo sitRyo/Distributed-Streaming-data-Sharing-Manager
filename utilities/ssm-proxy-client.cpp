@@ -596,6 +596,12 @@ bool PConnector::recvData() {
 	while ((len += recv(dsock, &((char*) mData)[len], mDataSize - len, 0))
 			!= mDataSize)
 		;
+	std::string str = "";
+	for (int i = 0; i < 8; ++i) {
+		str += ((char*)mData)[i] & 0xff;
+		str += " ";
+	}
+	mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, str);
 	return true;
 }
 

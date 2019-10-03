@@ -151,9 +151,17 @@ DataCommunicator::~DataCommunicator() {
 
 bool DataCommunicator::receiveData() {
 	int len = 0;
+	std::string str = "";
 	while ((len += recv(this->client.data_socket, &mData[len],
-			mFullDataSize - len, 0)) != mFullDataSize)
+			mFullDataSize - len, 0)) != mFullDataSize) 
 		;
+
+	for (int i = 0; i < 8; ++i) {
+		str += mData[i] & 0xff;
+		str += " ";
+	}
+	// str += "\n";
+	mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "recv data " + str);
 	return true;
 }
 
@@ -186,6 +194,7 @@ bool DataCommunicator::sendTMsg(thrd_msg *tmsg) {
 				!= -1) {
 			return true;
 		}
+		
 	}
 	return false;
 }
@@ -220,9 +229,17 @@ bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
 	// 遅延ACKを設定。
 	int flag = 1;
 	int ret = setsockopt(this->client.data_socket, IPPROTO_TCP, TCP_QUICKACK, (void*)&flag, sizeof(flag));
+	std::string str;
+	for (int i = 0; i < 8; ++i) {
+		str += buf[i] & 0xff;
+		str += " ";
+	}
+	mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "recv data " + str);
 	if (send(this->client.data_socket, buf, size, 0) != -1) {
 		return true;
 	}
+
+
 	return false;
 }
 
@@ -281,14 +298,14 @@ void DataCommunicator::handleRead() {
 				case REAL_TIME: {
 				  printf("read time\n");
 					ssmTimeT t = tmsg.time;
-					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET RECV " + std::string(pstream->getStreamName()) + " " + std::to_string(t));
+					// mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET RECV " + std::string(pstream->getStreamName()) + " " + std::to_string(t));
 					pstream->readTime(t);
 					// 取得したTIDを出力
 					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET CHECKED tid" + std::string(pstream->getStreamName()) + " " + std::to_string(pstream->timeId));
 					tmsg.tid = pstream->timeId;
 					tmsg.time = pstream->time;
 					tmsg.res_type = TMC_RES;
-					mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET SENDBULKDATA tmsg res => " + std::string(pstream->getStreamName()) + " " + std::to_string(tmsg.res_type));
+					// mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET SENDBULKDATA tmsg res => " + std::string(pstream->getStreamName()) + " " + std::to_string(tmsg.res_type));
 					if (sendTMsg(&tmsg)) {
 						mLogger.LOG_DEBUG(__FILE__, std::to_string(__LINE__).c_str(), __func__, "REALTIME PACKET SENDBULKDATA tmsg res => " + std::string(pstream->getStreamName()) + " " + std::to_string(tmsg.res_type));
 					  if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
