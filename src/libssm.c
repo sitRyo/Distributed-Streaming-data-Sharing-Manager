@@ -248,7 +248,7 @@ int receive_msg( ssm_msg *msg )
 int communicate_msg( int cmd_type, ssm_msg *msg )
 {
 	/* send */
-	printf("%d\n", cmd_type);
+	//printf("%d\n", cmd_type);
 	send_msg( cmd_type, msg );
 	/* ...processing on ssm side */
 	

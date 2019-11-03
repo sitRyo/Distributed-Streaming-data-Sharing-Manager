@@ -89,7 +89,6 @@ bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
 
 bool DataCommunicator::sendTMsg(thrd_msg *tmsg) {
 	if (serializeTmsg(tmsg)) {
-	  puts("");
 		if (send(this->client.data_socket, this->buf, sizeof(thrd_msg), 0)
 				!= -1) {
 			return true;
@@ -135,7 +134,6 @@ void DataCommunicator::handleRead() {
 	thrd_msg tmsg;
 
 	while (true) {
-	  printf("handle Read handleRead\n");
 		if (receiveTMsg(&tmsg)) {
 			switch (tmsg.msg_type) {
 				case TID_REQ: {
@@ -183,7 +181,6 @@ void DataCommunicator::handleRead() {
 					break;
 				}
 				case REAL_TIME: {
-				  printf("read time\n");
 					ssmTimeT t = tmsg.time;
 					pstream->readTime(t);
 					tmsg.tid = pstream->timeId;
@@ -272,10 +269,8 @@ bool DataCommunicator::rwait() {
 	this->client.data_socket = -1;
 	for (;;) {
 		socklen_t client_addr_len = sizeof(this->client.client_addr);
-		// printf("wait!!!\n");
 		this->client.data_socket = accept(this->server.wait_socket,
 				(struct sockaddr*) &this->client.client_addr, &client_addr_len);
-		// printf("pppppp\n");
 		if (this->client.data_socket != -1)
 			break;
 		if (errno == EINTR)
@@ -283,12 +278,10 @@ bool DataCommunicator::rwait() {
 		perror("server open accept");
 		return false;
 	}
-	// printf("wait2!!!\n");
 	return true;
 }
 
 ProxyServer::ProxyServer() {
-//	printf("Proxy Server created\n");
 	nport = SERVER_PORT;
 	mData = NULL;
 	mDataSize = 0;
@@ -301,7 +294,6 @@ ProxyServer::ProxyServer() {
 }
 
 ProxyServer::~ProxyServer() {
-//	printf("proxy server deleted\n");
 	this->server_close();
 	free(mData);
 	mData = NULL;
@@ -521,7 +513,6 @@ void ProxyServer::handleCommand() {
 	char *buf = (char*) malloc(sizeof(ssm_msg));
 	while (true) {
 		int len = receiveMsg(&msg, buf);
-//		printf("cmd_type: %d\n", msg.cmd_type);
 		if (len == 0)
 			break;
 		switch (msg.cmd_type & 0x1f) {
@@ -529,8 +520,6 @@ void ProxyServer::handleCommand() {
 			break;
 		}
 		case MC_INITIALIZE: {
-			printf("MC_INITIALIZE\n");
-
 			if (!initSSM()) {
 				fprintf(stderr, "init ssm error in ssm-proxy\n");
 				sendMsg(MC_FAIL, &msg);
@@ -541,8 +530,6 @@ void ProxyServer::handleCommand() {
 			break;
 		}
 		case MC_CREATE: {
-			printf("MC_CREATE\n");
-
 			setSSMType(WRITE_MODE);
 			mDataSize = msg.ssize;
 			mFullDataSize = mDataSize + sizeof(ssmTimeT);
@@ -569,8 +556,6 @@ void ProxyServer::handleCommand() {
 			break;
 		}
 		case MC_OPEN: {
-			printf("MC_OPEN\n");
-
 			mDataSize = msg.ssize;
 			mFullDataSize = mDataSize + sizeof(ssmTimeT);
 			if (mData) {
@@ -604,14 +589,12 @@ void ProxyServer::handleCommand() {
 					endSSM();
 					sendMsg(MC_FAIL, &msg);
 				} else {
-					printf("stream open\n");
 					sendMsg(MC_RES, &msg);
 				}
 			}
 			break;
 		}
 		case MC_STREAM_PROPERTY_SET: {
-			printf("MC_STREAM_PROPERTY_SET\n");
 			mPropertySize = msg.ssize;
 			if (mProperty) {
 				free(mProperty);
@@ -648,7 +631,6 @@ void ProxyServer::handleCommand() {
 			break;
 		}
 		case MC_STREAM_PROPERTY_GET: {
-			printf("MC_STREAM_PROPERTY_GET\n");
 			if (mProperty) {
 				free(mProperty);
 			}
@@ -674,14 +656,12 @@ void ProxyServer::handleCommand() {
 			break;
 		}
 		case MC_OFFSET: {
-			printf("MC_OFFSET\n");
 			ssmTimeT offset = msg.time;
 			settimeOffset(offset);
 			sendMsg(MC_RES, &msg);
 			break;
 		}
 		case MC_CONNECTION: {
-			printf("MC_CONNECTION\n");
 			msg.suid = nport;
 			com = new DataCommunicator(nport, mData, mDataSize, ssmTimeSize,
 					&stream, mType, this);
@@ -690,7 +670,6 @@ void ProxyServer::handleCommand() {
 			break;
 		}
 		case MC_TERMINATE: {
-			printf("MC_TERMINATE\n");
 			sendMsg(MC_RES, &msg);
 			goto END_PROC;
 			break;
