@@ -707,7 +707,7 @@ bool ProxyServer::run() {
 			this->server_close();
 			this->handleCommand();
 			this->client_close();
-			fprintf(stderr, "end of process");
+			//fprintf(stderr, "end of process");
 			exit(1);
 		} else { // parent
 			this->client_close();
