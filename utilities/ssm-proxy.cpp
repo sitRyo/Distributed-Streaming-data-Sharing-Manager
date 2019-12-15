@@ -170,7 +170,7 @@ void DataCommunicator::handleRead() {
 				case TIME_ID: {
 					SSM_tid req_tid = (SSM_tid) tmsg.tid;
 					if (!pstream->read(req_tid)) {
-						fprintf(stderr, "SSMApi::read error.");
+						fprintf(stderr, "[%s] SSMApi::read error.\n", pstream->getStreamName());
 					}
 					tmsg.tid = pstream->timeId;
 					tmsg.time = pstream->time;
@@ -185,7 +185,7 @@ void DataCommunicator::handleRead() {
 				case REAL_TIME: {
 					ssmTimeT t = tmsg.time;
 					if (pstream->readTime(t)) {
-						fprintf(stderr, "SSMApi::readTime error.");
+						fprintf(stderr, "[%s] SSMApi::readTime error.\n", pstream->getStreamName());
 					}
 					tmsg.tid = pstream->timeId;
 					tmsg.time = pstream->time;
