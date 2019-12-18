@@ -28,6 +28,17 @@
 #include "libssm.h"
 #include "ssm-proxy.hpp"
 
+using std::cout;
+using std::endl;
+
+void hexdump(char *p, int len) {
+  for (int i = 0; i < len; ++i) {
+    if (i % 16 == 0 and i != 0) puts("");
+    printf("%02X ", p[i] & 0xff);
+  }
+  printf("\n");
+}
+
 extern pid_t my_pid; // for debug
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
 		uint64_t t_size, SSMApiBase *pstream, PROXY_open_mode type,
@@ -132,9 +143,10 @@ bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
 
 void DataCommunicator::handleRead() {
 	thrd_msg tmsg;
-
+	cout << sizeof(tmsg) << endl;
 	while (true) {
 		if (receiveTMsg(&tmsg)) {
+			hexdump((char*)&tmsg, sizeof(thrd_msg));
 			switch (tmsg.msg_type) {
 				case TID_REQ: {
 					tmsg.tid = getTID(pstream->getSSMId(), tmsg.time);
@@ -184,7 +196,7 @@ void DataCommunicator::handleRead() {
 				}
 				case REAL_TIME: {
 					ssmTimeT t = tmsg.time;
-					if (pstream->readTime(t)) {
+					if (!pstream->readTime(t)) {
 						fprintf(stderr, "[%s] SSMApi::readTime error.\n", pstream->getStreamName());
 					}
 					tmsg.tid = pstream->timeId;
