@@ -37,6 +37,8 @@ private:
 	char *ipaddr;
 	bool isVerbose;
 	bool isBlocking;
+	uint32_t thrdMsgLen;
+	uint32_t dssmMsgLen;
 
 	void writeInt(char **p, int v);
 	void writeLong(char **p, uint64_t v);

@@ -14,6 +14,7 @@
 #include "ssm.h"
 #include "ssm-proxy-client.hpp"
 #include "ssm-proxy-client-child.hpp"
+#include "utility.hpp"
 
 #define FOR_DEBUG 0
 
@@ -56,6 +57,8 @@ void PConnector::initPConnector() {
 	isVerbose = false;
 	isBlocking = false;
 	tbuf = (char*) malloc(sizeof(thrd_msg));
+	thrdMsgLen = dssm::util::countThrdMsgLength();
+	dssmMsgLen = dssm::util::countDssmMsgLength();
 	memset(tbuf, 0, sizeof(thrd_msg));
 }
 
@@ -219,7 +222,7 @@ SSM_tid PConnector::getTID_bottom(SSM_sid sid) {
 bool PConnector::sendTMsg(thrd_msg *tmsg) {
 	char *p = tbuf;
 	serializeTMessage(tmsg, &p);
-	if (send(dsock, tbuf, sizeof(thrd_msg), 0) == -1) {
+	if (send(dsock, tbuf, thrdMsgLen, 0) == -1) {
 		perror("socket error");
 		return false;
 	}
@@ -227,8 +230,8 @@ bool PConnector::sendTMsg(thrd_msg *tmsg) {
 }
 
 bool PConnector::recvTMsg(thrd_msg *tmsg) {
-	int len = recv(dsock, tbuf, sizeof(thrd_msg), 0);
-	if (len == sizeof(thrd_msg)) {
+	int len = recv(dsock, tbuf, thrdMsgLen, 0);
+	if (len == thrdMsgLen) {
 		char* p = tbuf;
 		return deserializeTMessage(tmsg, &p);
 	}
@@ -389,7 +392,7 @@ bool PConnector::deserializeTMessage(thrd_msg *tmsg, char **p) {
 }
 
 bool PConnector::recvMsgFromServer(ssm_msg *msg, char *buf) {
-	int len = recv(sock, buf, sizeof(ssm_msg), 0);
+	int len = recv(sock, buf, dssmMsgLen, 0);
 	if (len > 0) {
 		deserializeMessage(msg, buf);
 		return true;
@@ -465,15 +468,13 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	thrd_msg tmsg;
 	tmsg.msg_type = type;
 	tmsg.tid = tmid;
-        double s2;
-//	double s1 = gettimeSSM_real(), s2;
+
 	if (!sendTMsg(&tmsg)) {
 		return false;
 	}
 	if (recvTMsg(&tmsg)) {
 		if (tmsg.res_type == TMC_RES) {
 			if (recvData()) {
-				s2 = gettimeSSM_real();
 				time = tmsg.time;
 				timeId = tmsg.tid;
 				return true;
@@ -529,7 +530,7 @@ bool PConnector::sendMsgToServer(int cmd_type, ssm_msg *msg) {
 	writeDouble(&p, msg->time);
 	writeDouble(&p, msg->saveTime);
 
-	if (send(sock, buf, sizeof(ssm_msg), 0) == -1) {
+	if (send(sock, buf, dssmMsgLen, 0) == -1) {
 		fprintf(stderr, "error happens\n");
 		free(buf);
 		return false;

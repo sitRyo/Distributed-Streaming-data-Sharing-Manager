@@ -1,5 +1,3 @@
-
-
 #ifndef _SSM_PROXY_H_
 #define _SSM_PROXY_H_
 
@@ -39,25 +37,25 @@ private:
 	uint64_t ssmTimeSize;
 	uint64_t mFullDataSize;
 	PROXY_open_mode mType;
+	uint32_t thrdMsgLen;
         
-        char* buf;
+  char* buf;
 
 	SSMApiBase *pstream;
-        ProxyServer* proxy;
-        
+  ProxyServer* proxy;
 
 	bool sopen();
 	bool rwait();
 	bool sclose();
         
-        bool receiveTMsg(thrd_msg *tmsg);
-        bool deserializeTmsg(thrd_msg *tmsg);
-        bool serializeTmsg(thrd_msg *tmsg);
-        bool sendTMsg(thrd_msg *tmsg);
-        bool sendBulkData(char* buf, uint64_t size);
+  bool receiveTMsg(thrd_msg *tmsg);
+  bool deserializeTmsg(thrd_msg *tmsg);
+  bool serializeTmsg(thrd_msg *tmsg);
+  bool sendTMsg(thrd_msg *tmsg);
+  bool sendBulkData(char* buf, uint64_t size);
         
-        void handleData();
-        void handleRead();
+  void handleData();
+  void handleRead();
 	bool receiveData();                        
         
 public:
@@ -86,6 +84,7 @@ private:
 	DataCommunicator *com;
 
 	SSMApiBase stream; // real stream
+	uint32_t dssmMsgLen;
 
 	bool open();
 	bool wait();
@@ -107,8 +106,7 @@ public:
 	bool client_close();
 	void handleCommand();
 
-
-        int  readInt(char **p);
+  int readInt(char **p);
 	uint64_t readLong(char **p);
 	double readDouble(char **p);
 	void readRawData(char **p, char *d, int len);
@@ -118,7 +116,7 @@ public:
 	void writeDouble(char **p, double v);
 	void writeRawData(char **p, char *d, int len);
 
-        void deserializeMessage(ssm_msg *msg, char *buf);
+  void deserializeMessage(ssm_msg *msg, char *buf);
 };
 
 #endif

@@ -27,17 +27,7 @@
 
 #include "libssm.h"
 #include "ssm-proxy.hpp"
-
-using std::cout;
-using std::endl;
-
-void hexdump(char *p, int len) {
-  for (int i = 0; i < len; ++i) {
-    if (i % 16 == 0 and i != 0) puts("");
-    printf("%02X ", p[i] & 0xff);
-  }
-  printf("\n");
-}
+#include "utility.hpp"
 
 extern pid_t my_pid; // for debug
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
@@ -47,6 +37,7 @@ DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
 	this->mDataSize = d_size;
 	this->ssmTimeSize = t_size;
 	this->mFullDataSize = d_size + t_size;
+	this->thrdMsgLen = dssm::util::countThrdMsgLength();
 
 	// streamはコピーされる.
 	this->pstream = pstream;
@@ -85,7 +76,6 @@ bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
 	tmsg->res_type = proxy->readLong(&p);
 	tmsg->tid = proxy->readInt(&p);
 	tmsg->time = proxy->readDouble(&p);
-
 	return true;
 }
 
@@ -100,7 +90,7 @@ bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
 
 bool DataCommunicator::sendTMsg(thrd_msg *tmsg) {
 	if (serializeTmsg(tmsg)) {
-		if (send(this->client.data_socket, this->buf, sizeof(thrd_msg), 0)
+		if (send(this->client.data_socket, this->buf, this->thrdMsgLen, 0)
 				!= -1) {
 			return true;
 		}
@@ -110,7 +100,8 @@ bool DataCommunicator::sendTMsg(thrd_msg *tmsg) {
 
 bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
 	int len;
-	if ((len = recv(this->client.data_socket, this->buf, sizeof(thrd_msg), 0))
+	memset(this->buf, 0, sizeof(this->buf));
+	if ((len = recv(this->client.data_socket, this->buf, this->thrdMsgLen, 0))
 			> 0) {
 		return deserializeTmsg(tmsg);
 	}
@@ -143,10 +134,9 @@ bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
 
 void DataCommunicator::handleRead() {
 	thrd_msg tmsg;
-	cout << sizeof(tmsg) << endl;
+
 	while (true) {
 		if (receiveTMsg(&tmsg)) {
-			hexdump((char*)&tmsg, sizeof(thrd_msg));
 			switch (tmsg.msg_type) {
 				case TID_REQ: {
 					tmsg.tid = getTID(pstream->getSSMId(), tmsg.time);
@@ -221,22 +211,20 @@ void DataCommunicator::handleRead() {
 }
 
 void* DataCommunicator::run(void* args) {
-
 	if (rwait()) {
 		switch (mType) {
-		case WRITE_MODE: {
-			handleData();
-			break;
+			case WRITE_MODE: {
+				handleData();
+				break;
+			}
+			case READ_MODE: {
+				handleRead();
+				break;
+			}
+			default: {
+				perror("no such mode");
+			}
 		}
-		case READ_MODE: {
-			handleRead();
-			break;
-		}
-		default: {
-			perror("no such mode");
-		}
-		}
-//		printf("end of thread\n");
 	}
 	return nullptr;
 }
@@ -263,7 +251,7 @@ bool DataCommunicator::sopen() {
 		perror("data com open");
 		return false;
 	}
-//	printf("Data Communicator open!!\n");
+
 	return true;
 }
 
@@ -307,6 +295,7 @@ ProxyServer::ProxyServer() {
 	mPropertySize = 0;
 	com = nullptr;
 	mType = WRITE_MODE;
+	dssmMsgLen = dssm::util::countDssmMsgLength();
 }
 
 ProxyServer::~ProxyServer() {
@@ -489,7 +478,7 @@ void ProxyServer::deserializeMessage(ssm_msg *msg, char *buf) {
 }
 
 int ProxyServer::receiveMsg(ssm_msg *msg, char *buf) {
-	int len = recv(this->client.data_socket, buf, sizeof(ssm_msg), 0);
+	int len = recv(this->client.data_socket, buf, this->dssmMsgLen, 0);
 	if (len > 0) {
 		deserializeMessage(msg, buf);
 	}
@@ -516,7 +505,7 @@ int ProxyServer::sendMsg(int cmd_type, ssm_msg *msg) {
 	writeDouble(&p, msg->time);
 	writeDouble(&p, msg->saveTime);
 
-	if ((len = send(this->client.data_socket, buf, sizeof(ssm_msg), 0)) == -1) {
+	if ((len = send(this->client.data_socket, buf, this->dssmMsgLen, 0)) == -1) {
 		fprintf(stderr, "error happens\n");
 	}
 
@@ -552,8 +541,8 @@ void ProxyServer::handleCommand() {
 			if (mData) {
 				free(mData);
 			}
-			mData = (char*) malloc(mFullDataSize);
 
+			mData = (char*) malloc(mFullDataSize);
 
 			if (mData == NULL) {
 				fprintf(stderr, "fail to create mData\n");
@@ -628,18 +617,10 @@ void ProxyServer::handleCommand() {
 				;
 
 			if (len == mPropertySize) {
-//				printf("receive property\n");
 				if (!stream.setProperty()) {
 					sendMsg(MC_FAIL, &msg);
 					break;
 				}
-                                /*
-				if (mProperty != NULL) {
-					printf("mProperty is not null\n");
-				} else {
-					printf("mProperty is null\n");
-				}
-                                 */
 				sendMsg(MC_RES, &msg);
 			} else {
 				sendMsg(MC_FAIL, &msg);
@@ -713,7 +694,6 @@ void ProxyServer::setSSMType(PROXY_open_mode mode) {
 }
 
 bool ProxyServer::run() {
-//	printf("run\n");
 	while (wait()) {
 		++nport;
 		pid_t child_pid = fork();
