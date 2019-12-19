@@ -100,7 +100,6 @@ bool DataCommunicator::sendTMsg(thrd_msg *tmsg) {
 
 bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
 	int len;
-	memset(this->buf, 0, sizeof(this->buf));
 	if ((len = recv(this->client.data_socket, this->buf, this->thrdMsgLen, 0))
 			> 0) {
 		return deserializeTmsg(tmsg);

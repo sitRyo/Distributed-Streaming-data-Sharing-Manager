@@ -466,6 +466,7 @@ bool PConnector::readTime(ssmTimeT t) {
 
 bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 	thrd_msg tmsg;
+	memset((char*)&tmsg, 0, sizeof(thrd_msg));
 	tmsg.msg_type = type;
 	tmsg.tid = tmid;
 
