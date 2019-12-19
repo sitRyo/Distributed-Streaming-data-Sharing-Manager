@@ -27,7 +27,7 @@
 
 #include "libssm.h"
 #include "ssm-proxy.hpp"
-#include "utility.hpp"
+#include "dssm-utility.hpp"
 
 extern pid_t my_pid; // for debug
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,

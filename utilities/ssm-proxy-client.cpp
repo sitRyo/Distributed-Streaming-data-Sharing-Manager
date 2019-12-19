@@ -14,7 +14,7 @@
 #include "ssm.h"
 #include "ssm-proxy-client.hpp"
 #include "ssm-proxy-client-child.hpp"
-#include "utility.hpp"
+#include "dssm-utility.hpp"
 
 #define FOR_DEBUG 0
 
