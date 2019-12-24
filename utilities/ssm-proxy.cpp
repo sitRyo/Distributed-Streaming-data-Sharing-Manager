@@ -80,6 +80,7 @@ bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
 }
 
 bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
+	memset((char*)tmsg, 0, sizeof(thrd_msg));
 	char* p = this->buf;
 	proxy->writeLong(&p, tmsg->msg_type);
 	proxy->writeLong(&p, tmsg->res_type);

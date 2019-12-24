@@ -415,6 +415,7 @@ bool PConnector::readLast() {
 // 前回のデータの1つ(以上)あとのデータを読み込む
 bool PConnector::readNext(int dt = 1) {
 	thrd_msg tmsg;
+	memset(&tmsg, 0, sizeof(thrd_msg));
 	tmsg.msg_type = READ_NEXT;
 	tmsg.tid = dt;
 
