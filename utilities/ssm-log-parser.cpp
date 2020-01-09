@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iomanip>
 
+
 using ssmTimeT = double;
 
 class SSMLogParser {
@@ -175,8 +176,8 @@ public:
 
     *mOutFile << mTime << "\n";
     for (auto i = 0; i < std::min((uint64_t) writeCnt, mDataSize); ++i) {
-      // if (i % 16 == 0) printf("\n");
-      // printf("%02X ", ((char *)mData)[i] & 0xff);
+      if (i % 16 == 0) printf("\n");
+      printf("%02X ", ((char *)mData)[i] & 0xff);
       *mOutFile << (((char *)mData)[i] & 0xff) << " ";
     }
     // printf("\n");
@@ -186,11 +187,22 @@ public:
 };
 
 int main(int argc, char* argv[]) {
+	if (argc < 4) {
+		std::cerr
+			<< "input: <src_filename:string>"
+			<< "<dist_filename:string>"
+			<< "<cnt:uint32_t>"
+			<< std::endl;
+			return 0;
+	}
   std::string src {argv[1]};
   std::string dist {argv[2]};
+	std::istringstream iss {argv[3]};
+	uint32_t writeCnt {};
+	iss >> writeCnt;
   SSMLogParser parser;
   parser.open(src);
-  parser.create(dist, 8);
+  parser.create(dist, writeCnt);
 	int cnt = 0;
   while (parser.readNByte()) {cnt++;}
 	std::cerr << cnt << "\n";
