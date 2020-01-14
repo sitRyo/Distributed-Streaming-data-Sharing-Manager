@@ -5,9 +5,9 @@ INCLUDES= $(all_includes) -I../include
 AM_CFLAGS   = -Wall -lpthread -L/lib64
 AM_CXXFLAGS = $(AM_CFLAGS) -std=c++11
 
-bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph
+bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph ssm-player-now
 noinst_PROGRAMS = read_proxy_test write_proxy_test
-noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h
+noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h ssm-log-parser.hpp ssm-player-now.hpp
 
 # shell scripts
 #EXTRA_DIST = ssm-advance-player killssm psssm topssm
@@ -72,3 +72,14 @@ ssm_graph_CFLAGS = $(AM_CFLAGS)
 ssm_graph_CXXFLAGS = $(ssm_graph_CFLAGS)
 ssm_graph_LDADD = ../src/libssm.la
 
+## ssm-log-parser
+## ssm_log_parser_SOURCES = ssm-log-parser.cpp ssm-proxy-client.cpp
+## ssm_log_parser_CFLAGS = $(AM_CFLAGS)
+## ssm_log_parser_CXXFLAGS = $(ssm_log_parser_CFLAGS) -std=c++14
+## ssm_log_parser_LDADD = ../src/libssm.la
+
+## ssm-player-now
+ssm_player_now_SOURCES = ssm-player-now.cpp ssm-proxy-client.cpp ssm-log-parser.cpp
+ssm_player_now_CFLAGS = $(AM_CFLAGS)
+ssm_player_now_CXXFLAGS = $(ssm_player_now_CFLAGS) -std=c++14
+ssm_player_now_LDADD = ../src/libssm.la 
