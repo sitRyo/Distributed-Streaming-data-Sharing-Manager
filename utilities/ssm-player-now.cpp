@@ -23,13 +23,31 @@ bool SSMPlayerNow::optAnalyze(int aArgc, char **aArgv) {
     {0, 0, 0},
   };
 
-  while((opt = getopt_long(aArgc, aArgv, "n:l:i:", longOpt, &optIndex)) != -1) {
-    cout << optarg << endl;
+  std::vector<std::string> opts;
+  while((opt = getopt_long(aArgc, aArgv, "n:l:", longOpt, &optIndex)) != -1) {
+    std::string temp(optarg);
     switch(opt) { 
-      case 'n': this->streamLogArray.emplace_back(optarg); break;
-      case 'i': this->streamLogArray.back().parser.setIpAddress(optarg); break;
-      case 'l': this->streamLogArray.emplace_back(optarg); break;
+      case 'n': {
+        // error handlingはなし
+        opts.emplace_back(optarg);        
+        // this->streamLogArray.push_back(DataWriter(temp.substr(0, colom), temp.substr(colom + 1)));
+        break;
+      }
+      case 'l': {
+        opts.emplace_back(optarg);
+        // this->streamLogArray.emplace_back(optarg);
+        break;
+      }
       default: break; // do nothing?
+    }
+  }
+
+  for (auto itr : opts) {
+    auto colom = itr.find_first_of(':');
+    if (colom != std::string::npos) {
+      this->streamLogArray.emplace_back((itr.substr(0, colom), itr.substr(colom + 1)));
+    } else {
+      this->streamLogArray.emplace_back(itr);
     }
   }
 
@@ -42,16 +60,22 @@ bool SSMPlayerNow::optAnalyze(int aArgc, char **aArgv) {
 }
 
 bool SSMPlayerNow::streamCreate() {
-  for (auto&& log : this->streamLogArray) {
-    if (!log.parser.ipAddress().empty()) { // ipアドレスが設定されているならPconnector
+  for (auto& log : this->streamLogArray) {
+    cout << log.parser.streamName() << endl;
+    if (log.parser.ipAddress().empty()) { // ipアドレスが設定されているならPconnector
       log.ssmApi.reset(
         new SSMApiBase(log.parser.streamName().c_str(), log.parser.streamId())
       );
+      cout << log.parser.dataSize() << endl;
       log.ssmApi->setBuffer(
         log.parser.data(), 
         log.parser.dataSize(), 
         log.parser.property(), 
         log.parser.propertySize()
+      );
+      log.ssmApi->create(
+        calcSSM_life(log.parser.bufferNum(), log.parser.cycle()),
+        log.parser.cycle()
       );
     } else { // それ以外SSMApi
       log.pCon.reset(
@@ -64,7 +88,12 @@ bool SSMPlayerNow::streamCreate() {
         log.parser.dataSize(), 
         log.parser.property(), 
         log.parser.propertySize(), 
-        log.fulldata);
+        log.fulldata
+      );
+      log.pCon->create(
+        calcSSM_life(log.parser.bufferNum(), log.parser.cycle()),
+        log.parser.cycle()
+      );
     }
   }
 
@@ -78,5 +107,5 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-
+  player.streamCreate();
 }

@@ -8,6 +8,9 @@
 
 #include "ssm-log-parser.hpp"
 
+using std::cout;
+using std::endl;
+
 void SSMLogParser::init() {
   mLogFile = nullptr;
 	mData = nullptr;
@@ -42,7 +45,7 @@ bool SSMLogParser::getLogInfo() {
 		;
 	if( data.fail() )
 		return false;
-#if 1
+#if 0
 	std::cout
 		<< "Stream Name: " << mStreamName << "\n"
 		<< "Stream Id: " << mStreamId << "\n"
@@ -188,6 +191,7 @@ SSMLogParser::SSMLogParser(std::string src) {
 }
 
 SSMLogParser::SSMLogParser(std::string src, std::string ipAddress) : mIpAddress(ipAddress) {
+	cout << src << " "<< ipAddress << endl;
 	this->init();
 	this->open(src);
 }
@@ -204,8 +208,8 @@ SSMLogParser::SSMLogParser(SSMLogParser&& rhs) {
  * Destructors
  */
 SSMLogParser::~SSMLogParser() {
-  mLogFile->close();
-  mOutFile->close();
+	if (mLogFile != nullptr && mLogFile->is_open()) { mLogFile->close(); }
+  if (mOutFile != nullptr && mOutFile->is_open()) { mOutFile->close(); }
   delete mLogFile;
   delete mOutFile;
 }

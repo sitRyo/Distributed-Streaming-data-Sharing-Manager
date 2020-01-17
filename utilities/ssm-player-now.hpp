@@ -15,7 +15,9 @@ struct DataWriter {
   std::unique_ptr<PConnector> pCon;
   char* fulldata;
 
+  DataWriter() {}
   DataWriter(std::string src) : parser(src) {}
+  DataWriter(std::string src, std::string ipAddr) : parser(src, ipAddr) {}
 
   ~DataWriter() {
     delete fulldata;
