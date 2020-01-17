@@ -71,6 +71,7 @@ bool DataCommunicator::receiveData() {
 }
 
 bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
+	memset((char*)tmsg, 0, sizeof(thrd_msg));
 	char* p = this->buf;
 	tmsg->msg_type = proxy->readLong(&p);
 	tmsg->res_type = proxy->readLong(&p);
@@ -80,7 +81,7 @@ bool DataCommunicator::deserializeTmsg(thrd_msg *tmsg) {
 }
 
 bool DataCommunicator::serializeTmsg(thrd_msg* tmsg) {
-	memset((char*)tmsg, 0, sizeof(thrd_msg));
+	// memset((char*)tmsg, 0, sizeof(thrd_msg));
 	char* p = this->buf;
 	proxy->writeLong(&p, tmsg->msg_type);
 	proxy->writeLong(&p, tmsg->res_type);

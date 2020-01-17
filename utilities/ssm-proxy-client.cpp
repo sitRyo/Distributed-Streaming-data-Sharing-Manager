@@ -49,7 +49,6 @@ void PConnector::initPConnector() {
 	mProperty = NULL;
 	mPropertySize = 0;
 	streamName = "";
-	mFullData = NULL;
 	mFullDataSize = 0;
 	openMode = PROXY_INIT;
 	timeId = -1;
@@ -285,9 +284,9 @@ SSM_tid PConnector::getTID_top() {
 		return -1;
 	}
 	if (recvTMsg(&tmsg)) {
-            if (tmsg.res_type == TMC_RES) {
-		return tmsg.tid;
-            }
+    if (tmsg.res_type == TMC_RES) {
+			return tmsg.tid;
+    }
 	}
 	return -1;
 }
@@ -371,9 +370,9 @@ void PConnector::deserializeMessage(ssm_msg *msg, char *buf) {
 }
 
 bool PConnector::serializeTMessage(thrd_msg *tmsg, char **p) {
-	if (tmsg == NULL) {
+	/*if (tmsg == NULL) {
 		return false;
-	}
+	}*/
 	writeLong(p, tmsg->msg_type);
 	writeLong(p, tmsg->res_type);
 	writeInt(p, tmsg->tid);
@@ -382,8 +381,8 @@ bool PConnector::serializeTMessage(thrd_msg *tmsg, char **p) {
 }
 
 bool PConnector::deserializeTMessage(thrd_msg *tmsg, char **p) {
-	if (tmsg == NULL)
-		return false;
+	/*if (tmsg == NULL)
+		return false;*/
 	tmsg->msg_type = readLong(p);
 	tmsg->res_type = readLong(p);
 	tmsg->tid = readInt(p);
