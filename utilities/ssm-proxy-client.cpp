@@ -23,8 +23,8 @@ PConnector::PConnector() :
 	initPConnector();
 }
 
-PConnector::PConnector(const char *streamName, int streamId) :
-		tbuf(nullptr), time(0.0), ipaddr("127.0.0.1") {
+PConnector::PConnector(const char *streamName, int streamId, const char *ipAddress) :
+		tbuf(nullptr), time(0.0), ipaddr(ipAddress) {
 	initPConnector();
 	setStream(streamName, streamId);
 }
@@ -519,7 +519,6 @@ bool PConnector::sendMsgToServer(int cmd_type, ssm_msg *msg) {
 	msg->msg_type = 1; // dummy
 	msg->res_type = 8;
 	msg->cmd_type = cmd_type;
-
 	buf = (char*) malloc(sizeof(ssm_msg));
 	p = buf;
 	writeLong(&p, msg->msg_type);
@@ -561,7 +560,7 @@ void PConnector::setBuffer(void *data, uint64_t dataSize, void *property,
 }
 
 // IPAddressをセット(デフォルトはループバック)
-void PConnector::setIpAddress(char *address) {
+void PConnector::setIpAddress(const char *address) {
 	ipaddr = address;
 }
 
@@ -682,6 +681,7 @@ bool PConnector::create(double saveTime, double cycle) {
 				<< "', id = " << streamId << " is not allocked." << std::endl;
 		return false;
 	}
+
 	return this->createRemoteSSM(streamName, streamId, mDataSize, saveTime,
 			cycle);
 }

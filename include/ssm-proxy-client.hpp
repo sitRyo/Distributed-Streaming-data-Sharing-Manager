@@ -34,7 +34,7 @@ private:
 	void *mFullData;
 	uint64_t mFullDataSize;
 	ssmtime *timecontrol;					///< for get real time
-	char *ipaddr;
+	const char *ipaddr;
 	bool isVerbose;
 	bool isBlocking;
 	uint32_t thrdMsgLen;
@@ -71,7 +71,7 @@ public:
 
 	PConnector();
 	~PConnector();
-	PConnector(const char *streamName, int streamId = 0);
+	PConnector(const char *streamName, int streamId = 0, const char *ipAddress = "127.0.0.1");
 
 	void initPConnector();
 
@@ -92,7 +92,7 @@ public:
 	void setStream(const char *streamName, int streamId);
 	void setBuffer(void *data, uint64_t dataSize, void *property,
 			uint64_t propertySize, void *fulldata);
-	void setIpAddress(char *address);
+	void setIpAddress(const char *address);
 	bool create(const char *streamName, int streamId, double saveTime,
 			double cycle);
 	bool create(double saveTime, double cycle);
