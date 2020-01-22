@@ -506,6 +506,7 @@ bool PConnector::write(ssmTimeT time) {
 		perror("send");
 		return false;
 	}
+	this->time = time;
 	return true;
 }
 

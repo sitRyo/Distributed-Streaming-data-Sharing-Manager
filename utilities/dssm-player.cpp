@@ -18,7 +18,7 @@ using std::endl;
  * Constructors
  */
 
-DataReader::DataReader(std::string src, DataReaderMode mode, std::string mIpAddr) : mLogSrc(src), mDataReaderMode(mode) {
+DataReader::DataReader(std::string const& src, DataReaderMode const& mode, std::string mIpAddr) : mLogSrc(src), mDataReaderMode(mode) {
   this->mLogFile.reset(new std::fstream());
   this->mLogFile->open(src, std::ios::in | std::ios::binary);
 	this->mOutFile.reset(new std::fstream());
@@ -237,9 +237,9 @@ ssmTimeT DataReader::readNextTimeNotSeek() {
 	return time;
 }
 
-bool DataReader::writeOutFile() {
+bool DataReader::writeOutFile(ssmTimeT const& currentTime) {
 	*mOutFile << std::setprecision(18);	
-  *mOutFile << "Time: " << mTime << "\n\n" << std::hex;
+  *mOutFile << "Time: " << currentTime << "\n\n" << std::hex;
   for (auto i = 0UL; i < mDataSize; ++i) {
     if (i != 0 && i % 16 == 0) {
 			*mOutFile << "\n";
@@ -252,7 +252,7 @@ bool DataReader::writeOutFile() {
   return true;
 }
 
-bool DataReader::write(ssmTimeT currentTime) {
+bool DataReader::write(ssmTimeT const& currentTime) {
 	if (currentTime >= mNextTime) {
 		this->read();
 		mNextTime = currentTime + this->readNextTimeNotSeek() - this->mTime;
@@ -280,7 +280,7 @@ bool DataReader::write(ssmTimeT currentTime) {
 		}
 
 		// アウトファイルに共有メモリに書き込んだデータを記録
-		this->writeOutFile();
+		this->writeOutFile(currentTime);
 	}
 
 	return true;
@@ -483,7 +483,7 @@ int main(int argc, char* argv[]) {
 			parser.write();
 		}
 
-		usleepSSM(1000); // 1msスリープ
+		// usleepSSM(1000); // 1msスリープ
 		
 		// コマンド解析
 		// if (fgets(command, sizeof(command), stdin)) {

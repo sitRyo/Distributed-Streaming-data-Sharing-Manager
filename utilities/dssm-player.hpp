@@ -53,7 +53,7 @@ struct DataReader {
 	std::ios::pos_type mPropertyPos;			///< propertyの書き込み位置
   std::unique_ptr<char[]> p;
 
-  DataReader(std::string src, DataReaderMode mode = SSMApiMode, std::string ipAddr = "empty");
+  DataReader(std::string const& src, DataReaderMode const& mode = SSMApiMode, std::string ipAddr = "empty");
   DataReader(DataReader const& rhs);
   DataReader(DataReader&& rhs) noexcept;
   ~DataReader();
@@ -62,9 +62,9 @@ struct DataReader {
   bool readProperty();
   bool read();
   ssmTimeT readNextTimeNotSeek();
-  bool write(ssmTimeT currentTime);
+  bool write(ssmTimeT const& currentTime);
   void writeStreamInfo();
-  bool writeOutFile();
+  bool writeOutFile(ssmTimeT const& currentTime);
 };
 
 class SSMLogParser {
