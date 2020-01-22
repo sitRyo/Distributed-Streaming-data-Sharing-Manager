@@ -14,8 +14,16 @@
 
 using ssmTimeT = double;
 
+enum DataReaderMode {
+  SSMApiMode = 0,
+  PConnectorMode,
+  Init,
+};
+
 struct DataReader {
-  ssmTimeT mTime;	
+  ssmTimeT mTime;  
+  ssmTimeT mCurrentTime;
+  ssmTimeT mNextTime;
 	char *mData;								///< データのポインタ
 	uint64_t mDataSize;							///< データ構造体のサイズ
 	char *mProperty;							///< プロパティのポインタ
@@ -27,20 +35,25 @@ struct DataReader {
 	ssmTimeT mStartTime;						///< logを書き込み始めた時間
   uint32_t writeCnt;
   std::unique_ptr<std::fstream> mLogFile;
+  std::unique_ptr<std::fstream> mOutFile;
   std::unique_ptr<std::string> mIpAddr;
   std::string mLogSrc;
   std::unique_ptr<SSMApiBase> ssmApi;
+
+  DataReaderMode mDataReaderMode;
+
+  // for PConnector
   std::unique_ptr<PConnector> con;
-
-  char *fulldata; // for PConnector
-
+  char *fulldata; 
+  uint32_t tid;
+  
   std::string mStreamName;					///< ストリーム名
 	std::ios::pos_type mStartPos;				///< logの開始位置
 	std::ios::pos_type mEndPos;					///< logの終了位置
 	std::ios::pos_type mPropertyPos;			///< propertyの書き込み位置
   std::unique_ptr<char[]> p;
 
-  DataReader(std::string src, std::string ipAddr = "empty");
+  DataReader(std::string src, DataReaderMode mode = SSMApiMode, std::string ipAddr = "empty");
   DataReader(DataReader const& rhs);
   DataReader(DataReader&& rhs) noexcept;
   ~DataReader();
@@ -48,6 +61,10 @@ struct DataReader {
   bool getLogInfo();
   bool readProperty();
   bool read();
+  ssmTimeT readNextTimeNotSeek();
+  bool write(ssmTimeT currentTime);
+  void writeStreamInfo();
+  bool writeOutFile();
 };
 
 class SSMLogParser {
@@ -65,7 +82,10 @@ public:
 
 	bool open();
   bool create();
+  bool write();
   bool readNByte();
+  void updateConsoleShow();
+  int commandAnalyze(char const* command);
 };
 
 
