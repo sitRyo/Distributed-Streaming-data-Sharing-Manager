@@ -29,6 +29,8 @@
 #include "ssm-proxy.hpp"
 #include "dssm-utility.hpp"
 
+#define DEBUG 1
+
 extern pid_t my_pid; // for debug
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
 		uint64_t t_size, SSMApiBase *pstream, PROXY_open_mode type,
@@ -122,11 +124,19 @@ void DataCommunicator::handleData() {
 
 		time = *(reinterpret_cast<ssmTimeT*>(mData));
 		pstream->write(time);
+#ifdef DEBUG
+	std::cout << "tid " << this->pstream->timeId << "\n";
+	dssm::util::hexdump(&mData[sizeof(ssmTimeT)], mDataSize);
+	std::cout << std::endl;
+#endif
 	}
 	// pstream->showRawData();
 }
 
 bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
+#ifdef DEBUG
+	dssm::util::hexdump(buf, size);
+#endif
 	if (send(this->client.data_socket, buf, size, 0) != -1) {
 		return true;
 	}

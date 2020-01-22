@@ -195,7 +195,7 @@ bool DataReader::getLogInfo() {
 		
 	mTime = mStartTime;
 	mNextTime = gettimeSSM_real() + readNextTimeNotSeek() - mStartTime;
-	tid = 0;
+	tid = -1;
 
 	// アウトファイル書き込み
 	this->writeStreamInfo();
@@ -239,13 +239,16 @@ ssmTimeT DataReader::readNextTimeNotSeek() {
 
 bool DataReader::writeOutFile() {
 	*mOutFile << std::setprecision(18);	
-  *mOutFile << "Time: " << mTime << "\n";
+  *mOutFile << "Time: " << mTime << "\n\n" << std::hex;
   for (auto i = 0UL; i < mDataSize; ++i) {
-    if (i != 0 && i % 16 == 0) *mOutFile << "\n";
+    if (i != 0 && i % 16 == 0) {
+			*mOutFile << "\n";
+			// printf("\n");
+		}
     // printf("%02X ", ((char *)mData)[i] & 0xff);
     *mOutFile << (((char *)mData)[i] & 0xff) << " ";
   }
-  *mOutFile << "\n";
+  *mOutFile << "\n\n" << "----------------- \n" << endl;
   return true;
 }
 
@@ -261,7 +264,7 @@ bool DataReader::write(ssmTimeT currentTime) {
 				}
 
 				// tidは個別に出力(保存場所が違うため)
-				*mOutFile << "tid " << this->ssmApi->timeId << " ";
+				*mOutFile << std::dec << "tid " << this->ssmApi->timeId << " ";
 				break;
 			case PConnectorMode:
 				this->tid ++;
@@ -269,7 +272,7 @@ bool DataReader::write(ssmTimeT currentTime) {
 					fprintf(stderr, "Error DataReader::write SSMApi cannot write.\n");
 					return false;
 				}
-				*mOutFile << "tid " << this->tid << " ";
+				*mOutFile << std::dec << "tid " << this->tid << " ";
 				break;
 			default:
 				fprintf(stderr, "Error DataReader::write DataReader has Init mode.\n");
