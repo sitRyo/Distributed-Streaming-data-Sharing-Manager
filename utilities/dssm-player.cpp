@@ -259,6 +259,9 @@ bool DataReader::write(ssmTimeT currentTime) {
 					fprintf(stderr, "Error DataReader::write SSMApi cannot write.\n");
 					return false;
 				}
+
+				// tidは個別に出力(保存場所が違うため)
+				*mOutFile << "tid " << this->ssmApi->timeId << " ";
 				break;
 			case PConnectorMode:
 				this->tid ++;
@@ -266,6 +269,7 @@ bool DataReader::write(ssmTimeT currentTime) {
 					fprintf(stderr, "Error DataReader::write SSMApi cannot write.\n");
 					return false;
 				}
+				*mOutFile << "tid " << this->tid << " ";
 				break;
 			default:
 				fprintf(stderr, "Error DataReader::write DataReader has Init mode.\n");
