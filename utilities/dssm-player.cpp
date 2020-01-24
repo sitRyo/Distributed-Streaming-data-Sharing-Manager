@@ -145,10 +145,12 @@ void DataReader::init() {
 	mDataReaderMode = Init;
 	mCurrentTime = 0.0;
 	mNextTime = 0.0;
+	writeCnt = 0;
 	cout << std::setprecision(15);
 }
 
 bool DataReader::getLogInfo() {
+	writeCnt = 0;
   std::string line;
   mLogFile->seekg(0, std::ios::beg);
 	if(!getline(*mLogFile, line))
@@ -198,7 +200,7 @@ bool DataReader::getLogInfo() {
 	tid = -1;
 
 	// アウトファイル書き込み
-	this->writeStreamInfo();
+	// this->writeStreamInfo();
 	return true;
 }
 
@@ -233,27 +235,25 @@ bool DataReader::read() {
 ssmTimeT DataReader::readNextTimeNotSeek() {
 	ssmTimeT time;
 	mLogFile->read((char *)&time, sizeof(ssmTimeT));
-	mLogFile->seekg(-sizeof(ssmTimeT), std::ios::cur);
+	mLogFile->seekg(-8, std::ios::cur); // 時刻データ分巻き戻す
 	return time;
 }
 
 bool DataReader::writeOutFile(ssmTimeT const& currentTime) {
 	*mOutFile << std::setprecision(18);	
-  *mOutFile << "Time: " << currentTime << "\n\n" << std::hex;
+  // *mOutFile << "Time: " << currentTime << "\n\n" << std::hex;
+	*mOutFile << currentTime << "\n" << std::hex;
   for (auto i = 0UL; i < mDataSize; ++i) {
-    if (i != 0 && i % 16 == 0) {
-			*mOutFile << "\n";
-			// printf("\n");
-		}
-    // printf("%02X ", ((char *)mData)[i] & 0xff);
     *mOutFile << (((char *)mData)[i] & 0xff) << " ";
   }
-  *mOutFile << "\n\n" << "----------------- \n" << endl;
+  // *mOutFile << "\n\n" << "----------------- \n" << endl;
+	*mOutFile << endl;
   return true;
 }
 
 bool DataReader::write(ssmTimeT const& currentTime) {
 	if (currentTime >= mNextTime) {
+		writeCnt++;
 		this->read();
 		mNextTime = currentTime + this->readNextTimeNotSeek() - this->mTime;
 		switch (this->mDataReaderMode) {
@@ -264,7 +264,7 @@ bool DataReader::write(ssmTimeT const& currentTime) {
 				}
 
 				// tidは個別に出力(保存場所が違うため)
-				*mOutFile << std::dec << "tid " << this->ssmApi->timeId << " ";
+				*mOutFile << std::dec << this->ssmApi->timeId << " ";
 				break;
 			case PConnectorMode:
 				this->tid ++;
@@ -272,7 +272,7 @@ bool DataReader::write(ssmTimeT const& currentTime) {
 					fprintf(stderr, "Error DataReader::write SSMApi cannot write.\n");
 					return false;
 				}
-				*mOutFile << std::dec << "tid " << this->tid << " ";
+				*mOutFile << std::dec << this->tid << " ";
 				break;
 			default:
 				fprintf(stderr, "Error DataReader::write DataReader has Init mode.\n");
@@ -281,6 +281,10 @@ bool DataReader::write(ssmTimeT const& currentTime) {
 
 		// アウトファイルに共有メモリに書き込んだデータを記録
 		this->writeOutFile(currentTime);
+
+		if (writeCnt > 1000) {
+			exit(1);
+		}
 	}
 
 	return true;
@@ -472,9 +476,12 @@ int main(int argc, char* argv[]) {
 	}
 	
 	parser.create();
+	char t;
+	cout << "press ENTER to start." << endl;
+	std::cin.get(t);
 
 	cout << "\033[2J"; // 画面クリア
-	cout << "\033[1;0H"; // カーソルを0行0列に変更する
+	cout << "\033[1;0H"; // カーソルを1行0列に変更する
 	cout << "       stream       |    time id    |     time     |\n";
 	// char command[256];
 	bool isSleep = false;
