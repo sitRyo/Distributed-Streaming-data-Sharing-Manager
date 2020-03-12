@@ -549,13 +549,27 @@ int main(int argc, char* argv[]) {
 	switch (option) {
 		// network
 		case 'n': 
+			parser.create();
+			char t;
+			cout << "press ENTER to start." << endl;
+			std::cin.get(t);
 
+			cout << "\033[2J"; // 画面クリア
+			cout << "\033[1;0H"; // カーソルを1行0列に変更する
+			cout << "       stream       |    time id    |     time     |\n";
+			
+			// SSMの共有メモリにログデータを書き込む。
+			while (parser.write()) {}
 			break;
+		
 		// ignore
 		case 'i':
+
 			break;
+		
 		// dump
 		case 'd':
+			// 与えられたログファイルをhexdumpして出力する。
 			parser.hexdumpLogFile();
 			// dumpし終わったら終了(これも汚いな...)
 			exit(0);
@@ -569,38 +583,6 @@ int main(int argc, char* argv[]) {
 	if (!initSSM()) {
 		fprintf(stderr, "Error main cannot init SSM.\n");
 		return 0;
-	}
-
-	parser.create();
-	char t;
-	cout << "press ENTER to start." << endl;
-	std::cin.get(t);
-
-	cout << "\033[2J"; // 画面クリア
-	cout << "\033[1;0H"; // カーソルを1行0列に変更する
-	cout << "       stream       |    time id    |     time     |\n";
-	// char command[256];
-	bool isSleep = false;
-	while (true) {
-		if (!isSleep) {
-			parser.write();
-		}
-
-		// usleepSSM(1000); // 1msスリープ
-		
-		// コマンド解析
-		// if (fgets(command, sizeof(command), stdin)) {
-		// 	switch (parser.commandAnalyze(command)) {
-		// 		case 0:
-		// 			isSleep = true;
-		// 			break;
-		// 		case 1:
-		// 			isSleep = false;
-		// 			break;
-		// 		default:
-		// 			;// do nothing
-		// 	}
-		// }
 	}
 
 	cout << "end" << endl;
