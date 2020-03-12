@@ -1,3 +1,7 @@
+/**
+ * dssm-player
+ */
+
 #include <fstream>
 #include <string>
 #include <sstream>
@@ -8,6 +12,7 @@
 #include <getopt.h>
 #include <algorithm>
 #include <numeric>
+#include <thread>
 
 #include "dssm-player.hpp"
 
@@ -251,8 +256,10 @@ bool DataReader::write(ssmTimeT const& currentTime) {
 					return false;
 				}
 
+#ifdef DEBUG
 				// tidは個別に出力(保存場所が違うため)
 				*mOutFile << std::dec << this->ssmApi->timeId << " ";
+#endif
 				break;
 			case PConnectorMode:
 				this->tid ++;
@@ -260,15 +267,20 @@ bool DataReader::write(ssmTimeT const& currentTime) {
 					fprintf(stderr, "Error DataReader::write SSMApi cannot write.\n");
 					return false;
 				}
-				*mOutFile << std::dec << this->tid << " ";
+
+#ifdef DEBUG
+				// *mOutFile << std::dec << this->tid << " ";
+#endif
 				break;
 			default:
 				fprintf(stderr, "Error DataReader::write DataReader has Init mode.\n");
 				return false;
 		}
 
+#ifdef DEBUG
 		// アウトファイルに共有メモリに書き込んだデータを記録
 		this->writeOutFile(currentTime);
+#endif
 
 		if (writeCnt > 1000) {
 			exit(1);
@@ -433,7 +445,10 @@ bool SSMLogParser::write() {
 			continue;
 		}
 	}
+
+#ifdef DEBUG
 	updateConsoleShow();
+#endif
 
 	// ログを全て読み終えた = false
 	return isWriteFinish;
@@ -566,11 +581,12 @@ bool SSMLogParser::play() {
 
 	cout << "\033[2J"; // 画面クリア
 	cout << "\033[1;0H"; // カーソルを1行0列に変更する
-	cout << "       stream       |    time id    |     time     |\n"; // ssm-monitorを模倣
+	// cout << "       stream       |    time id    |     time     |\n"; // ssm-monitorを模倣
 			
 	// SSMの共有メモリにログデータを書き込む。
 	// もし、ログファイルの書き込みが終わったらfalseを返してループを抜ける
-	while (this->write()) {}
+	// 1ms止める
+	while (this->write()) { /*usleep(1000);*/ }
 	
 	return true;
 }
