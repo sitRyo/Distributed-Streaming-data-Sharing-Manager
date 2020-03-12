@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <getopt.h>
 #include <algorithm>
+#include <numeric>
 
 #include "dssm-player.hpp"
 
@@ -128,27 +129,6 @@ DataReader::~DataReader() {
 
 /* Constructor Fin */
 
-void DataReader::init() {
-	mData = nullptr;
-	mDataSize = 0;
-	mProperty = nullptr;
-	mPropertySize = 0;
-	mStreamId = 0;
-	mBufferNum = 0;
-	mCycle = 0.0;
-	mStartTime = 0.0;
-	mStartPos = 0;
-	mEndPos = 0;
-	mPropertyPos = 0;
-  writeCnt = 0;
-	fulldata = nullptr;
-	mDataReaderMode = Init;
-	mCurrentTime = 0.0;
-	mNextTime = 0.0;
-	writeCnt = 0;
-	cout << std::setprecision(15);
-}
-
 bool DataReader::getLogInfo() {
 	writeCnt = 0;
   std::string line;
@@ -170,15 +150,19 @@ bool DataReader::getLogInfo() {
 		return false;
 #if 1
 	std::cout
+		<< "\n******************** Stream *************************\n"
 		<< "Stream Name: " << mStreamName << "\n"
 		<< "Stream Id: " << mStreamId << "\n"
 		<< "DataSize: " << mDataSize << "\n"
 		<< "BufferNum: " << mBufferNum << "\n"
 		<< "Cycle: " << mCycle << "\n"
+		<< std::fixed << std::setprecision(12)
 		<< "Start Time: " << mStartTime << "\n"
 		<< "Property Size: " << mPropertySize
+		<< "\n*****************************************************\n"
 		<< std::endl;
 #endif
+
 	// cout << mPropertySize << " " << mDataSize << endl;
   mProperty = new char[mPropertySize];
   mData = new char[mDataSize];
@@ -239,6 +223,10 @@ ssmTimeT DataReader::readNextTimeNotSeek() {
 	return time;
 }
 
+/**
+ * ログファイルをダンプして出力。
+ * write -> writeOutFile
+ */
 bool DataReader::writeOutFile(ssmTimeT const& currentTime) {
 	*mOutFile << std::setprecision(18);	
   // *mOutFile << "Time: " << currentTime << "\n\n" << std::hex;
@@ -290,14 +278,82 @@ bool DataReader::write(ssmTimeT const& currentTime) {
 	return true;
 }
 
-bool SSMLogParser::optAnalyze(int aArgc, char **aArgv) {
+/**
+ * ログファイルをhexdumpして出力する。
+ * @required from optAnalyze
+ */
+void SSMLogParser::hexdumpLogFile() {
+	for (auto&& it : this->mLogFile) {
+		// eofになるまでダンプし続ける。
+		while (it.read()) {
+			it.writeOutFile(it.mTime);
+		}
+	}
+}
+
+/**
+ * オプションでhelpが指定されたときに表示される文字列を表示する関数。
+ * @required from optAnalyze
+ */
+void SSMLogParser::printHelp() {
+	std::cout << "HELP\n"
+					  << "\t-n | --network : ログファイルのオフセットを計算し, 指定したIPアドレスを持つPCでログファイルを再生する.\n"
+						<< "\t-i | --ignore  : 指定したIPアドレスを持つPCでログファイルを再生する.\n"
+						<< "\t-h | --help    : helpを表示する。\n"
+						<< "ex) dssm-player -n a.log b.log:172.168.1.230\n"
+						<< std::flush;
+}
+
+
+bool SSMLogParser::optAnalyze(int aArgc, char **aArgv, char& option) {
+	std::string playerMode = "";
+	int opt, optIndex = 0;
+	struct option longOpt[] = {
+		{"network", no_argument, 0, 'n'},
+		{"ignore", no_argument, 0, 'i'},
+		{"dump", no_argument, 0, 'd'},
+		{"help", no_argument, 0, 'h'}, 
+	};
+
+	// 選べるモードは1つだけ。もし2つ以上指定されていたらエラーを返す。
+	// dumpだけは一緒に選べてもいいかもしれないね.(もしそうするならbitで管理すればいい)
+	int option_cnt = 0;
+	while ((opt = getopt_long( aArgc, aArgv, "nidh", longOpt, &optIndex)) != -1) {
+		switch (opt) {
+			case 'n': 
+				option_cnt ++;
+				option = 'n';
+				break;
+			case 'i':
+				option_cnt ++;
+				option = 'i';
+				break;
+			case 'd':
+				option_cnt ++;
+				option = 'd';
+				break;
+			case 'h': 
+				printHelp();
+				break;
+			default: 
+				; // do nothing
+		}
+	}
+
 	if (aArgc < 2) {
-		cout << "USAGE dssm-player <log file1> <log file2:mIpAddr> ..." << endl;
+		printHelp();
 		return false;
 	}
 
-	for (int i = 1; i < aArgc; ++i) {
+	if (option_cnt >= 2) {
+		cout << "指定できるオプションは1つだけです.\n";
+		printHelp();
+		return false;
+	}
+
+	for (int i = optind; i < aArgc; ++i) {
 		this->streamArray.emplace_back(aArgv[i]);
+		cout << aArgv[i] << endl;
 	}
 
 	return true;
@@ -311,10 +367,8 @@ bool SSMLogParser::optAnalyze(int aArgc, char **aArgv) {
  * Constructors
  */
 
-SSMLogParser::SSMLogParser() {
-}
-SSMLogParser::~SSMLogParser() {
-}
+SSMLogParser::SSMLogParser() {}
+SSMLogParser::~SSMLogParser() {}
 
 bool SSMLogParser::open() {
 
@@ -356,6 +410,9 @@ bool SSMLogParser::open() {
 		}
 	}
 
+	// 大したコストではないので、networkモードで使うオフセットを計算しておく。
+	this->calculateOffset();
+
 	return true;
 }
 
@@ -382,6 +439,20 @@ void SSMLogParser::updateConsoleShow() {
 	}
 }
 
+/**
+ * 再生したいログファイルの中で一番先に取得されたファイルのうち
+ */
+void SSMLogParser::calculateOffset() {
+	ssmTimeT earliestTime = std::numeric_limits<double>::max();
+
+	// 一番早い時間に取られたタイムスタンプを記録。
+	for (auto&& log : this->mLogFile) 
+		earliestTime = std::min(earliestTime, log.mStartTime);
+
+	// その時刻との差を取る。
+	for (auto& log : this->mLogFile) 
+		log.mOffset = log.mStartTime - earliestTime;
+}
 
 bool SSMLogParser::create() {
 	for (auto &&log : mLogFile) {
@@ -466,15 +537,40 @@ int SSMLogParser::commandAnalyze(char const *command) {
 
 int main(int argc, char* argv[]) {
 	SSMLogParser parser;
-	parser.optAnalyze(argc, argv); // ログファイル名取得
+	char option;
+
+	// オプション解析
+	if (!parser.optAnalyze(argc, argv, option)) {
+		exit(0);
+	}
+
 	parser.open(); // ログファイル展開
 	
+	switch (option) {
+		// network
+		case 'n': 
+
+			break;
+		// ignore
+		case 'i':
+			break;
+		// dump
+		case 'd':
+			parser.hexdumpLogFile();
+			// dumpし終わったら終了(これも汚いな...)
+			exit(0);
+			break;
+		// --help 
+		default: 
+				; // do nothing
+	}
+
 	// SSMの初期化
 	if (!initSSM()) {
 		fprintf(stderr, "Error main cannot init SSM.\n");
 		return 0;
 	}
-	
+
 	parser.create();
 	char t;
 	cout << "press ENTER to start." << endl;
