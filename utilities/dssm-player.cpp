@@ -417,14 +417,26 @@ bool SSMLogParser::open() {
 }
 
 bool SSMLogParser::write() {
-	auto currentTime = gettimeSSM_real();
+	// PCの現在時刻を格納する.
+	ssmTimeT currentTime = gettimeSSM_real();
+	// この関数が呼ばれたときにだけ初期化される.
+	static ssmTimeT firstTime = currentTime;
+	// 経過時間
+	double elapsedTime = currentTime - firstTime;
+	// 書き込みが終了したか否かを格納するフラグ.
+	bool isWriteFinish = true;
 	for (auto &&log : mLogFile) {
-		if(!log.write(currentTime)) {
-			return false;
+		// 書き込みに失敗した, もしくは経過時間がオフセットを超えていなかったら書き込みをしない.
+		if(!log.write(currentTime) && log.mOffset > elapsedTime) {
+			// オフセットを超えていない状態ならフラグは更新しない.
+			isWriteFinish = log.mOffset > elapsedTime;
+			continue;
 		}
 	}
 	updateConsoleShow();
-	return true;
+
+	// ログを全て読み終えた = false
+	return isWriteFinish;
 }
 
 void SSMLogParser::updateConsoleShow() {
@@ -450,7 +462,7 @@ void SSMLogParser::calculateOffset() {
 		earliestTime = std::min(earliestTime, log.mStartTime);
 
 	// その時刻との差を取る。
-	for (auto& log : this->mLogFile) 
+	for (auto& log : this->mLogFile)
 		log.mOffset = log.mStartTime - earliestTime;
 }
 
@@ -535,6 +547,42 @@ int SSMLogParser::commandAnalyze(char const *command) {
 	return -1;
 }
 
+bool SSMLogParser::play() {
+	// SSMに接続
+	if (!initSSM()) {
+		fprintf(stderr, "Error main cannot init SSM.\n");
+		return 0;
+	}
+	// 対象のPCにストリーム作成
+	this->create();
+	// option用に作った変数. 今は使ってない.
+	char t;
+	cout << "press ENTER to start." << endl;
+	// こっちも使ってない.
+	std::cin.get(t);
+
+	cout << "\033[2J"; // 画面クリア
+	cout << "\033[1;0H"; // カーソルを1行0列に変更する
+	cout << "       stream       |    time id    |     time     |\n"; // ssm-monitorを模倣
+			
+	// SSMの共有メモリにログデータを書き込む。
+	// もし、ログファイルの書き込みが終わったらfalseを返してループを抜ける
+	while (this->write()) {}
+	
+	return true;
+}
+
+/**
+ * SSMLogParser deleteOffset
+ * Offsetをゼロにする。
+ * この実装汚いかなぁ...?
+ */
+void SSMLogParser::deleteOffset() {
+	for (auto& log : mLogFile) {
+		log.mOffset = 0.0;
+	}
+}
+
 int main(int argc, char* argv[]) {
 	SSMLogParser parser;
 	char option;
@@ -549,40 +597,23 @@ int main(int argc, char* argv[]) {
 	switch (option) {
 		// network
 		case 'n': 
-			parser.create();
-			char t;
-			cout << "press ENTER to start." << endl;
-			std::cin.get(t);
-
-			cout << "\033[2J"; // 画面クリア
-			cout << "\033[1;0H"; // カーソルを1行0列に変更する
-			cout << "       stream       |    time id    |     time     |\n";
-			
-			// SSMの共有メモリにログデータを書き込む。
-			while (parser.write()) {}
+			parser.play();
 			break;
 		
 		// ignore
 		case 'i':
-
+			parser.deleteOffset();
+			parser.play();
 			break;
 		
 		// dump
 		case 'd':
 			// 与えられたログファイルをhexdumpして出力する。
 			parser.hexdumpLogFile();
-			// dumpし終わったら終了(これも汚いな...)
-			exit(0);
 			break;
 		// --help 
 		default: 
-				; // do nothing
-	}
-
-	// SSMの初期化
-	if (!initSSM()) {
-		fprintf(stderr, "Error main cannot init SSM.\n");
-		return 0;
+				; // do nothing (いまのところ)
 	}
 
 	cout << "end" << endl;
