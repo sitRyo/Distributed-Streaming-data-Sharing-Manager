@@ -462,8 +462,11 @@ void SSMLogParser::calculateOffset() {
 		earliestTime = std::min(earliestTime, log.mStartTime);
 
 	// その時刻との差を取る。
-	for (auto& log : this->mLogFile)
+	for (auto& log : this->mLogFile) {
 		log.mOffset = log.mStartTime - earliestTime;
+		cout << log.mOffset << endl; // debug
+	}
+		
 }
 
 bool SSMLogParser::create() {

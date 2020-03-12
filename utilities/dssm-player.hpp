@@ -24,6 +24,7 @@ struct DataReader {
   ssmTimeT mTime;  
   ssmTimeT mCurrentTime;
   ssmTimeT mNextTime;
+  ssmTimeT mOffset; ///< networkモードで使用するオフセット値
 	char *mData;								///< データのポインタ
 	uint64_t mDataSize;							///< データ構造体のサイズ
 	char *mProperty;							///< プロパティのポインタ
@@ -39,6 +40,7 @@ struct DataReader {
   std::unique_ptr<std::string> mIpAddr;
   std::string mLogSrc;
   std::unique_ptr<SSMApiBase> ssmApi;
+  
 
   DataReaderMode mDataReaderMode;
 
@@ -57,7 +59,6 @@ struct DataReader {
   DataReader(DataReader const& rhs);
   DataReader(DataReader&& rhs) noexcept;
   ~DataReader();
-  void init();
   bool getLogInfo();
   bool readProperty();
   bool read();
@@ -78,14 +79,19 @@ public:
   // SSMLogParser(SSMLogParser&& rhs);
   ~SSMLogParser();
 
-  bool optAnalyze(int aArgc, char **aArgv);
+  bool optAnalyze(int aArgc, char **aArgv, char& option);
+  void printHelp();
 
 	bool open();
   bool create();
   bool write();
+  bool play();
   bool readNByte();
   void updateConsoleShow();
   int commandAnalyze(char const* command);
+  void deleteOffset();
+  void calculateOffset();
+  void hexdumpLogFile();
 };
 
 
