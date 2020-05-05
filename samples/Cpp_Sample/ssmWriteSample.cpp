@@ -20,6 +20,7 @@ using namespace std;
 bool gShutOff = false;
 // シグナルハンドラー
 // この関数を直接呼び出すことはない
+
 void ctrlC(int aStatus)
 { 
 	signal(SIGINT, NULL);

@@ -39,7 +39,7 @@ int main(int aArgc, char **aArgv)
 	// ここでは同じディレクトリに入れてあるが、オドメトリなど標準的な変数は/user/local/include/ssmtype/内で定義されている
 	// c++に慣れていないと馴染みがない書き方だけれど，ここはパターンで使えれば充分
 	// readとwriteで同じ宣言ができていればOK
-	SSMApi<intSsm_k> intSsm(SNAME_INT, 1);
+	SSMApi<intSsm_k> intSsm(SNAME_INT, 0);
 
 	// ssm関連の初期化
 	if(!initSSM()) { // @suppress("Invalid arguments")

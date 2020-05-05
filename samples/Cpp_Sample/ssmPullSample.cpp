@@ -14,6 +14,14 @@
 // その他
 #include <ssm.hpp>
 #include "intSsm.h"
+#include "SSMpull.hpp"
+
+// クラス名はメンバと同じようにならないように調整
+struct intSSM_k {
+	intSsm_k data;
+	SSMDummy property;
+};
+
 // おまじない
 using namespace std;
 // 終了するかどうかの判定用変数
@@ -31,54 +39,38 @@ inline void setSigInt(){ signal(SIGINT, ctrlC); }
 // メイン
 int main(int aArgc, char **aArgv)
 {
-	// 変数の宣言
-	// SSMApi<data型, property型> 変数名(ssm登録名, ssm登録番号);
-	// property型は省略可能、省略するとpropertyにアクセスできなきなくなるだけ
-	// ssm登録番号は省略可能、省略すると0に設定される
-	// ssm登録名は./intSsm.hに#define SNAME_INT "intSsm"と定義
-	// ここでは同じディレクトリに入れてあるが、オドメトリなど標準的な変数は/user/local/include/ssmtype/内で定義されている
-	// c++に慣れていないと馴染みがない書き方だけれど，ここはパターンで使えれば充分
-	// readとwriteで同じ宣言ができていればOK
-	SSMApi<intSsm_k> intSsm(SNAME_INT, 0);
 
-	// ssm関連の初期化
-	if(!initSSM()) { // @suppress("Invalid arguments")
+	if(!initSSM()) {
 		return 0;
 	}
 	
-	SSM_open_mode SSM_READ = SSM_READ;
-	// 共有メモリにすでにある領域を開く
-	// open 失敗するとfalseを返す
-	if(!(intSsm.open( SSM_READ ))){ endSSM(); return 1; } // @suppress("Invalid arguments")
+	SSMApiInfo ssmApiInfo;
+	void* buf = new char(sizeof(intSSM_k));
+	ssmApiInfo.add(SNAME_INT, buf);
+	ssmApiInfo.assign<intSSM_k>(SNAME_INT);
+	
+	auto apiInfo = ssmApiInfo.getSSMApi(SNAME_INT);
+	apiInfo.open(SSM_READ);
 
-
-	// 安全に終了できるように設定
 	setSigInt();
-	//---------------------------------------------------
-	//ループ処理の開始
 	cerr << "start." << endl;
+
+	intSSM_k* intSsm_k = reinterpret_cast<intSSM_k*>(apiInfo.storage);
+
 	while(!gShutOff)
 	{
-		// reat(tid)  tid指定読み込み
-		// readNew()  最も新しいデータを読み込む。ただし前回から更新されていなければfalseを返す
-		// readLast() 最も新しいデータを読み込む。更新されていなくてもtrueを返す
-		// readNext() 前回読み込んだデータの次のデータを読み込む。次のデータがなければfalse
-		// readBack() 前回読み込んだデータの前のデータを読み込む。前のデータがなければfalse
-		// readTime(ssmTimeT time) 時間を指定して読み込み
-		
-		// 最も新しいデータが更新されていたら
-		if(intSsm.readNew())
+		if(apiInfo.ssmApiBase->readNew())
 		{
 			// 出力
-			cout << "NUM = " << intSsm.data.num << endl;
+			cout << "NUM = " << intSsm_k->data.num << endl;
 		}
 		
 		//1秒前のデータを読み込みたい場合
 		
-		if(intSsm.readTime(intSsm.time - 1 ))
+		if(apiInfo.ssmApiBase->readTime(apiInfo.ssmApiBase->time - 1 ))
 		{
 			// 出力
-			cout << "old NUM = " << intSsm.data.num << endl;
+			cout << "old NUM = " << intSsm_k->data.num << endl;
 		}
 		
 		sleepSSM( 1 ); 				// SSM時間にあわせたsleep。playerなどで倍速再生している場合にsleep時間が変化する。
@@ -86,7 +78,7 @@ int main(int aArgc, char **aArgv)
 	//---------------------------------------------------
 	//終了処理
 	// openしたら、必ず最後にclose
-	intSsm.close(  );
+	apiInfo.ssmApiBase->close(  );
 	// SSMからの切断
 	endSSM();
 	cerr << "end." << endl;
