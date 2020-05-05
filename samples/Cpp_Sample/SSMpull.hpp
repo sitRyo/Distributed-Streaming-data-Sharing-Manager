@@ -53,7 +53,7 @@ public:
   template <typename S>
   void assign(std::string name) {
     auto& apiInfo = apiInfos[hashMap[name]];
-    S * s = (S *) apiInfo.storage;
+    S * s = reinterpret_cast<S *>(apiInfo.storage);
     apiInfo.ssmApiBase->setBuffer(&s->data, sizeof(s->data), &s->property, sizeof(s->property));
   }
 
