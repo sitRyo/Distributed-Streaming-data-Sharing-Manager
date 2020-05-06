@@ -62,4 +62,22 @@ public:
   }
 };
 
+struct ObserverList {
+  std::vector<std::string> ssmApiList;
+  std::function<bool(std::vector<std::string> const)> cond;
+  std::function<bool(std::shared_ptr<SSMApiInfo>)> callback;
+};
+
+class Observer {
+  std::shared_ptr<SSMApiInfo> ssmApiInfo;
+
+public:
+  Observer() = default;
+  explicit Observer(std::shared_ptr<SSMApiInfo>& _ssmApiInfo) : ssmApiInfo(_ssmApiInfo) 
+  {}
+  void add() {
+
+  }
+};
+
 #endif // __SSMPULL__
