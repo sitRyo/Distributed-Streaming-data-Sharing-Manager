@@ -23,12 +23,14 @@
 #define SHM_KEY 0x3292							/**< 共有メモリアクセス用キー */
 #define SHM_TIME_KEY (SHM_KEY - 1)				/**< 時刻同期用の共有メモリアクセスキー */
 #define MSQ_KEY 0x3292							/**< メッセージキューアクセス用キー */
+#define MSQ_KEY_OBS 0x3293 /// SSMObserver間メッセージキューアクセスキー
 
 // #define SHM_NUM 10
 
 /* MessageCommand type */
 #define MSQ_CMD 1000
 #define MSQ_RES 1001
+#define OBSV_MSQ_CMD 1002
 #define MSQ_RES_MAX 2000
 
 /*
@@ -96,6 +98,15 @@ enum {
 	MC_RES = 31									///< コマンドに対する返信
 };
 
+/**
+ * @brief Observer間で送信するメッセージ
+ */
+typedef enum {
+	OBSV_INIT = 0,
+	OBSV_RES,
+	OBSV_FAIL,
+} OBSV_msg_type;
+
 #define SSM_MARGIN 1							///< データアクセスタイミングの余裕 （書き込み中のデータを読まないようにするため）
 #define SSM_BUFFER_MARGIN 1.2					///< リングバッファの個数の余裕　（なんとなくあった方が安心？）
 #define SSM_TID_SP 0							///< tidの下限
@@ -132,6 +143,15 @@ typedef struct {
 	ssmTimeT time;							///< ストリーム周期
 	ssmTimeT saveTime;                       ///< saveTime
 } ssm_msg;
+
+/* SSMObserverコマンドメッセージ */
+typedef struct {
+	uint64_t msg_type;  // 宛先
+	uint64_t res_type;	// 返信用
+	int cmd_type;				// コマンドの種類
+	pid_t pid;          // プロセスID
+	uint64_t msg_size;  // メッセージサイズ
+} ssm_obsv_msg;
 
 /* Threadでやり取りするメッセージ */
 typedef struct {

@@ -1,13 +1,14 @@
 # set the include path found by configure
 INCLUDES= $(all_includes) -I../include
+DEBUG_FLAG = -g 
 
 #AM_CFLAGS   = -Wall -std=c++11 -L/lib64
-AM_CFLAGS   = -Wall -lpthread -L/lib64
+AM_CFLAGS   = -Wall -lpthread -L/lib64 $(DEBUG_FLAG)
 AM_CXXFLAGS = $(AM_CFLAGS) -std=c++11
 
-bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph dssm-player
-noinst_PROGRAMS = read_proxy_test write_proxy_test
-noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h dssm-player.hpp
+bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph dssm-player ssm-observer
+noinst_PROGRAMS = read_proxy_test write_proxy_test subscriber_test
+noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h dssm-player.hpp ssm-subscriber.hpp
 
 # shell scripts
 #EXTRA_DIST = ssm-advance-player killssm psssm topssm
@@ -48,6 +49,12 @@ write_proxy_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=6
 write_proxy_test_CXXFLAGS = $(write_proxy_test_CFLAGS)
 write_proxy_test_LDADD = ../src/libssm.la -lm
 
+## subscriber_test
+subscriber_test_SOURCES = subscriber_test.cpp ssm-subscriber.cpp
+subscriber_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+subscriber_test_CXXFLAGS = $(subscriber_test_CFLAGS)
+subscriber_test_LDADD = ../src/libssm.la -lm
+
 ## ssm-transporter
 ssm_transporter_SOURCES = ssm-transporter.c
 ssm_transporter_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
@@ -83,3 +90,9 @@ dssm_player_SOURCES = dssm-player.cpp ssm-proxy-client.cpp
 dssm_player_CFLAGS = $(AM_CFLAGS) 
 dssm_player_CXXFLAGS = $(dssm_player_CFLAGS) -std=c++14
 dssm_player_LDADD = ../src/libssm.la 
+
+## ssm-observer
+ssm_observer_SOURCES = ssm-observer.cpp 
+ssm_observer_CFLAGS = $(AM_CFLAGS) 
+ssm_observer_CXXFLAGS = $(ssm_observer_CFLAGS) -std=c++14
+ssm_observer_LDADD = ../src/libssm.la 
