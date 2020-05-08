@@ -11,14 +11,20 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
+#include <memory>
+
 class SSMSubscriber {
   int msq_id;
   pid_t pid;
+  std::unique_ptr<ssm_obsv_msg> obsv_msg;
+  uint32_t padding_size;
 public:
   SSMSubscriber();
   bool init_subscriber();
-  bool send_msg(OBSV_msg_type const& msg_type, ssm_obsv_msg& obsv_msg) const;
-  int recv_msg(ssm_obsv_msg& obsv_msg, int const& size) const;
+  bool allocate_obsv_msg();
+  void format_obsv_msg();
+  bool send_msg(OBSV_msg_type const& type, int const& body_size);
+  int recv_msg();
 };
 
 #endif // __INC_SSM_SUBSCIBER__
