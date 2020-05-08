@@ -2,7 +2,7 @@
 
 ## Makefileの更新からmake installまでの処理を行うスクリプト
 
-SSMSOURCE="/home/seriru/Researchment/Distributed-Streaming-data-Sharing-Manager"
+SSMSOURCE="$HOME/Researchment/Distributed-Streaming-data-Sharing-Manager"
 
 output_message() {
   printf "\n**************************\n"
