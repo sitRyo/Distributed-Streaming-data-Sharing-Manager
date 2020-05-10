@@ -55,20 +55,21 @@ class SSMObserver {
   int32_t get_shared_memory(uint32_t const& size, void** data);
   bool serialize_raw_data(uint32_t const& size, void* data);
   bool serialize_4byte_data(int32_t data);
-public:
-  SSMObserver();
-  ~SSMObserver();
-  bool observer_init();
   int recv_msg();
   int send_msg(OBSV_msg_type const& type, pid_t const& s_pid);
   bool allocate_obsv_msg();
   void format_obsv_msg();
-  void msq_loop();
   bool create_subscriber(pid_t const& pid);
   std::vector<std::string> extract_subscriber_from_msg();
   bool register_subscriber(pid_t const& pid, std::vector<std::string>& name);
   bool api_open(std::vector<std::string> const& name);
-
+  void escape(int sig_num);
+public:
+  SSMObserver();
+  ~SSMObserver();
+  bool observer_init();
+  void msq_loop();
+  void set_signal_handler(int sig_num);
   void show_msq_id();
 };
 

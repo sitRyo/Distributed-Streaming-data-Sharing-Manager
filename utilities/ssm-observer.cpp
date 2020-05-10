@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <csignal>
 
 #include <iostream>
 
@@ -23,6 +24,28 @@ SSMApiInfo::~SSMApiInfo() {
   // delete[] data;
   // delete[] property;
 }
+
+void func(int a) {}
+
+/**
+ * @brief SIGINT時に実行する関数
+ * Subscriber側ではmsgqueへの参照を消さなくていい？
+ * TODO: signal handlerはグローバルなオブジェクトでなければいけないのでstaticな関数にする必要がある。ただし、解放したいデータはクラスのメンバにあるのでstaticからでは参照できない。どうするか。
+void SSMObserver::escape( int sig) {
+  for (auto& api_info : api_map) {
+    // デタッチ
+    shmdt(api_info.second->data);
+    shmdt(api_info.second->property);
+    // 削除
+    shmctl(api_info.second->shm_data_key, IPC_RMID, NULL);
+    shmctl(api_info.second->shm_property_key, IPC_RMID, NULL);
+  }
+
+  // メッセージキューの削除
+  msgctl(msq_id, IPC_RMID, NULL);
+  printf("Deleted shared memory and message queue.\n");
+}
+*/
 
 SSMObserver::SSMObserver() : pid(getpid()), shm_key_num(0) {}
 
@@ -265,6 +288,12 @@ int32_t SSMObserver::get_shared_memory(uint32_t const& size, void** data) {
 
   return s_id;
 }
+
+/*
+void SSMObserver::set_signal_handler(int sig_num) {
+  std::signal(sig_num, func);
+}
+*/
 
 int main() {
   SSMObserver observer;
