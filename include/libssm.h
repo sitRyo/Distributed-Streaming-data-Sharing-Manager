@@ -32,6 +32,7 @@
 #define MSQ_RES 1001
 #define OBSV_MSQ_CMD 1002
 #define MSQ_RES_MAX 2000
+#define OBSV_SHM_KEY 0x4292 /// SSMObserverデータのアクセスキー
 
 /*
  * proxy-clientで使うコマンド群
@@ -102,7 +103,11 @@ enum {
  * @brief Observer間で送信するメッセージ
  */
 typedef enum {
-	OBSV_INIT = 0,
+	OBSV_INIT = 0,			 // 新しいSubscriberを追加する
+	OBSV_SUBSCRIBE,      // Subscribeするapiを追加
+	OBSV_BEFORE,         // 後続のデータサイズを通知する
+	OBSV_ADD_CONDITION,  // 新しい条件を追加する
+	OBSV_DELETE,
 	OBSV_RES,
 	OBSV_FAIL,
 } OBSV_msg_type;
@@ -113,6 +118,9 @@ typedef enum {
 
 #define SSM_MSG_SIZE  (sizeof(ssm_msg) - sizeof(long) )
 // #define SSM_MSG_SIZE (sizeof(ssm_msg))
+
+// ssm-observer用のメッセージサイズ
+#define OBSV_MSG_SIZE 1000
 
 #ifdef __cplusplus
 extern "C" {
@@ -148,9 +156,10 @@ typedef struct {
 typedef struct {
 	uint64_t msg_type;  // 宛先
 	uint64_t res_type;	// 返信用
-	int cmd_type;				// コマンドの種類
+	uint32_t cmd_type;	// コマンドの種類
 	pid_t pid;          // プロセスID
-	uint64_t msg_size;  // メッセージサイズ
+	uint64_t msg_size;  // bodyのサイズ
+	char body[];         // データ & パディング
 } ssm_obsv_msg;
 
 /* Threadでやり取りするメッセージ */
