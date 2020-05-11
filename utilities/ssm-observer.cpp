@@ -13,6 +13,7 @@
 #include <csignal>
 
 #include <iostream>
+#include <functional>
 
 using std::cout;
 using std::endl;
@@ -24,8 +25,6 @@ SSMApiInfo::~SSMApiInfo() {
   // delete[] data;
   // delete[] property;
 }
-
-void func(int a) {}
 
 /**
  * @brief SIGINT時に実行する関数
@@ -145,6 +144,11 @@ bool SSMObserver::serialize_raw_data(uint32_t const& size, void* data) {
 }
 */
 
+int32_t SSMObserver::deserialize_4byte_data(char* buf) {
+  int32_t res = *reinterpret_cast<int32_t *>(buf);
+  return res;
+}
+
 bool SSMObserver::serialize_4byte_data(int32_t data) {
   // メッセージに書き込めないときはエラー(呼び出し元でerror handlingしないと(面倒))
   if (sizeof(int32_t) + obsv_msg->msg_size >= padding_size) {
@@ -186,7 +190,7 @@ void SSMObserver::msq_loop() {
         if (!register_subscriber(obsv_msg->pid, name)) {
           send_msg(OBSV_FAIL, s_pid);
         }
-
+        
         // 返信データの準備
         format_obsv_msg();
         for (auto&& _name : name) {
@@ -206,19 +210,27 @@ void SSMObserver::msq_loop() {
   }
 }
 
-std::vector<std::string> SSMObserver::extract_subscriber_from_msg() {
-  std::vector<std::string> name;
+std::vector<ssm_api_pair> SSMObserver::extract_subscriber_from_msg() {
+  std::vector<ssm_api_pair> name;
   auto size = obsv_msg->msg_size;
   char* data = obsv_msg->body;
-  std::string str = "";
-  for (auto i = 0; i < size; ++i) {
+  
+  std::string stream_name;
+  int32_t stream_id;
+  uint32_t i = 0;
+  while (i < size) {
     if (data[i] == '\0') {
-      name.push_back(str);
-      str.clear();
+      ++i;
+      stream_id = deserialize_4byte_data(data+i);
+      name.push_back({stream_name, stream_id});
+      i += 4;
+      stream_name.clear();
     } else {
-      str += data[i];
+      stream_name += data[i];
+      ++i;
     }
   }
+  
   return name;
 }
 
@@ -227,40 +239,48 @@ bool SSMObserver::create_subscriber(pid_t const& pid) {
   return true;
 }
 
-bool SSMObserver::register_subscriber(pid_t const& pid, std::vector<std::string>& name) {
+bool SSMObserver::register_subscriber(pid_t const& pid, std::vector<ssm_api_pair>& name) {
   auto sub = subscriber_map[pid];
   sub->api = name;
-  return api_open(sub->api);
+  for (auto&& _name : sub->api) {
+    if (!api_open(_name)) {
+      return false;
+    }
+
+    printf("stream_name: %s\n", _name.first.c_str());
+    printf("stream_id:   %d\n", _name.second);
+  }
+  return true;
 }
 
-bool SSMObserver::api_open(std::vector<std::string> const& name) {
-  for (auto&& _name : name) {
-    // SSMApiが作られていない場合
-    if (api_map.find(_name) == api_map.end()) {
-      auto ssm_api_info = std::make_shared<SSMApiInfo>();
-      auto data_size = ssm_api_info->ssm_api_base.dataSize();
-      auto property_size = ssm_api_info->ssm_api_base.propertySize();
-      ssm_api_info->ssm_api_base.setBuffer(ssm_api_info->data, data_size, ssm_api_info->property, property_size);
+bool SSMObserver::api_open(ssm_api_pair const& _name) {
+  // SSMApiが作られていない場合
+  if (api_map.find(_name) == api_map.end()) {
+    auto ssm_api_info = std::make_shared<SSMApiInfo>();
+    auto data_size = ssm_api_info->ssm_api_base.dataSize();
+    auto property_size = ssm_api_info->ssm_api_base.propertySize();
+    ssm_api_info->ssm_api_base.setBuffer(ssm_api_info->data, data_size, ssm_api_info->property, property_size);
 
-      if ((ssm_api_info->shm_data_key = get_shared_memory(data_size, &ssm_api_info->data)) < 0) {
-        fprintf(stderr, "data\n");
-        return false;
-      }
-
-      if ((ssm_api_info->shm_property_key = get_shared_memory(data_size, &ssm_api_info->property)) < 0) {
-        fprintf(stderr, "property\n");
-        return false;
-      }
-
-      /// debug!!!!
-      // *reinterpret_cast<int32_t*>(ssm_api_info->data) = 10;
-      // *reinterpret_cast<int32_t*>(ssm_api_info->property) = 11;
-
-      // printf("%d %d\n", ssm_api_info->shm_data_key, ssm_api_info->shm_property_key);
-
-      // api情報登録
-      api_map.insert({_name, ssm_api_info});
+    if ((ssm_api_info->shm_data_key = get_shared_memory(data_size, &ssm_api_info->data)) < 0) {
+      fprintf(stderr, "data\n");
+      return false;
     }
+
+    if ((ssm_api_info->shm_property_key = get_shared_memory(data_size, &ssm_api_info->property)) < 0) {
+      fprintf(stderr, "property\n");
+      return false;
+    }
+
+    ssm_api_info->stream_name = _name.first;
+    ssm_api_info->stream_id = _name.second;
+
+    /// debug!!!!
+    // *reinterpret_cast<int32_t*>(ssm_api_info->data) = 10;
+    // *reinterpret_cast<int32_t*>(ssm_api_info->property) = 11;
+    // printf("%d %d\n", ssm_api_info->shm_data_key, ssm_api_info->shm_property_key);
+
+    // api情報登録
+    api_map.insert({_name, ssm_api_info});
   }
 
   return true;

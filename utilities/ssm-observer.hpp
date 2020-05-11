@@ -20,8 +20,30 @@
 #include <functional>
 #include <memory>
 
+using ssm_api_pair = std::pair<std::string, int32_t>;
+
+/* SSMApiをunordered_mapで使うためのユーザ定義構造体群 */
+
+struct SSMApiHash {
+  size_t operator()(ssm_api_pair const& p) const {
+    auto h1 = std::hash<std::string>()(p.first);
+    auto h2 = std::hash<std::int32_t>()(p.second);
+    return h1 xor (h2 << 1);
+  }
+};
+
+struct SSMApiEqual {
+  bool operator()(ssm_api_pair const& p1, ssm_api_pair const& p2) const {
+    return (p1.first == p2.first) and (p1.second == p2.second);
+  }
+};
+
+/* ここまで */
+
 struct SSMApiInfo {
   SSMApiBase ssm_api_base;
+  std::string stream_name;
+  int32_t stream_id;
   void* data;
   void* property;
   key_t shm_data_key; // int32_t
@@ -32,7 +54,7 @@ struct SSMApiInfo {
 };
 
 struct Subscriber {
-  std::vector<std::string> api;
+  std::vector<ssm_api_pair> api;
   pid_t pid;
   bool isSubscribe;
   // 条件のメンバ(std::function)
@@ -40,7 +62,8 @@ struct Subscriber {
   explicit Subscriber(pid_t const& _pid) : pid(_pid), isSubscribe(false) {}
 };
 
-class SSMObserver {
+class SSMObserver {  
+private:
   int msq_id;
   int pid;
   key_t shm_key_num;
@@ -49,21 +72,23 @@ class SSMObserver {
 
   char buf[OBSV_MSG_SIZE];
 
-  std::unordered_map<std::string, std::shared_ptr<SSMApiInfo>> api_map; // TODO: unique_ptrにできるか検討
+  std::unordered_map<ssm_api_pair, std::shared_ptr<SSMApiInfo>, SSMApiHash, SSMApiEqual> api_map; // TODO: unique_ptrにできるか検討
   std::unordered_map<pid_t, std::shared_ptr<Subscriber>> subscriber_map;
 
   int32_t get_shared_memory(uint32_t const& size, void** data);
   bool serialize_raw_data(uint32_t const& size, void* data);
   bool serialize_4byte_data(int32_t data);
+  int32_t deserialize_4byte_data(char* buf);
   int recv_msg();
   int send_msg(OBSV_msg_type const& type, pid_t const& s_pid);
   bool allocate_obsv_msg();
   void format_obsv_msg();
   bool create_subscriber(pid_t const& pid);
-  std::vector<std::string> extract_subscriber_from_msg();
-  bool register_subscriber(pid_t const& pid, std::vector<std::string>& name);
-  bool api_open(std::vector<std::string> const& name);
+  std::vector<ssm_api_pair> extract_subscriber_from_msg();
+  bool register_subscriber(pid_t const& pid, std::vector<ssm_api_pair>& name);
+  bool api_open(ssm_api_pair const& name);
   void escape(int sig_num);
+  bool open(std::string stream_name, int32_t stream_id);
 public:
   SSMObserver();
   ~SSMObserver();
