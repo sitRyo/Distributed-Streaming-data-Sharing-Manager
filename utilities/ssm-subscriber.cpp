@@ -14,6 +14,8 @@
 #include <cerrno>
 #include <cstdlib>
 
+#include <utility>
+
 int32_t verbose_mode = 1;
 
 SSMSubscriber::SSMSubscriber(): msq_id(-1), padding_size(-1) {}
@@ -39,6 +41,21 @@ bool SSMSubscriber::init_subscriber() {
   }
 
   printf("observer pid: %d\n", obsv_msg->pid);
+
+  return true;
+}
+
+bool SSMSubscriber::serialize_string(std::string const& str) {
+  auto size = str.size();
+  if (size + obsv_msg->msg_size >= padding_size) {
+    if (verbose_mode > 0) {
+      fprintf(stderr, "VERBOSE: message body is too large.\n");
+    }
+    return false;
+  }
+
+  for (auto&& ch : str) { obsv_msg->body[obsv_msg->msg_size++] = ch; }
+  obsv_msg->body[obsv_msg->msg_size++] = '\0';
 
   return true;
 }
@@ -85,7 +102,6 @@ bool SSMSubscriber::send_msg(OBSV_msg_type const& type) {
   obsv_msg->msg_type = OBSV_MSQ_CMD;
   obsv_msg->cmd_type = type;
   obsv_msg->pid      = pid;
-  // obsv_msg->msg_size = body_size;
 
 	if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
     perror("msgsnd");
@@ -105,14 +121,13 @@ int SSMSubscriber::recv_msg() {
 }
 
 /**
- * @brief SubscribeするSSMAPiを追加
+ * @brief SubscribeするSSMAPiを追加。
  */
-void SSMSubscriber::add_subscriber(std::vector<ssm_api_pair> const& api) {
+void SSMSubscriber::add_subscriber(std::vector<Stream> const& api) {
   for (auto element : api) {
-    auto shm_info_ptr = std::make_shared<ShmInfo>();
-    shm_info_ptr->stream_name = element.first;
-    shm_info_ptr->stream_id = element.second;
-    shm_info_map.insert({element.first, shm_info_ptr});
+    // stream_id, stream_data, datasize, propertysizeでインスタンスを生成
+    auto shm_info_ptr = std::make_shared<ShmInfo>(element);
+    shm_info_map.insert({std::make_pair(element.stream_name, element.stream_id), shm_info_ptr});
   }
 
   name = api;
@@ -126,9 +141,10 @@ bool SSMSubscriber::send_subscriber() {
   format_obsv_msg();
   
   for (auto&& element : name) {
-    for (auto&& ch : element.first) { obsv_msg->body[obsv_msg->msg_size++] = ch; }
-    obsv_msg->body[obsv_msg->msg_size++] = '\0';
-    serialize_4byte_data(element.second);
+    serialize_string(element.stream_name);
+    serialize_4byte_data(element.stream_id);
+    serialize_4byte_data(element.data_size);    
+    serialize_4byte_data(element.property_size);
   }
 
   if (!send_msg(OBSV_SUBSCRIBE)) {
@@ -148,13 +164,17 @@ bool SSMSubscriber::send_subscriber() {
   return true;
 }
 
-bool SSMSubscriber::register_shm_info(std::vector<ssm_api_pair> const& name) {
+/**
+ * @brief 共有メモリのアクセスキーの保存とアタッチ。
+ */
+bool SSMSubscriber::register_shm_info(std::vector<Stream> const& name) {
   auto sz = 0;
   auto key_t_sz = sizeof(key_t);
   for (auto&& element : name) {
-    auto& _name = element.first;
+    auto& _name = element.stream_name;
+    auto& _id   = element.stream_id;
     if (sz + key_t_sz * 2 <= obsv_msg->msg_size) {
-      auto& shm_info = shm_info_map.at(_name);
+      auto& shm_info = shm_info_map.at({_name, _id});
 
       shm_info->shm_data_key = *reinterpret_cast<int32_t *>(&obsv_msg->body[sz]);
       shm_info->shm_property_key = *reinterpret_cast<int32_t *>(&obsv_msg->body[sz + key_t_sz]);
@@ -191,4 +211,11 @@ bool SSMSubscriber::attach_shared_memory(void** data, int32_t s_id) {
 bool SSMSubscriber::start() {
   send_subscriber();
   printf("send subscribers\n");
+}
+
+/***************** Debug *****************/
+
+void SSMSubscriber::access_subscriber(ssm_api_pair const& p) {
+  auto& api = shm_info_map[p];
+  printf("%d\n", *(int32_t *) api->data);
 }

@@ -1,18 +1,25 @@
 #include "ssm-subscriber.hpp"
+#include "intSsm.h"
 #include <iostream>
 
-using ssm_pair = typename SSMSubscriber::ssm_api_pair;
+// using ssm_pair = typename SSMSubscriber::ssm_api_pair;
 
 int main() {
   SSMSubscriber sub;
   sub.init_subscriber();
 
-  std::vector<ssm_pair> name;
-  name.push_back({"urg_fs", 0});
-  name.push_back({"dsm_gl", 0});
-  name.push_back({"resampler", 0});
-  sub.add_subscriber(name);
+  std::vector<Stream> subscribers;
+  subscribers.push_back({SNAME_INT, 0, sizeof(int), 0});
+  sub.add_subscriber(subscribers);
   sub.send_subscriber();
+
+  sleep(1);
+  
+  int cnt = 0;
+  while (true) {
+    sub.access_subscriber({SNAME_INT, 0});
+    sleep(1);
+  }
 
   std::cout << "recv successed\n";
 }

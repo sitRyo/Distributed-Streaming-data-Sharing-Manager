@@ -20,12 +20,6 @@ using std::endl;
 
 int verbose_mode = 1;
 
-SSMApiInfo::~SSMApiInfo() {
-  // 共有メモリにあたっちしているので一旦削除
-  // delete[] data;
-  // delete[] property;
-}
-
 /**
  * @brief SIGINT時に実行する関数
  * Subscriber側ではmsgqueへの参照を消さなくていい？
@@ -46,15 +40,40 @@ void SSMObserver::escape( int sig) {
 }
 */
 
+SSMApiInfo::SSMApiInfo() : stream_name(""), stream_id(-1), data(nullptr), property(nullptr)
+{}
+
+SSMApiInfo::~SSMApiInfo() {}
+
+bool SSMApiInfo::open(SSM_open_mode mode) {
+  if (stream_name.empty() || stream_id == -1) {
+    fprintf(stderr, "ERROR: stream_name or stream_id haven't set yet.\n");
+    return false;
+  }
+
+  if (!ssm_api_base.open(stream_name.c_str(), stream_id, mode)) {
+    // TODO: std::runtime_errorでエラーハンドリングするか否か
+    // ssm_api_baseでエラーメッセージが表示されるのでここではとりあえず何もしない。
+    return false;
+  }
+
+  return true;
+}
+
 SSMObserver::SSMObserver() : pid(getpid()), shm_key_num(0) {}
 
 SSMObserver::~SSMObserver() {
   msgctl( msq_id, IPC_RMID, NULL );
 }
 
-// メッセージキューを作る
+/**
+ * @brief メッセージキューを作る。
+ */
 bool SSMObserver::observer_init() {
-  // msq_id = msgget(MSQ_KEY_OBS, IPC_CREAT | IPC_EXCL | 0666 );
+  // ssm-coordinatorとのmsgque作成
+  initSSM();
+
+  // ssm-observerのmsgque作成
   msq_id = msgget(MSQ_KEY_OBS, IPC_CREAT | 0666 );
   
   if (msq_id < 0) {
@@ -186,17 +205,24 @@ void SSMObserver::msq_loop() {
 
       case OBSV_SUBSCRIBE: {
         printf("OBSV_SUBSCRIBE pid = %d\n", s_pid);
-        auto name = extract_subscriber_from_msg();
-        if (!register_subscriber(obsv_msg->pid, name)) {
+        auto stream_data = extract_subscriber_from_msg();
+        /*for (auto itr : stream_data) {
+          cout << itr.data_size << endl;
+          cout << itr.property_size << endl;
+          cout << itr.stream_id << endl;
+          cout << itr.stream_name << endl;
+        }*/
+        if (!register_subscriber(obsv_msg->pid, stream_data)) {
           send_msg(OBSV_FAIL, s_pid);
         }
         
         // 返信データの準備
         format_obsv_msg();
-        for (auto&& _name : name) {
+        for (auto&& _name : stream_data) {
+          ssm_api_pair api_key = std::make_pair(_name.stream_name, _name.stream_id);
           // key -> propertyの順で共有メモリキーを書き込む。
-          serialize_4byte_data(api_map[_name]->shm_data_key);
-          serialize_4byte_data(api_map[_name]->shm_property_key);
+          serialize_4byte_data(api_map[api_key]->shm_data_key);
+          serialize_4byte_data(api_map[api_key]->shm_property_key);
         }
 
         send_msg(OBSV_RES, s_pid);
@@ -210,20 +236,22 @@ void SSMObserver::msq_loop() {
   }
 }
 
-std::vector<ssm_api_pair> SSMObserver::extract_subscriber_from_msg() {
-  std::vector<ssm_api_pair> name;
+std::vector<Stream> SSMObserver::extract_subscriber_from_msg() {
+  std::vector<Stream> stream_data;
   auto size = obsv_msg->msg_size;
   char* data = obsv_msg->body;
+  // dssm::util::hexdump(obsv_msg->body, 20);
   
   std::string stream_name;
   int32_t stream_id;
-  uint32_t i = 0;
+  uint32_t i = 0, data_size, property_size;
   while (i < size) {
     if (data[i] == '\0') {
       ++i;
-      stream_id = deserialize_4byte_data(data+i);
-      name.push_back({stream_name, stream_id});
-      i += 4;
+      stream_id = deserialize_4byte_data(data + i); i += 4;
+      data_size = deserialize_4byte_data(data + i); i += 4;
+      property_size = deserialize_4byte_data(data + i); i += 4;
+      stream_data.push_back({stream_name, stream_id, data_size, property_size});
       stream_name.clear();
     } else {
       stream_name += data[i];
@@ -231,7 +259,7 @@ std::vector<ssm_api_pair> SSMObserver::extract_subscriber_from_msg() {
     }
   }
   
-  return name;
+  return stream_data;
 }
 
 bool SSMObserver::create_subscriber(pid_t const& pid) {
@@ -239,28 +267,31 @@ bool SSMObserver::create_subscriber(pid_t const& pid) {
   return true;
 }
 
-bool SSMObserver::register_subscriber(pid_t const& pid, std::vector<ssm_api_pair>& name) {
+bool SSMObserver::register_subscriber(pid_t const& pid, std::vector<Stream> const& stream_data) {
   auto sub = subscriber_map[pid];
-  sub->api = name;
-  for (auto&& _name : sub->api) {
-    if (!api_open(_name)) {
+  for (auto&& data : stream_data) {
+    if (!create_ssm_api_info(data)) {
       return false;
     }
 
-    printf("stream_name: %s\n", _name.first.c_str());
-    printf("stream_id:   %d\n", _name.second);
+    printf("stream_name: %s\n", data.stream_name.c_str());
+    printf("stream_id:   %d\n", data.stream_id);
+
+    sub->api.emplace_back(data.stream_name, data.stream_id);
   }
+  
   return true;
 }
 
-bool SSMObserver::api_open(ssm_api_pair const& _name) {
+bool SSMObserver::create_ssm_api_info(Stream const& stream_data) {
+  ssm_api_pair api_key = std::make_pair(stream_data.stream_name, stream_data.stream_id);
   // SSMApiが作られていない場合
-  if (api_map.find(_name) == api_map.end()) {
+  if (api_map.find(api_key) == api_map.end()) {
     auto ssm_api_info = std::make_shared<SSMApiInfo>();
-    auto data_size = ssm_api_info->ssm_api_base.dataSize();
-    auto property_size = ssm_api_info->ssm_api_base.propertySize();
-    ssm_api_info->ssm_api_base.setBuffer(ssm_api_info->data, data_size, ssm_api_info->property, property_size);
+    auto data_size = stream_data.data_size;
+    auto property_size = stream_data.property_size;
 
+    // 共有メモリをアタッチする。
     if ((ssm_api_info->shm_data_key = get_shared_memory(data_size, &ssm_api_info->data)) < 0) {
       fprintf(stderr, "data\n");
       return false;
@@ -271,16 +302,16 @@ bool SSMObserver::api_open(ssm_api_pair const& _name) {
       return false;
     }
 
-    ssm_api_info->stream_name = _name.first;
-    ssm_api_info->stream_id = _name.second;
-
-    /// debug!!!!
-    // *reinterpret_cast<int32_t*>(ssm_api_info->data) = 10;
-    // *reinterpret_cast<int32_t*>(ssm_api_info->property) = 11;
-    // printf("%d %d\n", ssm_api_info->shm_data_key, ssm_api_info->shm_property_key);
+    // アタッチしたバッファをデータ保存場所として指定
+    ssm_api_info->ssm_api_base.setBuffer(ssm_api_info->data, data_size, ssm_api_info->property, property_size);
+    ssm_api_info->stream_name = stream_data.stream_name;
+    ssm_api_info->stream_id = stream_data.stream_id;
+    
+    // Apiをオープン
+    ssm_api_info->open(SSM_READ);
 
     // api情報登録
-    api_map.insert({_name, ssm_api_info});
+    api_map.insert({api_key, ssm_api_info});
   }
 
   return true;
@@ -292,7 +323,7 @@ int32_t SSMObserver::get_shared_memory(uint32_t const& size, void** data) {
   
   int32_t s_id;
   /// TODO: sizeを変更する！！！！！！
-  if ((s_id = shmget(OBSV_SHM_KEY + shm_key_num, 4, IPC_CREAT | 0666)) < 0) {
+  if ((s_id = shmget(OBSV_SHM_KEY + shm_key_num, size, IPC_CREAT | 0666)) < 0) {
     perror("shmget");
     fprintf(stderr, "ERROR: shared memory allocate\n");
     return -1;
@@ -315,6 +346,12 @@ void SSMObserver::set_signal_handler(int sig_num) {
 }
 */
 
+void SSMObserver::debug(ssm_api_pair const& p) {
+  auto ssm_api = this->api_map[p];
+  ssm_api->ssm_api_base.readLast();
+  cout << *(int*)ssm_api->data << endl;
+}
+
 int main() {
   SSMObserver observer;
   if (!observer.observer_init()) {
@@ -325,4 +362,9 @@ int main() {
   std::cout << "msgque id: ";
   observer.show_msq_id();
   observer.msq_loop();
+
+  while (true) {
+    observer.debug({"intSsm", 0});
+    sleep(0.5);
+  }
 }

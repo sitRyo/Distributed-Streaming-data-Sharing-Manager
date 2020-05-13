@@ -40,17 +40,29 @@ struct SSMApiEqual {
 
 /* ここまで */
 
+struct Stream {
+  std::string stream_name;
+  int32_t stream_id;
+  uint32_t data_size;
+  uint32_t property_size;
+};
+
 struct SSMApiInfo {
   SSMApiBase ssm_api_base;
   std::string stream_name;
   int32_t stream_id;
   void* data;
   void* property;
+  uint32_t data_size;
+  uint32_t property_size;
   key_t shm_data_key; // int32_t
   key_t shm_property_key; // int32_t
 
-  SSMApiInfo() = default;
+  SSMApiInfo();
   ~SSMApiInfo(); // destructorが必ず実行されるものではないことに注意(SIGINTとかだったっけ)
+
+  bool open(SSM_open_mode mode);
+  bool setDataBuffer();
 };
 
 struct Subscriber {
@@ -60,6 +72,10 @@ struct Subscriber {
   // 条件のメンバ(std::function)
   Subscriber() {};
   explicit Subscriber(pid_t const& _pid) : pid(_pid), isSubscribe(false) {}
+};
+
+class SubscribeWorker {
+
 };
 
 class SSMObserver {  
@@ -84,11 +100,10 @@ private:
   bool allocate_obsv_msg();
   void format_obsv_msg();
   bool create_subscriber(pid_t const& pid);
-  std::vector<ssm_api_pair> extract_subscriber_from_msg();
-  bool register_subscriber(pid_t const& pid, std::vector<ssm_api_pair>& name);
-  bool api_open(ssm_api_pair const& name);
+  std::vector<Stream> extract_subscriber_from_msg();
+  bool register_subscriber(pid_t const& pid, std::vector<Stream> const& stream_data);
+  bool create_ssm_api_info(Stream const& stream_data);
   void escape(int sig_num);
-  bool open(std::string stream_name, int32_t stream_id);
 public:
   SSMObserver();
   ~SSMObserver();
@@ -96,6 +111,9 @@ public:
   void msq_loop();
   void set_signal_handler(int sig_num);
   void show_msq_id();
+
+  /***** Debug *****/ 
+  void debug(ssm_api_pair const& p);
 };
 
 #endif // __INC_SSM_OBSERVER__
