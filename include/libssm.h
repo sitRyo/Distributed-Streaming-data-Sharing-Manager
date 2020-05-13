@@ -105,7 +105,7 @@ enum {
 typedef enum {
 	OBSV_INIT = 0,			 // 新しいSubscriberを追加する
 	OBSV_SUBSCRIBE,      // Subscribeするapiを追加
-	OBSV_BEFORE,         // 後続のデータサイズを通知する
+	OBSV_START,          // Subscriberのスタート
 	OBSV_ADD_CONDITION,  // 新しい条件を追加する
 	OBSV_DELETE,
 	OBSV_RES,

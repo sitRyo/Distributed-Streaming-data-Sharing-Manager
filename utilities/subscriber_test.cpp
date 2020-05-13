@@ -11,10 +11,8 @@ int main() {
   std::vector<Stream> subscribers;
   subscribers.push_back({SNAME_INT, 0, sizeof(int), 0});
   sub.add_subscriber(subscribers);
-  sub.send_subscriber();
+  sub.start();
 
-  sleep(1);
-  
   int cnt = 0;
   while (true) {
     sub.access_subscriber({SNAME_INT, 0});

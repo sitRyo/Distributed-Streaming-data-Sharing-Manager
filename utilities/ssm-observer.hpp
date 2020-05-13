@@ -19,6 +19,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <mutex>
 
 using ssm_api_pair = std::pair<std::string, int32_t>;
 
@@ -57,25 +58,26 @@ struct SSMApiInfo {
   uint32_t property_size;
   key_t shm_data_key; // int32_t
   key_t shm_property_key; // int32_t
+  std::mutex mtx;
 
   SSMApiInfo();
   ~SSMApiInfo(); // destructorが必ず実行されるものではないことに注意(SIGINTとかだったっけ)
 
+  bool read_last();
   bool open(SSM_open_mode mode);
   bool setDataBuffer();
 };
 
-struct Subscriber {
-  std::vector<ssm_api_pair> api;
+struct Subscriber : public Thread {
+  std::vector<std::shared_ptr<SSMApiInfo>> ssm_api;
   pid_t pid;
   bool isSubscribe;
   // 条件のメンバ(std::function)
+  // std::vector<std::function> cond; みたいな
   Subscriber() {};
   explicit Subscriber(pid_t const& _pid) : pid(_pid), isSubscribe(false) {}
-};
-
-class SubscribeWorker {
-
+  void* run(void *args) override;
+  void subscribe_loop();
 };
 
 class SSMObserver {  
@@ -85,11 +87,8 @@ private:
   key_t shm_key_num;
   std::unique_ptr<ssm_obsv_msg> obsv_msg;
   uint32_t padding_size;
-
-  char buf[OBSV_MSG_SIZE];
-
   std::unordered_map<ssm_api_pair, std::shared_ptr<SSMApiInfo>, SSMApiHash, SSMApiEqual> api_map; // TODO: unique_ptrにできるか検討
-  std::unordered_map<pid_t, std::shared_ptr<Subscriber>> subscriber_map;
+  std::unordered_map<pid_t, std::unique_ptr<Subscriber>> subscriber_map;
 
   int32_t get_shared_memory(uint32_t const& size, void** data);
   bool serialize_raw_data(uint32_t const& size, void* data);
@@ -111,9 +110,6 @@ public:
   void msq_loop();
   void set_signal_handler(int sig_num);
   void show_msq_id();
-
-  /***** Debug *****/ 
-  void debug(ssm_api_pair const& p);
 };
 
 #endif // __INC_SSM_OBSERVER__

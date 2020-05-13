@@ -73,16 +73,16 @@ class SSMSubscriber {
   bool register_shm_info(std::vector<Stream> const& name);
   bool send_msg(OBSV_msg_type const& type);
   int recv_msg();
+  bool allocate_obsv_msg();
+  bool send_subscriber();
   bool serialize_4byte_data(int32_t data);
   bool serialize_string(std::string const& str);
+  
 public:
   SSMSubscriber();
   bool init_subscriber();
-  bool allocate_obsv_msg();
-
   void add_subscriber(std::vector<Stream> const& api);
   bool start();
-  bool send_subscriber();
 
   void access_subscriber(ssm_api_pair const& p);
 };

@@ -19,7 +19,6 @@ using std::cout;
 using std::endl;
 
 int verbose_mode = 1;
-
 /**
  * @brief SIGINT時に実行する関数
  * Subscriber側ではmsgqueへの参照を消さなくていい？
@@ -60,6 +59,27 @@ bool SSMApiInfo::open(SSM_open_mode mode) {
   return true;
 }
 
+/**
+ * @brief read_lastを行う(atomic)
+ */
+bool SSMApiInfo::read_last() {
+  std::lock_guard<std::mutex> lock(mtx);
+  ssm_api_base.readLast();
+}
+
+void* Subscriber::run(void *args) {
+  this->subscribe_loop();
+}
+
+void Subscriber::subscribe_loop() {
+  // ここで条件を検索。
+  while (true) {
+    for (auto&& api : ssm_api) {
+      api->read_last();
+    }
+  }
+}
+
 SSMObserver::SSMObserver() : pid(getpid()), shm_key_num(0) {}
 
 SSMObserver::~SSMObserver() {
@@ -74,7 +94,7 @@ bool SSMObserver::observer_init() {
   initSSM();
 
   // ssm-observerのmsgque作成
-  msq_id = msgget(MSQ_KEY_OBS, IPC_CREAT | 0666 );
+  msq_id = msgget(MSQ_KEY_OBS, IPC_CREAT | 0666);
   
   if (msq_id < 0) {
     // メッセージキューが存在する場合はエラーメッセージを出力して終了
@@ -229,6 +249,15 @@ void SSMObserver::msq_loop() {
         break;
       }
 
+      case OBSV_START: {
+        printf("OBSV_START pid = %d\n", s_pid);
+        auto& sub = subscriber_map.at(s_pid);
+        sub->start(nullptr);
+
+        send_msg(OBSV_RES, s_pid);
+        break;
+      }
+
       default: {
         fprintf(stderr, "ERROR: unrecognized message %d\n", obsv_msg->cmd_type);
       }
@@ -263,23 +292,23 @@ std::vector<Stream> SSMObserver::extract_subscriber_from_msg() {
 }
 
 bool SSMObserver::create_subscriber(pid_t const& pid) {
-  subscriber_map[pid] = std::make_shared<Subscriber>(pid); // 例外を投げることがある(try catchをすべき?)
+  subscriber_map[pid] = std::make_unique<Subscriber>(pid); // 例外を投げることがある(try catchをすべき?)
   return true;
 }
 
 bool SSMObserver::register_subscriber(pid_t const& pid, std::vector<Stream> const& stream_data) {
-  auto sub = subscriber_map[pid];
+  auto& sub = subscriber_map[pid];
   for (auto&& data : stream_data) {
     if (!create_ssm_api_info(data)) {
       return false;
     }
 
+    sub->ssm_api.push_back(api_map.at({data.stream_name, data.stream_id}));
+    
     printf("stream_name: %s\n", data.stream_name.c_str());
     printf("stream_id:   %d\n", data.stream_id);
-
-    sub->api.emplace_back(data.stream_name, data.stream_id);
   }
-  
+
   return true;
 }
 
@@ -346,12 +375,6 @@ void SSMObserver::set_signal_handler(int sig_num) {
 }
 */
 
-void SSMObserver::debug(ssm_api_pair const& p) {
-  auto ssm_api = this->api_map[p];
-  ssm_api->ssm_api_base.readLast();
-  cout << *(int*)ssm_api->data << endl;
-}
-
 int main() {
   SSMObserver observer;
   if (!observer.observer_init()) {
@@ -362,9 +385,4 @@ int main() {
   std::cout << "msgque id: ";
   observer.show_msq_id();
   observer.msq_loop();
-
-  while (true) {
-    observer.debug({"intSsm", 0});
-    sleep(0.5);
-  }
 }

@@ -210,7 +210,17 @@ bool SSMSubscriber::attach_shared_memory(void** data, int32_t s_id) {
  */
 bool SSMSubscriber::start() {
   send_subscriber();
-  printf("send subscribers\n");
+  format_obsv_msg();
+  
+  if (!send_msg(OBSV_START)) {
+    return false;
+  }
+  
+  if (!recv_msg()) {
+    return false;
+  }
+
+  printf("start\n");
 }
 
 /***************** Debug *****************/
