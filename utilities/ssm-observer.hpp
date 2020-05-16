@@ -3,7 +3,8 @@
  * 2020/5/7 R.Gunji
  */
 
-#ifndef __INC_SSM_OBSERVER__
+#ifndef _INC_SSM_OBSERVER_
+#define _INC_SSM_OBSERVER_
 
 #include <libssm.h>
 #include <ssm.hpp>

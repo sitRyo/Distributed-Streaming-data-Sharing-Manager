@@ -10,7 +10,7 @@ int main() {
 
   std::vector<Stream> subscribers;
   subscribers.push_back({SNAME_INT, 0, sizeof(int), 0});
-  sub.add_subscriber(subscribers);
+  sub.add_stream(subscribers);
   sub.start();
 
   int cnt = 0;

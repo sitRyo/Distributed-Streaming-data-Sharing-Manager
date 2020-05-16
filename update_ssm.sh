@@ -22,12 +22,26 @@ if [[ $option = "-fixed" ]]; then
   ./configure 
 fi
 
-if [[ $option = "-help" ]]; then
-  echo "help" 
-  echo "-fixed: Autotools, configure実行"
-  echo "-help: helpメッセージを表示"
+if [[ $option = "-distclean" ]]; then
+  sudo make distclean
   exit 0
 fi
+
+if [[ $option = "-clean" ]]; then
+  sudo make clean
+  exit 0
+fi
+
+if [[ $option = "-help" ]]; then
+  echo "help" 
+  echo "-fixed     :   Autotools, configure実行"
+  echo "-clean     :   make cleanを実行"
+  echo "-distclean :   make distcleanを実行"
+  echo "-help      :   helpメッセージを表示"
+  exit 0
+fi
+
+
 
 sudo make CFLAGS="-Wno-error" CXXFLAGS="-Wno-error"
 
