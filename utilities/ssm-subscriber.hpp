@@ -73,7 +73,7 @@ apply(Fn&& f, Tuple&& t) {
 /**
  * @brief impl
  */
-template <typename... Args, std::size_t... Indices>
+template <class... Args, std::size_t... Indices>
 auto vector_to_tuple_impl(const std::vector<void *>& v, std::tuple<Args...> tpl, std::index_sequence<Indices...>) {
   return std::make_tuple(
     * (reinterpret_cast<typename std::tuple_element<Indices, decltype(tpl)>::type *> (v[Indices]))...
@@ -83,7 +83,7 @@ auto vector_to_tuple_impl(const std::vector<void *>& v, std::tuple<Args...> tpl,
 /**
  * @brief vectorをtupleに変換する。
  */
-template <std::size_t N, typename... Args>
+template <std::size_t N, class... Args>
 auto vector_to_tuple(const std::vector<void *>& v, std::tuple<Args...> tpl) {
   return vector_to_tuple_impl(v, tpl, std::make_index_sequence<N>());
 }
@@ -113,8 +113,45 @@ struct ShmInfo {
   {}
 };
 
+struct SubscriberSet {
+  // 購読するストリーム名
+  ssm_api_pair stream_info;
+  
+  // 条件
+  int command;
+};
+
 class SubscriberBase {
+protected:
+  // stream情報
+  std::vector<SubscriberSet> subscriber_set;
+
+  // serial number
+  uint32_t serial_number;
+
+  SubscriberBase(std::vector<SubscriberSet>& _subscriber_set, uint32_t _serial_number) : subscriber_set(_subscriber_set), serial_number(_serial_number) 
+  {}
+
+public:
+  
+  /**
+   * @brief callbackを実行する。
+   */
   virtual void invoke() = 0;
+  
+  /**
+   * @brief serial番号を取得
+   */
+  inline uint32_t get_serial_number() {
+    return serial_number;
+  }
+
+  /**
+   * @brief stream情報を取得
+   */
+  inline std::vector<SubscriberSet> get_subscriber_set() {
+    return subscriber_set;
+  }
 };
 
 /**
@@ -137,19 +174,19 @@ class Subscriber : public SubscriberBase {
   /**
    * @brief shm_info_ptrからdata, propertyを抽出してvectorを作成
    */
-  std::vector<void *> create_data_vector() {
+  void create_data_vector() {
     for (auto shm : shm_info_ptr) {
       shm_info.push_back(shm->data);
       shm_info.push_back(shm->property);
     }
   }
+
 public:
 
-  Subscriber(std::vector<std::shared_ptr<ShmInfo>> _shm_info, std::function<void(Strm...)> _callback) 
-  : shm_info_ptr(_shm_info), callback(_callback){
+  Subscriber(std::vector<std::shared_ptr<ShmInfo>> _shm_info, std::function<void(Strm...)> _callback, uint32_t _serial_number, SubscriberSet _subscriber_set) 
+  : shm_info_ptr(_shm_info), callback(_callback), SubscriberBase(_subscriber_set, _serial_number) {
     // data, propertyへのポインタvector作成
-    shm_info = create_data_vector();
-
+    create_data_vector();
     auto tpl = vector_to_tuple<sizeof...(Strm)>(shm_info, data_property);
   }
 
@@ -231,6 +268,10 @@ class SSMSubscriber {
   int recv_msg() {
     format_obsv_msg();
     int len = msgrcv(msq_id, obsv_msg.get(), OBSV_MSG_SIZE, pid, 0);
+    if (obsv_msg->res_type == OBSV_FAIL) {
+      fprintf(stderr, "ERROR: RESTYPE is OBSV_FAIL\n");
+      return -1;
+    }
     return len;
   }
 
@@ -246,7 +287,7 @@ class SSMSubscriber {
     return true;    
   }
 
-  bool send_subscriber() {
+  bool send_stream() {
     format_obsv_msg();
   
     for (auto&& element : name) {
@@ -256,7 +297,7 @@ class SSMSubscriber {
       serialize_4byte_data(element.property_size);
     }
 
-    if (!send_msg(OBSV_SUBSCRIBE)) {
+    if (!send_msg(OBSV_ADD_STREAM)) {
       // Error handling?
       return false;
     }
@@ -270,6 +311,75 @@ class SSMSubscriber {
 
     register_shm_info(name);
     name.clear();
+    return true;
+  }
+
+  /**
+   * @brief subscriberのsizeを送信する。
+   */
+  bool send_subscriber_size() {
+    format_obsv_msg();
+    serialize_4byte_data(subscriber.size());
+    send_msg(OBSV_SUBSCRIBE);
+
+    return recv_msg() > 0;
+  }
+
+  /**
+   * @brief subscriberの情報を送信する。
+   * 1. serial_number
+   * 2. 監視するSSMApiの数
+   * 3. stream name送信
+   * 4. stream id送信 (int32_t)
+   * 5. commmand (int32_t)
+   */
+  bool send_subscriber_stream_info() {
+    for (SubscriberBase& s_info : subscriber) {
+      // Subscriberを1つずつ送信する。
+      format_obsv_msg();
+
+      // serial_number
+      serialize_4byte_data(s_info.get_serial_number());
+
+      // 1つのSubscriberが購読しているssmapiの情報と条件
+      auto subscriber_set = s_info.get_subscriber_set();
+      auto size = subscriber_set.size();
+      // ssm_apiの数
+      serialize_4byte_data(size);
+      for (auto& sub_set : subscriber_set) {
+        // stream_name
+        serialize_string(sub_set.stream_info.first);
+        // stream_id
+        serialize_4byte_data(sub_set.stream_info.second);
+        // stream_command(条件)
+        serialize_4byte_data(sub_set.command);
+      }
+
+      send_msg(OBSV_SUBSCRIBE);
+
+      if (recv_msg() < 0) {
+        return false;
+      }
+    }
+
+    // 全部の情報を送信終わった
+    return true;
+  }
+
+  /**
+   * @brief subscriber情報を送信する。
+   * 1. 何個Subscriberを作るか
+   * 2. 1つのSubscriberずつ、StreamInfo, Command(int)ずつ送る。
+   */
+  bool send_subscriber() {
+    format_obsv_msg();
+
+    // Subscriberの数を送信
+    send_subscriber_size();
+
+    // Subscriberの情報を送信
+    send_subscriber_stream_info();
+
     return true;
   }
 
@@ -344,18 +454,46 @@ public:
   }
 
   bool start() {
+    // Stream情報を送信
+    send_stream();
+
+    // Subscriber情報を送信
     send_subscriber();
-    format_obsv_msg();
-    
+
+    format_obsv_msg();    
     if (!send_msg(OBSV_START)) {
       return false;
     }
     
-    if (!recv_msg()) {
+    if (recv_msg() < 0) {
       return false;
     }
 
     printf("start\n");
+
+    msq_loop();
+  }
+
+  void msq_loop() {
+    int len = -1;
+    while (true) {
+      len = recv_msg();
+      if (len < 0) {
+        fprintf(stderr, "ERROR: msgrcv\n");
+        return;
+      }
+
+      switch (obsv_msg->cmd_type) {
+        // 通知
+        case OBSV_NOTIFY: {
+          
+        }
+      }
+    }
+  }
+
+  void invoke(uint32_t serial_number) {
+    subscriber.at(serial_number).invoke();
   }
 
   void access_subscriber(ssm_api_pair const& p) {
@@ -366,19 +504,25 @@ public:
   /**
   * @brief stream, callback, 条件を登録
   */
-  template <typename ...Args>
-  bool register_subscriber(std::vector<ssm_api_pair> stream, std::function<void(Args...)> callback) {
-    std::vector<std::shared_ptr<ShmInfo>> shm_info;
-    for (auto&& stream_info : stream) {
-      if (shm_info_map.find(stream_info) == shm_info_map.end()) {
-        fprintf(stderr, "ERROR: stream cannot find\n");
+  template <class ...Args>
+  bool register_subscriber(std::vector<SubscriberSet> subscriber_set, std::function<void(Args...)>& callback) {
+    static auto serial_num = 0UL;
+    std::vector<std::shared_ptr<ShmInfo>> sub_stream;
+    
+    for (auto& info : subscriber_set) {
+      auto stream = info.stream_info;
+      auto cmd = info.command;
+
+      auto shm_info = shm_info_map.at(stream);
+      if (shm_info == nullptr) {
+        fprintf(stderr, "ERROR: ssm cannot find.\n");
         return false;
       }
 
-      shm_info.push_back(shm_info_map.at(stream_info));
+      sub_stream.push_back(shm_info);
     }
 
-    Subscriber<Args...> sub(shm_info, callback);
+    Subscriber<Args...> sub(sub_stream, callback, serial_num, subscriber_set);
     subscriber.push_back(sub);
   }
 };
