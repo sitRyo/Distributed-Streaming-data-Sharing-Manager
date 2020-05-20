@@ -162,6 +162,9 @@ class Subscriber : public SubscriberBase {
   // callback
   std::function<void(Strm...)> callback;
 
+  // local condition
+  std::function<bool()> local_condition;
+
   // ShmInfoの共有ポインタ
   std::vector<std::shared_ptr<ShmInfo>> shm_info_ptr;
 
@@ -183,15 +186,17 @@ class Subscriber : public SubscriberBase {
 
 public:
 
-  Subscriber(std::vector<std::shared_ptr<ShmInfo>> _shm_info, std::function<void(Strm...)> _callback, uint32_t _serial_number, SubscriberSet _subscriber_set) 
-  : shm_info_ptr(_shm_info), callback(_callback), SubscriberBase(_subscriber_set, _serial_number) {
+  Subscriber(std::vector<std::shared_ptr<ShmInfo>> _shm_info, std::function<void(Strm...)> _callback, std::function<bool()> _local_condition, uint32_t _serial_number, SubscriberSet _subscriber_set) 
+  : shm_info_ptr(_shm_info), local_condition(_local_condition), callback(_callback), SubscriberBase(_subscriber_set, _serial_number) {
     // data, propertyへのポインタvector作成
     create_data_vector();
     auto tpl = vector_to_tuple<sizeof...(Strm)>(shm_info, data_property);
   }
 
   void invoke() override {
-    apply(callback, data_property);
+    if (local_condition()) {
+      apply(callback, data_property);
+    }
   }
 };
 
@@ -543,7 +548,7 @@ public:
   * @brief stream, callback, 条件を登録
   */
   template <class ...Args>
-  bool register_subscriber(std::vector<SubscriberSet> subscriber_set, std::function<void(Args...)>& callback) {
+  bool register_subscriber(std::vector<SubscriberSet> subscriber_set, std::function<bool()> local_condition, std::function<void(Args...)>& callback) {
     static auto serial_num = 0UL;
     std::vector<std::shared_ptr<ShmInfo>> sub_stream;
     
@@ -560,7 +565,7 @@ public:
       sub_stream.push_back(shm_info);
     }
 
-    Subscriber<Args...> sub(sub_stream, callback, serial_num, subscriber_set);
+    Subscriber<Args...> sub(sub_stream, callback, local_condition, serial_num, subscriber_set);
     subscriber.push_back(sub);
   }
 };
