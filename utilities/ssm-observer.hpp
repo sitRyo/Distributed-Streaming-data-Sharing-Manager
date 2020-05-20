@@ -61,25 +61,88 @@ struct SSMApiInfo {
   key_t shm_property_key; // int32_t
   std::mutex mtx;
 
-  SSMApiInfo();
-  ~SSMApiInfo(); // destructorが必ず実行されるものではないことに注意(SIGINTとかだったっけ)
+  int32_t tid;
 
-  bool read_last();
+  SSMApiInfo();
+  ~SSMApiInfo() = default;
+  
+  // mutexはコピーできないのでcopy constructorはdelete
+  SSMApiInfo(const SSMApiInfo&) = default;
+  SSMApiInfo& operator=(const SSMApiInfo&) = default;
+  // moveはいらない。
+
+  int32_t read_last(int32_t opponent_tid);
   bool open(SSM_open_mode mode);
   bool setDataBuffer();
 };
 
-struct Subscriber : public Thread {
-  std::vector<std::shared_ptr<SSMApiInfo>> ssm_api;
-  pid_t pid;
-  bool isSubscribe;
-  // 条件のメンバ(std::function)
-  // std::vector<std::function> cond; みたいな
-  Subscriber() {};
-  explicit Subscriber(pid_t const& _pid) : pid(_pid), isSubscribe(false) {}
-  void* run(void *args) override;
-  void subscribe_loop();
+/* Subscriber */
+
+struct SubscriberSet {
+  std::shared_ptr<SSMApiInfo> ssm_api;
+  int command; // 条件
+
+  /* 条件など */
+  int32_t top_tid;
+
+  SubscriberSet(std::shared_ptr<SSMApiInfo> const& _ssm_api, int _command);
+  ~SubscriberSet() = default;
+
+  // copyはdefalut指定
+  SubscriberSet(SubscriberSet const&) = default;
+  SubscriberSet& operator=(SubscriberSet const&) = default;
+
+  // moveもdefault
+  SubscriberSet(SubscriberSet&&) = default;
+  SubscriberSet& operator=(SubscriberSet&&) = default;
 };
+
+class Subscriber {
+  std::vector<SubscriberSet> subscriber_set;
+  uint32_t serial_number;
+public:
+  bool good();
+  Subscriber(uint32_t _serial_number);
+  ~Subscriber() = default;
+
+  // copy
+  Subscriber(const Subscriber&) = default;
+  Subscriber& operator=(const Subscriber&) = default;
+
+  // moveはdefault指定(noexcept)
+  Subscriber(Subscriber&&) = default;
+  Subscriber& operator=(Subscriber&&) = default;
+
+  inline void set_subscriber_set(std::vector<SubscriberSet> const& subscriber_set);
+  inline void set_subscriber_set(std::vector<SubscriberSet> && subscriber_set);
+  inline uint32_t get_serial_number();
+
+  int is_satisfy_condition();
+};
+
+class SubscriberHost : public Thread {
+  pid_t pid;
+  int32_t msq_id;
+  std::vector<Subscriber> subscriber;
+  std::unique_ptr<ssm_obsv_msg> obsv_msg;
+  uint32_t count;
+  
+  void loop();
+public:
+  // defined in Thread class
+  // Thread::start();
+  // Thread::wait();
+
+  void* run(void* args) override;
+  
+  SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id);
+  inline void set_subscriber(Subscriber const& subscriber);
+  inline void set_subscriber(Subscriber&& subscriber);
+  bool send_msg(OBSV_msg_type const type, pid_t const& s_pid);
+  bool recv_msg();
+};
+
+/* Subscriber関連ここまで */
 
 class SSMObserver {  
 private:
@@ -89,19 +152,31 @@ private:
   std::unique_ptr<ssm_obsv_msg> obsv_msg;
   uint32_t padding_size;
   std::unordered_map<ssm_api_pair, std::shared_ptr<SSMApiInfo>, SSMApiHash, SSMApiEqual> api_map; // TODO: unique_ptrにできるか検討
-  std::unordered_map<pid_t, std::unique_ptr<Subscriber>> subscriber_map;
+  std::unordered_map<pid_t, std::unique_ptr<SubscriberHost>> subscriber_map;
 
   int32_t get_shared_memory(uint32_t const& size, void** data);
   bool serialize_raw_data(uint32_t const& size, void* data);
   bool serialize_4byte_data(int32_t data);
+  
+  // 4byte指定位置から取得するだけ。
   int32_t deserialize_4byte_data(char* buf);
+
+  int32_t deserialize_4byte(char** buf);
+  int64_t deserialize_8byte(char** buf);
+  std::string deserialize_string(char** buf);
+  // std::string deserialize_raw_data(char** buf); 実装するかも？
+
   int recv_msg();
   int send_msg(OBSV_msg_type const& type, pid_t const& s_pid);
   bool allocate_obsv_msg();
   void format_obsv_msg();
-  bool create_subscriber(pid_t const& pid);
-  std::vector<Stream> extract_subscriber_from_msg();
-  bool register_subscriber(pid_t const& pid, std::vector<Stream> const& stream_data);
+  bool create_subscriber(pid_t const& pid, uint32_t count);
+
+  std::vector<Stream> extract_stream_from_msg();
+  uint32_t extract_subscriber_count();
+
+  bool register_stream(pid_t const& pid, std::vector<Stream> const& stream_data);
+  bool register_subscriber(pid_t const& pid);
   bool create_ssm_api_info(Stream const& stream_data);
   void escape(int sig_num);
 public:

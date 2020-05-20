@@ -19,6 +19,7 @@ using std::cout;
 using std::endl;
 
 int verbose_mode = 1;
+
 /**
  * @brief SIGINT時に実行する関数
  * Subscriber側ではmsgqueへの参照を消さなくていい？
@@ -39,10 +40,117 @@ void SSMObserver::escape( int sig) {
 }
 */
 
-SSMApiInfo::SSMApiInfo() : stream_name(""), stream_id(-1), data(nullptr), property(nullptr)
+/**
+ * @brief SubscriberHostのコンストラクタ。Hostのsubscriberを管理
+ */
+SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id) : pid(_pid), count(_count), msq_id(_msq_id) {
+  subscriber.reserve(_count);
+
+  auto size = sizeof(ssm_obsv_msg);
+  obsv_msg.reset((ssm_obsv_msg *) malloc(sizeof(ssm_obsv_msg) + sizeof(char) * _padding));
+  if (!obsv_msg) {
+		fprintf(stderr, "ERROR: memory allocate");
+  }
+}
+
+/**
+ * @brief Threadを実行。
+ */
+void* SubscriberHost::run(void* args) {
+  printf("opponent pid: %d, thread start\n", pid);
+  loop();
+}
+
+/**
+ * @brief ループ
+ */
+void SubscriberHost::loop() {
+  for (auto& sub : subscriber) {
+    int32_t serial_number = -1;
+    if ((serial_number = sub.is_satisfy_condition()) != -1) {
+      send_msg(OBSV_NOTIFY, this->pid);
+      // TODO: recv_msg() 必要？一方向で良い？実行を確認できる？
+    }
+  }
+}
+
+inline void SubscriberHost::set_subscriber(Subscriber const& subscriber) {
+  this->subscriber.emplace_back(subscriber);
+}
+
+inline void SubscriberHost::set_subscriber(Subscriber&& subscriber) {
+  this->subscriber.emplace_back(std::move(subscriber));
+}
+
+bool SubscriberHost::send_msg(OBSV_msg_type const type, pid_t const& s_pid) {
+  obsv_msg->msg_type = s_pid;
+  obsv_msg->cmd_type = type;
+  obsv_msg->pid      = pid; // バグるかも。というか想定外の値かもしれない。
+
+  if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
+    fprintf(stderr, "errno: %d\n", errno);
+    perror("msgsnd");
+    fprintf(stderr, "msq send err in SubscriberHost\n");
+    return false;
+  }
+
+  return true;
+}
+
+bool SubscriberHost::recv_msg() {
+  int len = msgrcv(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, OBSV_MSQ_CMD, 0);
+  return len;
+}
+
+Subscriber::Subscriber(uint32_t _serial_number) : serial_number(_serial_number) {}
+
+inline void Subscriber::set_subscriber_set(std::vector<SubscriberSet> const& subscriber_set) {
+  this->subscriber_set = subscriber_set;
+}
+
+inline void Subscriber::set_subscriber_set(std::vector<SubscriberSet>&& subscriber_set) {
+  this->subscriber_set = std::move(subscriber_set);
+}
+
+inline uint32_t Subscriber::get_serial_number() {
+  return this->serial_number;
+}
+
+/**
+ * @brief Subscriberに通知する条件を満たしたか？
+ */
+int Subscriber::is_satisfy_condition() {
+  bool is_satisfy = true;
+
+  for (auto& sub_set : subscriber_set) {
+    auto& api = sub_set.ssm_api;
+    auto cmd = static_cast<OBSV_cond_type>(sub_set.command);
+    
+    switch (cmd) {
+      case OBSV_COND_LATEST: {
+        auto tid = api->read_last(sub_set.top_tid);
+        if (tid > sub_set.top_tid) {
+          sub_set.top_tid = tid;
+        } else {
+          is_satisfy = false;
+        }
+        break;
+      }
+
+      default: {
+        // do nothing
+      }
+    }
+  }
+
+  return (is_satisfy) ? this->serial_number : -1 ;
+}
+
+SubscriberSet::SubscriberSet(std::shared_ptr<SSMApiInfo> const& _ssm_api, int _command) : ssm_api(_ssm_api), command(_command) 
 {}
 
-SSMApiInfo::~SSMApiInfo() {}
+SSMApiInfo::SSMApiInfo() : stream_name(""), stream_id(-1), data(nullptr), property(nullptr), tid(-1)
+{}
 
 bool SSMApiInfo::open(SSM_open_mode mode) {
   if (stream_name.empty() || stream_id == -1) {
@@ -60,24 +168,18 @@ bool SSMApiInfo::open(SSM_open_mode mode) {
 }
 
 /**
- * @brief read_lastを行う(atomic)
+ * @brief read_lastを行い, timeidを返す(atomic)
  */
-bool SSMApiInfo::read_last() {
+int32_t SSMApiInfo::read_last(int32_t opponent_tid) {
   std::lock_guard<std::mutex> lock(mtx);
-  ssm_api_base.readLast();
-}
-
-void* Subscriber::run(void *args) {
-  this->subscribe_loop();
-}
-
-void Subscriber::subscribe_loop() {
-  // ここで条件を検索。
-  while (true) {
-    for (auto&& api : ssm_api) {
-      api->read_last();
-    }
+  auto tid_now = getTID_top(ssm_api_base.getSSMId());
+  
+  if (opponent_tid < tid_now && this->tid != tid_now) {
+    ssm_api_base.readLast();
   }
+  
+  this->tid = tid_now;
+  return ssm_api_base.timeId;
 }
 
 SSMObserver::SSMObserver() : pid(getpid()), shm_key_num(0) {}
@@ -110,6 +212,9 @@ bool SSMObserver::observer_init() {
   return true;
 }
 
+/**
+ * obsv_msgを確保
+ */
 bool SSMObserver::allocate_obsv_msg() {
 	auto size = sizeof(ssm_obsv_msg);
 	auto padding = OBSV_MSG_SIZE - size;
@@ -122,6 +227,7 @@ bool SSMObserver::allocate_obsv_msg() {
 	padding_size = padding;
 	return true;
 }
+
 
 void SSMObserver::format_obsv_msg() {
 	obsv_msg->msg_type = 0;
@@ -159,33 +265,46 @@ int SSMObserver::send_msg(OBSV_msg_type const& type, pid_t const& s_pid) {
   return true;
 }
 
-/*
-bool SSMObserver::serialize_raw_data(uint32_t const& size, void* data) {
-  auto& idx = obsv_msg->msg_size;
-  auto left = 0;
-
-  char* p = (char *) data;
-  // printf("%p\n", p);
-
-  // 最後にnull文字が入るのでpadding - 1
-  for (; idx < padding_size - 1 && left < size; ++idx, ++left) {
-    printf("%d ", p[left]);
-    obsv_msg->body[idx] = p[left];
-  }
-  printf("\n");
-  if (left < size) {
-    fprintf(stderr, "ERROR: message size is too large.\n");
-    return false;
-  }
-
-  obsv_msg->body[idx++] = '\0';
-  return true;
-}
-*/
-
+/**
+ * @brief ポインタの先頭から4byte分取得。アドレスは加算しない
+ */
 int32_t SSMObserver::deserialize_4byte_data(char* buf) {
   int32_t res = *reinterpret_cast<int32_t *>(buf);
   return res;
+}
+
+/**
+ * @brief ポインタの先頭から4byte分取得。アドレスも4byte分進める。
+ */
+int32_t SSMObserver::deserialize_4byte(char** buf) {
+  int32_t res = *reinterpret_cast<int32_t *>(*buf); 
+  *buf += 4;
+  return res;
+}
+
+/**
+ * @brief ポインタの先頭から8byte分取得。アドレスも8byte分進める。
+ */
+int64_t SSMObserver::deserialize_8byte(char** buf) {
+  int64_t res = *reinterpret_cast<int64_t *>(*buf); 
+  *buf += 8;
+  return res;
+}
+
+/**
+ * @brief ポインタの先頭からnull文字が来るまでデータを文字列として取得。アドレスも進める。
+ */
+std::string SSMObserver::deserialize_string(char** buf) {
+  std::string data;
+  while (**buf != '\0') {
+    data += **buf;
+    *buf += 1;
+  }
+  
+  // null文字分を飛ばす
+  *buf += 1;
+
+  return data;
 }
 
 bool SSMObserver::serialize_4byte_data(int32_t data) {
@@ -211,28 +330,29 @@ void SSMObserver::msq_loop() {
   while (true) {
     len = recv_msg();
     s_pid = obsv_msg->pid;
+
+    // msg_sizeは必ずpadding_size以内
+    if (obsv_msg->msg_size > padding_size) {
+      fprintf(stderr, "ERROR: msgsize is too large\n");
+      send_msg(OBSV_FAIL, s_pid);
+      continue;
+    }
     
     switch (obsv_msg->cmd_type) {
       // Subscriberの追加
       case OBSV_INIT: {    
         printf("OBSV_INIT pid = %d\n", s_pid);
         // subscriberを追加
-        create_subscriber(obsv_msg->pid);
         format_obsv_msg();
         send_msg(OBSV_RES, s_pid);
         break;
       }
 
-      case OBSV_SUBSCRIBE: {
-        printf("OBSV_SUBSCRIBE pid = %d\n", s_pid);
-        auto stream_data = extract_subscriber_from_msg();
-        /*for (auto itr : stream_data) {
-          cout << itr.data_size << endl;
-          cout << itr.property_size << endl;
-          cout << itr.stream_id << endl;
-          cout << itr.stream_name << endl;
-        }*/
-        if (!register_subscriber(obsv_msg->pid, stream_data)) {
+      case OBSV_ADD_STREAM: {
+        printf("OBSV_ADD_STREAM pid = %d\n", s_pid);
+        auto stream_data = extract_stream_from_msg();
+        
+        if (!register_stream(obsv_msg->pid, stream_data)) {
           send_msg(OBSV_FAIL, s_pid);
         }
         
@@ -249,12 +369,20 @@ void SSMObserver::msq_loop() {
         break;
       }
 
-      case OBSV_START: {
-        printf("OBSV_START pid = %d\n", s_pid);
-        auto& sub = subscriber_map.at(s_pid);
-        sub->start(nullptr);
+      case OBSV_SUBSCRIBE: {
+        printf("OBSV_STREAM pid = %d\n", s_pid);
+        
+        // msg内のsubscriberを登録
+        register_subscriber(s_pid);
 
         send_msg(OBSV_RES, s_pid);
+      }
+
+      case OBSV_START: {
+        printf("OBSV_START pid = %d\n", s_pid);
+        
+        // thread start
+        subscriber_map.at(s_pid)->start(nullptr);
         break;
       }
 
@@ -265,7 +393,7 @@ void SSMObserver::msq_loop() {
   }
 }
 
-std::vector<Stream> SSMObserver::extract_subscriber_from_msg() {
+std::vector<Stream> SSMObserver::extract_stream_from_msg() {
   std::vector<Stream> stream_data;
   auto size = obsv_msg->msg_size;
   char* data = obsv_msg->body;
@@ -291,19 +419,70 @@ std::vector<Stream> SSMObserver::extract_subscriber_from_msg() {
   return stream_data;
 }
 
-bool SSMObserver::create_subscriber(pid_t const& pid) {
-  subscriber_map[pid] = std::make_unique<Subscriber>(pid); // 例外を投げることがある(try catchをすべき?)
+/**
+ * @brief SubscriberHostを作成
+ */
+bool SSMObserver::create_subscriber(pid_t const& pid, uint32_t count) {
+  subscriber_map.insert({pid, std::make_unique<SubscriberHost>(pid, count, padding_size, msq_id)}); // 例外を投げることがある(try catchをすべき?)
   return true;
 }
 
-bool SSMObserver::register_subscriber(pid_t const& pid, std::vector<Stream> const& stream_data) {
-  auto& sub = subscriber_map[pid];
+/**
+ * @brief Subscriberの数を取得
+ */
+uint32_t SSMObserver::extract_subscriber_count() {
+  auto num = deserialize_4byte_data(obsv_msg->body);
+  return static_cast<uint32_t>(num);
+}
+
+/**
+ * @brief Subscriberからのメッセージ解析
+ */
+bool SSMObserver::register_subscriber(pid_t const& pid) {
+  // SubscriberHostが作られていなければ作ってreserve
+  if (subscriber_map.find(pid) == subscriber_map.end()) {
+    auto count = extract_subscriber_count();
+    create_subscriber(pid, count);
+    return true;
+  }
+
+  char*  tmp = obsv_msg->body;
+  char** buf = &tmp;
+
+  // serial_number
+  auto serial_number = deserialize_4byte(buf);
+
+  // Subscriberをシリアルナンバーから生成
+  Subscriber sub(serial_number);
+  // subscribeするssmapiの数
+  uint32_t ssm_api_num = deserialize_4byte(buf);
+  std::vector<SubscriberSet> sub_set;
+  sub_set.reserve(ssm_api_num);
+  for (int i = 0; i < serial_number; ++i) {
+    auto stream_name = deserialize_string(buf);
+    auto stream_id   = deserialize_4byte(buf);
+    auto command     = deserialize_4byte(buf);
+
+    SubscriberSet ss(api_map.at({stream_name, stream_id}), command);
+
+    sub_set.push_back(ss);
+  }
+
+  // subscriberにsubscribersetを登録
+  sub.set_subscriber_set(std::move(sub_set));
+  // subscriberの全情報をsubscriberhostに登録
+  subscriber_map.at(pid)->set_subscriber(std::move(sub));
+
+  return true;
+}
+
+bool SSMObserver::register_stream(pid_t const& pid, std::vector<Stream> const& stream_data) {
   for (auto&& data : stream_data) {
     if (!create_ssm_api_info(data)) {
       return false;
     }
 
-    sub->ssm_api.push_back(api_map.at({data.stream_name, data.stream_id}));
+    // sub->ssm_api.push_back(api_map.at({data.stream_name, data.stream_id}));
     
     printf("stream_name: %s\n", data.stream_name.c_str());
     printf("stream_id:   %d\n", data.stream_id);
@@ -312,6 +491,9 @@ bool SSMObserver::register_subscriber(pid_t const& pid, std::vector<Stream> cons
   return true;
 }
 
+/**
+ * @brief SSMApiを作成
+ */
 bool SSMObserver::create_ssm_api_info(Stream const& stream_data) {
   ssm_api_pair api_key = std::make_pair(stream_data.stream_name, stream_data.stream_id);
   // SSMApiが作られていない場合
@@ -346,6 +528,9 @@ bool SSMObserver::create_ssm_api_info(Stream const& stream_data) {
   return true;
 }
 
+/**
+ * @brief 共有メモリを確保
+ */
 int32_t SSMObserver::get_shared_memory(uint32_t const& size, void** data) {
   /// TODO: 共有メモリセグメントの残メモリ量を確認する。
   // cout << size << endl;
