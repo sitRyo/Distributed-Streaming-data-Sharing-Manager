@@ -43,7 +43,9 @@ void SSMObserver::escape( int sig) {
 /**
  * @brief SubscriberHostのコンストラクタ。Hostのsubscriberを管理
  */
-SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id) : pid(_pid), count(_count), msq_id(_msq_id) {
+SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id) 
+: pid(_pid), count(_count), padding_size(_padding), msq_id(_msq_id) 
+{
   subscriber.reserve(_count);
 
   auto size = sizeof(ssm_obsv_msg);
@@ -68,6 +70,8 @@ void SubscriberHost::loop() {
   for (auto& sub : subscriber) {
     int32_t serial_number = -1;
     if ((serial_number = sub.is_satisfy_condition()) != -1) {
+      format_obsv_msg();
+      serialize_4byte_data(serial_number);
       send_msg(OBSV_NOTIFY, this->pid);
       // TODO: recv_msg() 必要？一方向で良い？実行を確認できる？
     }
@@ -80,6 +84,15 @@ inline void SubscriberHost::set_subscriber(Subscriber const& subscriber) {
 
 inline void SubscriberHost::set_subscriber(Subscriber&& subscriber) {
   this->subscriber.emplace_back(std::move(subscriber));
+}
+
+void SubscriberHost::format_obsv_msg() {
+	obsv_msg->msg_type = 0;
+	obsv_msg->res_type = 0;
+	obsv_msg->cmd_type = 0;
+	obsv_msg->pid      = 0;
+	obsv_msg->msg_size = 0;
+	memset(obsv_msg.get() + sizeof(ssm_obsv_msg), 0, padding_size);
 }
 
 bool SubscriberHost::send_msg(OBSV_msg_type const type, pid_t const& s_pid) {
@@ -100,6 +113,23 @@ bool SubscriberHost::send_msg(OBSV_msg_type const type, pid_t const& s_pid) {
 bool SubscriberHost::recv_msg() {
   int len = msgrcv(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, OBSV_MSQ_CMD, 0);
   return len;
+}
+
+bool SubscriberHost::serialize_4byte_data(int32_t data) {
+  // メッセージに書き込めないときはエラー(呼び出し元でerror handlingしないと(面倒))
+  if (sizeof(int32_t) + obsv_msg->msg_size >= padding_size) {
+    if (verbose_mode > 0) {
+      fprintf(stderr, "VERBOSE: message body is too large.\n");
+    }
+    return false;
+  }
+
+  auto& size = obsv_msg->msg_size;
+  // メッセージBodyの先頭から4byteにデータを書き込む。
+  *reinterpret_cast<int32_t *>(&obsv_msg->body[size]) = data;
+  // 埋めた分だけメッセージサイズを++
+  size += 4;
+  return true;
 }
 
 Subscriber::Subscriber(uint32_t _serial_number) : serial_number(_serial_number) {}

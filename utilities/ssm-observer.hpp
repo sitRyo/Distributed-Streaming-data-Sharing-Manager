@@ -126,6 +126,7 @@ class SubscriberHost : public Thread {
   std::vector<Subscriber> subscriber;
   std::unique_ptr<ssm_obsv_msg> obsv_msg;
   uint32_t count;
+  uint32_t padding_size;
   
   void loop();
 public:
@@ -140,6 +141,8 @@ public:
   inline void set_subscriber(Subscriber&& subscriber);
   bool send_msg(OBSV_msg_type const type, pid_t const& s_pid);
   bool recv_msg();
+  void format_obsv_msg();
+  bool serialize_4byte_data(int32_t data);
 };
 
 /* Subscriber関連ここまで */
