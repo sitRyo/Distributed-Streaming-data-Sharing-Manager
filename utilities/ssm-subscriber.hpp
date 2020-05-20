@@ -383,6 +383,40 @@ class SSMSubscriber {
     return true;
   }
 
+  /**
+ * @brief ポインタの先頭から4byte分取得。アドレスも4byte分進める。
+ */
+  int32_t deserialize_4byte(char** buf) {
+    int32_t res = *reinterpret_cast<int32_t *>(*buf); 
+    *buf += 4;
+    return res;
+  }
+
+  /**
+   * @brief ポインタの先頭から8byte分取得。アドレスも8byte分進める。
+   */
+  int64_t deserialize_8byte(char** buf) {
+    int64_t res = *reinterpret_cast<int64_t *>(*buf); 
+    *buf += 8;
+    return res;
+  }
+
+  /**
+   * @brief ポインタの先頭からnull文字が来るまでデータを文字列として取得。アドレスも進める。
+   */
+  std::string deserialize_string(char** buf) {
+    std::string data;
+    while (**buf != '\0') {
+      data += **buf;
+      *buf += 1;
+    }
+    
+    // null文字分を飛ばす
+    *buf += 1;
+
+    return data;
+  }
+
   bool serialize_4byte_data(int32_t data) {
     // メッセージに書き込めないときはエラー(呼び出し元でerror handlingしないと(面倒))
     if (sizeof(int32_t) + obsv_msg->msg_size >= padding_size) {
@@ -486,7 +520,11 @@ public:
       switch (obsv_msg->cmd_type) {
         // 通知
         case OBSV_NOTIFY: {
-          
+          char*  tmp = obsv_msg->body;
+          char** buf = &tmp;
+
+          auto serial_number = deserialize_4byte(buf);
+          invoke(serial_number);
         }
       }
     }
