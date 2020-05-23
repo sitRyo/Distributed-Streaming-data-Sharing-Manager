@@ -19,10 +19,13 @@
 #include <functional>
 #include <tuple>
 #include <utility>
+#include <iostream>
 
 #include <cstring>
 #include <cerrno>
 #include <cstdlib>
+
+#include "dssm-utility.hpp"
 
 int32_t verbose_mode = 1;
 
@@ -46,11 +49,12 @@ struct SSMApiEqual {
 
 /**
  * @brief タプルを関数の引数に展開し, 関数を実行。
+ * 本当はSFINAEでテンプレートのオーバーライドをするべき。
  */
 template <class Fn, class Tuple, size_t... _Idx>
 constexpr decltype(auto)
 apply_impl(Fn&& f, Tuple&& t, std::index_sequence<_Idx...>) {
-	return f(std::get<_Idx>(std::forward<Tuple>(t))...);
+	return f(* std::get<_Idx>(std::forward<Tuple>(t))...);
 }
 
 /**
@@ -76,7 +80,7 @@ apply(Fn&& f, Tuple&& t) {
 template <class... Args, std::size_t... Indices>
 auto vector_to_tuple_impl(const std::vector<void *>& v, std::tuple<Args...> tpl, std::index_sequence<Indices...>) {
   return std::make_tuple(
-    * (reinterpret_cast<typename std::tuple_element<Indices, decltype(tpl)>::type *> (v[Indices]))...
+    (reinterpret_cast<typename std::tuple_element<Indices, decltype(tpl)>::type> (v[Indices]))...
   );
 }
 
@@ -118,7 +122,11 @@ struct SubscriberSet {
   ssm_api_pair stream_info;
   
   // 条件
-  int command;
+  OBSV_cond_type command;
+
+  SubscriberSet() {}
+  explicit SubscriberSet(Stream const& _stream, OBSV_cond_type const _command) 
+    : stream_info({_stream.stream_name, _stream.stream_id}), command(_command) {} 
 };
 
 class SubscriberBase {
@@ -129,7 +137,10 @@ protected:
   // serial number
   uint32_t serial_number;
 
-  SubscriberBase(std::vector<SubscriberSet>& _subscriber_set, uint32_t _serial_number) : subscriber_set(_subscriber_set), serial_number(_serial_number) 
+  SubscriberBase(
+    std::vector<SubscriberSet> const& _subscriber_set,
+    uint32_t _serial_number
+  ) : subscriber_set(_subscriber_set), serial_number(_serial_number) 
   {}
 
 public:
@@ -137,7 +148,7 @@ public:
   /**
    * @brief callbackを実行する。
    */
-  virtual void invoke() = 0;
+  virtual void invoke() {};
   
   /**
    * @brief serial番号を取得
@@ -169,7 +180,7 @@ class Subscriber : public SubscriberBase {
   std::vector<std::shared_ptr<ShmInfo>> shm_info_ptr;
 
   // dataとpropertyの順でデータが入ったtuple
-  std::tuple<Strm...> data_property;
+  std::tuple<std::add_pointer_t<Strm>...> data_property_tpl;
 
   // shm_info_ptrから作るshm_infoのvoid*が入ったvector
   std::vector<void *> shm_info;
@@ -186,16 +197,22 @@ class Subscriber : public SubscriberBase {
 
 public:
 
-  Subscriber(std::vector<std::shared_ptr<ShmInfo>> _shm_info, std::function<void(Strm...)> _callback, std::function<bool()> _local_condition, uint32_t _serial_number, SubscriberSet _subscriber_set) 
-  : shm_info_ptr(_shm_info), local_condition(_local_condition), callback(_callback), SubscriberBase(_subscriber_set, _serial_number) {
+  Subscriber(
+    std::vector<std::shared_ptr<ShmInfo>> _shm_info,
+    std::function<void(Strm...)> _callback,
+    std::function<bool()> _local_condition,
+    uint32_t _serial_number,
+    std::vector<SubscriberSet> const& _subscriber_set
+  ) : SubscriberBase(_subscriber_set, _serial_number), callback(_callback), local_condition(_local_condition), shm_info_ptr(_shm_info)
+  {
     // data, propertyへのポインタvector作成
     create_data_vector();
-    auto tpl = vector_to_tuple<sizeof...(Strm)>(shm_info, data_property);
+    this->data_property_tpl = vector_to_tuple<sizeof...(Strm)>(shm_info, data_property_tpl);
   }
 
   void invoke() override {
     if (local_condition()) {
-      apply(callback, data_property);
+      apply(callback, data_property_tpl);
     }
   }
 };
@@ -208,7 +225,7 @@ class SSMSubscriber {
   uint32_t padding_size;
   std::vector<Stream> name;
   std::unordered_map<ssm_api_pair, std::shared_ptr<ShmInfo>, SSMApiHash, SSMApiEqual> shm_info_map;
-  std::vector<SubscriberBase> subscriber;
+  std::vector<std::unique_ptr<SubscriberBase>> subscriber;
 
   void format_obsv_msg() {
     obsv_msg->msg_type = 0;
@@ -339,15 +356,15 @@ class SSMSubscriber {
    * 5. commmand (int32_t)
    */
   bool send_subscriber_stream_info() {
-    for (SubscriberBase& s_info : subscriber) {
+    for (std::unique_ptr<SubscriberBase>& s_info : subscriber) {
       // Subscriberを1つずつ送信する。
       format_obsv_msg();
 
       // serial_number
-      serialize_4byte_data(s_info.get_serial_number());
+      serialize_4byte_data(s_info->get_serial_number());
 
       // 1つのSubscriberが購読しているssmapiの情報と条件
-      auto subscriber_set = s_info.get_subscriber_set();
+      auto subscriber_set = s_info->get_subscriber_set();
       auto size = subscriber_set.size();
       // ssm_apiの数
       serialize_4byte_data(size);
@@ -360,6 +377,7 @@ class SSMSubscriber {
         serialize_4byte_data(sub_set.command);
       }
 
+      // dssm::util::hexdump(obsv_msg->body, 50);
       send_msg(OBSV_SUBSCRIBE);
 
       if (recv_msg() < 0) {
@@ -453,10 +471,41 @@ class SSMSubscriber {
 
     return true;
   }
-  
+
+  void invoke(uint32_t serial_number) {
+    subscriber.at(serial_number)->invoke();
+  }
+
+  void msq_loop() {
+    printf("start msg loop\n");
+    int len = -1;
+    while (true) {
+      len = recv_msg();
+      if (len < 0) {
+        fprintf(stderr, "ERROR: msgrcv\n");
+        return;
+      }
+
+      printf("obsv_msg->cmd_type %d\n", obsv_msg->cmd_type);
+      switch (obsv_msg->cmd_type) {
+        // 通知
+        case OBSV_NOTIFY: {
+          char*  tmp = obsv_msg->body;
+          char** buf = &tmp;
+
+          auto serial_number = deserialize_4byte(buf);
+          invoke(serial_number);
+        }
+      }
+    }
+  }
+
 public:
   SSMSubscriber(): msq_id(-1), padding_size(-1) {}
 
+  /**
+   * @brief Subscriberを初期化。Observer間にメッセージキューを作る。
+   */
   bool init_subscriber() {
     if ((msq_id = msgget(MSQ_KEY_OBS, 0666)) < 0) {
       fprintf(stderr, "msgque cannot open.\n");
@@ -482,6 +531,9 @@ public:
     return true;
   }
 
+  /**
+   * @brief Stream情報(Stream名, Stream ID)を登録
+   */
   void add_stream(std::vector<Stream> const& api) {
     for (auto element : api) {
       // stream_id, stream_data, datasize, propertysizeでインスタンスを生成
@@ -492,12 +544,56 @@ public:
     name = api;    
   }
 
-  bool start() {
+  /**
+   * @brief Stream情報を送信
+   */
+  void stream_open() {
     // Stream情報を送信
     send_stream();
+  }
 
+  /**
+   * @brief Debug用
+   */
+  void access_subscriber(ssm_api_pair const& p) {
+    auto& api = shm_info_map[p];
+    printf("%d\n", *(int32_t *) api->data);
+  }
+
+  /**
+  * @brief stream, callback, 条件を登録
+  */
+  template <class ...Args>
+  bool register_subscriber(std::vector<SubscriberSet> const& subscriber_set, std::function<bool()>& local_condition, std::function<void(Args...)>& callback) {
+    static auto serial_num = 0UL;
+    std::vector<std::shared_ptr<ShmInfo>> sub_stream;
+    
+    for (auto& info : subscriber_set) {
+      auto stream = info.stream_info;
+
+      auto shm_info = shm_info_map.at(stream);
+      if (shm_info == nullptr) {
+        fprintf(stderr, "ERROR: ssm cannot find.\n");
+        return false;
+      }
+
+      sub_stream.push_back(shm_info);
+    }
+
+    std::unique_ptr<SubscriberBase> sub = std::make_unique<Subscriber<Args...>>(sub_stream, callback, local_condition, serial_num, subscriber_set);
+    subscriber.push_back(std::move(sub));
+
+    return true;
+  }
+
+  /**
+   * @brief Subscriberをスタート
+   */
+  bool start() {
+    printf("send subscriber\n");
     // Subscriber情報を送信
     send_subscriber();
+    printf("sent subscriber\n");
 
     format_obsv_msg();    
     if (!send_msg(OBSV_START)) {
@@ -511,62 +607,8 @@ public:
     printf("start\n");
 
     msq_loop();
-  }
 
-  void msq_loop() {
-    int len = -1;
-    while (true) {
-      len = recv_msg();
-      if (len < 0) {
-        fprintf(stderr, "ERROR: msgrcv\n");
-        return;
-      }
-
-      switch (obsv_msg->cmd_type) {
-        // 通知
-        case OBSV_NOTIFY: {
-          char*  tmp = obsv_msg->body;
-          char** buf = &tmp;
-
-          auto serial_number = deserialize_4byte(buf);
-          invoke(serial_number);
-        }
-      }
-    }
-  }
-
-  void invoke(uint32_t serial_number) {
-    subscriber.at(serial_number).invoke();
-  }
-
-  void access_subscriber(ssm_api_pair const& p) {
-    auto& api = shm_info_map[p];
-    printf("%d\n", *(int32_t *) api->data);
-  }
-
-  /**
-  * @brief stream, callback, 条件を登録
-  */
-  template <class ...Args>
-  bool register_subscriber(std::vector<SubscriberSet> subscriber_set, std::function<bool()> local_condition, std::function<void(Args...)>& callback) {
-    static auto serial_num = 0UL;
-    std::vector<std::shared_ptr<ShmInfo>> sub_stream;
-    
-    for (auto& info : subscriber_set) {
-      auto stream = info.stream_info;
-      auto cmd = info.command;
-
-      auto shm_info = shm_info_map.at(stream);
-      if (shm_info == nullptr) {
-        fprintf(stderr, "ERROR: ssm cannot find.\n");
-        return false;
-      }
-
-      sub_stream.push_back(shm_info);
-    }
-
-    Subscriber<Args...> sub(sub_stream, callback, local_condition, serial_num, subscriber_set);
-    subscriber.push_back(sub);
+    return true;
   }
 };
 

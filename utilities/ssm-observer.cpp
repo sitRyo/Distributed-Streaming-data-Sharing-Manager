@@ -67,15 +67,19 @@ void* SubscriberHost::run(void* args) {
  * @brief ループ
  */
 void SubscriberHost::loop() {
-  for (auto& sub : subscriber) {
-    int32_t serial_number = -1;
-    if ((serial_number = sub.is_satisfy_condition()) != -1) {
-      format_obsv_msg();
-      serialize_4byte_data(serial_number);
-      send_msg(OBSV_NOTIFY, this->pid);
-      // TODO: recv_msg() 必要？一方向で良い？実行を確認できる？
+  while (true) {
+    for (auto& sub : subscriber) {
+      int32_t serial_number = -1;
+      if ((serial_number = sub.is_satisfy_condition()) != -1) {
+        format_obsv_msg();
+        serialize_4byte_data(serial_number);
+        printf("send pid %d\n", this->pid);
+        send_msg(OBSV_NOTIFY, this->pid);
+        // TODO: recv_msg() 必要？一方向で良い？実行を確認できる？
+      }
     }
   }
+  
 }
 
 inline void SubscriberHost::set_subscriber(Subscriber const& subscriber) {
@@ -92,7 +96,7 @@ void SubscriberHost::format_obsv_msg() {
 	obsv_msg->cmd_type = 0;
 	obsv_msg->pid      = 0;
 	obsv_msg->msg_size = 0;
-	memset(obsv_msg.get() + sizeof(ssm_obsv_msg), 0, padding_size);
+	// memset(obsv_msg.get() + sizeof(ssm_obsv_msg), 0, padding_size);
 }
 
 bool SubscriberHost::send_msg(OBSV_msg_type const type, pid_t const& s_pid) {
@@ -154,10 +158,12 @@ int Subscriber::is_satisfy_condition() {
 
   for (auto& sub_set : subscriber_set) {
     auto& api = sub_set.ssm_api;
+    // printf("%s, %d, %d\n", api->stream_name.c_str(), api->stream_id, sub_set.command);
     auto cmd = static_cast<OBSV_cond_type>(sub_set.command);
     
     switch (cmd) {
       case OBSV_COND_LATEST: {
+        // printf("   OBSV_COND_LATEST\n");
         auto tid = api->read_last(sub_set.top_tid);
         if (tid > sub_set.top_tid) {
           sub_set.top_tid = tid;
@@ -194,6 +200,8 @@ bool SSMApiInfo::open(SSM_open_mode mode) {
     return false;
   }
 
+  printf("api opened\n");
+
   return true;
 }
 
@@ -202,12 +210,14 @@ bool SSMApiInfo::open(SSM_open_mode mode) {
  */
 int32_t SSMApiInfo::read_last(int32_t opponent_tid) {
   std::lock_guard<std::mutex> lock(mtx);
-  auto tid_now = getTID_top(ssm_api_base.getSSMId());
   
+  auto tid_now = getTID_top(ssm_api_base.getSSMId());
+
   if (opponent_tid < tid_now && this->tid != tid_now) {
+    printf("   READ_LAST %d\n", *(int*) data);
     ssm_api_base.readLast();
   }
-  
+
   this->tid = tid_now;
   return ssm_api_base.timeId;
 }
@@ -370,7 +380,7 @@ void SSMObserver::msq_loop() {
     
     switch (obsv_msg->cmd_type) {
       // Subscriberの追加
-      case OBSV_INIT: {    
+      case OBSV_INIT: {
         printf("OBSV_INIT pid = %d\n", s_pid);
         // subscriberを追加
         format_obsv_msg();
@@ -400,12 +410,13 @@ void SSMObserver::msq_loop() {
       }
 
       case OBSV_SUBSCRIBE: {
-        printf("OBSV_STREAM pid = %d\n", s_pid);
+        printf("OBSV_SUBSCRIBE pid = %d\n", s_pid);
         
         // msg内のsubscriberを登録
         register_subscriber(s_pid);
 
         send_msg(OBSV_RES, s_pid);
+        break;
       }
 
       case OBSV_START: {
@@ -471,6 +482,7 @@ uint32_t SSMObserver::extract_subscriber_count() {
 bool SSMObserver::register_subscriber(pid_t const& pid) {
   // SubscriberHostが作られていなければ作ってreserve
   if (subscriber_map.find(pid) == subscriber_map.end()) {
+    printf("   | create SubscriberHost\n");
     auto count = extract_subscriber_count();
     create_subscriber(pid, count);
     return true;
@@ -488,12 +500,14 @@ bool SSMObserver::register_subscriber(pid_t const& pid) {
   uint32_t ssm_api_num = deserialize_4byte(buf);
   std::vector<SubscriberSet> sub_set;
   sub_set.reserve(ssm_api_num);
-  for (int i = 0; i < serial_number; ++i) {
+  for (int i = 0; i < ssm_api_num; ++i) {
     auto stream_name = deserialize_string(buf);
     auto stream_id   = deserialize_4byte(buf);
     auto command     = deserialize_4byte(buf);
 
     SubscriberSet ss(api_map.at({stream_name, stream_id}), command);
+
+    printf("   | stream_name: %s, stream_id: %d, command: %d\n", stream_name.c_str(), stream_id, command);
 
     sub_set.push_back(ss);
   }
@@ -563,10 +577,8 @@ bool SSMObserver::create_ssm_api_info(Stream const& stream_data) {
  */
 int32_t SSMObserver::get_shared_memory(uint32_t const& size, void** data) {
   /// TODO: 共有メモリセグメントの残メモリ量を確認する。
-  // cout << size << endl;
   
   int32_t s_id;
-  /// TODO: sizeを変更する！！！！！！
   if ((s_id = shmget(OBSV_SHM_KEY + shm_key_num, size, IPC_CREAT | 0666)) < 0) {
     perror("shmget");
     fprintf(stderr, "ERROR: shared memory allocate\n");
