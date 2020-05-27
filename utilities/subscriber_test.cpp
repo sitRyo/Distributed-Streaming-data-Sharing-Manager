@@ -36,9 +36,9 @@ int main() {
   sub.stream_open();
   
   // Subscribeするストリーム情報を設定する。
-  // StreamName, StreamId, dataのサイズ, propertyのサイズ, 条件の指定
-  SubscriberSet ss(int_ssm1, OBSV_COND_LATEST);
-  SubscriberSet ss2(int_ssm2, OBSV_COND_LATEST);
+  // StreamName, StreamId, dataのサイズ, propertyのサイズ, 条件の指定, 同期の基準にするstreamの設定
+  SubscriberSet ss {int_ssm1, OBSV_COND_LATEST, OBSV_COND_TRIGGER};
+  SubscriberSet ss2 {int_ssm2, OBSV_COND_LATEST};
   subscriber_set.emplace_back(ss);
   subscriber_set.emplace_back(ss2);
 

@@ -32,7 +32,6 @@ int32_t verbose_mode = 1;
 
 using namespace ssm;
 
-
 struct ShmInfo {
   void* data;
   void* property;
@@ -57,9 +56,15 @@ struct SubscriberSet {
   // 条件
   OBSV_cond_type command;
 
+  // トリガーか否か (このSubscriber_setが更新されたら他のSubscriber_setもデータを取得するという意味)
+  OBSV_cond_type command_trigger;
+
+  // トリガーではないSubscriberSetが基準とするストリーム
+  ssm_api_pair observed_stream;
+
   SubscriberSet() {}
-  explicit SubscriberSet(Stream const& _stream, OBSV_cond_type const _command) 
-    : stream_info({_stream.stream_name, _stream.stream_id}), command(_command) {} 
+  SubscriberSet(Stream const& _stream, OBSV_cond_type const _command, OBSV_cond_type const _command_trigger = OBSV_COND_NO_TRIGGER, ssm_api_pair _observed_stream = { "\0", 0 })
+    : stream_info({_stream.stream_name, _stream.stream_id}), command(_command), command_trigger(_command_trigger), observed_stream(_observed_stream) {} 
 };
 
 class SubscriberBase {
@@ -126,10 +131,10 @@ class Subscriber : public SubscriberBase {
    */
   void create_data_vector() {
     for (auto shm : shm_info_ptr) {
-      // printf()
-      printf("data %p\n", shm->data);
       shm_info.push_back(shm->data);
-      shm_info.push_back(shm->property);
+      if (shm->property != nullptr) {
+        shm_info.push_back(shm->property);
+      }
     }
   }
 
@@ -274,6 +279,13 @@ class SSMSubscriber {
         serialize_4byte_data(sub_set.stream_info.second);
         // stream_command(条件)
         serialize_4byte_data(sub_set.command);
+        // triggerか否か
+        serialize_4byte_data(sub_set.command_trigger);
+        // もしcond_timeのときにどのストリームの時刻でデータを取得するかを送信する。
+        if (sub_set.command == OBSV_COND_TIME) {
+          serialize_string(sub_set.observed_stream.first);
+          serialize_4byte_data(sub_set.observed_stream.second);
+        }
       }
 
       send_msg(OBSV_SUBSCRIBE);

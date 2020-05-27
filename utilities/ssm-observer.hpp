@@ -34,8 +34,7 @@ struct SSMApiInfo {
   std::unique_ptr<uint8_t[]> property;
   uint32_t data_size;
   uint32_t property_size;
-  // key_t shm_data_key; // int32_t
-  // key_t shm_property_key; // int32_t
+  ssmTimeT time;
   std::mutex mtx;
 
   int32_t tid;
@@ -49,6 +48,7 @@ struct SSMApiInfo {
   // moveはいらない。
 
   int32_t read_last(int32_t opponent_tid, void* opponent_data_ptr);
+  int32_t read_time(ssmTimeT const time, void* opponent_data_ptr);
   bool open(SSM_open_mode mode);
   bool setDataBuffer();
 };
@@ -57,6 +57,7 @@ struct SSMApiInfo {
 
 struct SubscriberSet {
   std::shared_ptr<SSMApiInfo> ssm_api;
+  std::shared_ptr<SSMApiInfo> observe_stream;
   int command; // 条件
 
   // SSMApiInfoが持つdata, propertyへのアクセス権限
@@ -66,6 +67,7 @@ struct SubscriberSet {
   /* 条件など */
   int32_t top_tid;
 
+  SubscriberSet();
   SubscriberSet(std::shared_ptr<SSMApiInfo> const& _ssm_api, int _command);
   ~SubscriberSet() = default;
 
@@ -79,7 +81,9 @@ struct SubscriberSet {
 };
 
 class Subscriber {
-  std::vector<SubscriberSet> subscriber_set;
+  // std::vector<SubscriberSet> subscriber_set;
+  SubscriberSet trigger_subscriber_set;
+  std::vector<SubscriberSet> other_subscriber_set;
   uint32_t serial_number;
 public:
   Subscriber(uint32_t _serial_number);
@@ -93,11 +97,13 @@ public:
   Subscriber(Subscriber&&) = default;
   Subscriber& operator=(Subscriber&&) = default;
 
-  inline void set_subscriber_set(std::vector<SubscriberSet> const& subscriber_set);
-  inline void set_subscriber_set(std::vector<SubscriberSet> && subscriber_set);
+  inline void set_trigger_subscriber(SubscriberSet const& subscriber_set);
+  inline void set_other_subscriber(std::vector<SubscriberSet> const& subscriber_set);
+  inline void set_other_subscriber(std::vector<SubscriberSet> && subscriber_set);
   inline uint32_t get_serial_number();
 
   int is_satisfy_condition();
+  bool get_other_subscriber_data();
 };
 
 /**
