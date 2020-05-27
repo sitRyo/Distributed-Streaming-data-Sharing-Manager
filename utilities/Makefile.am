@@ -50,8 +50,8 @@ write_proxy_test_CXXFLAGS = $(write_proxy_test_CFLAGS)
 write_proxy_test_LDADD = ../src/libssm.la -lm
 
 ## subscriber_test
-subscriber_test_SOURCES = subscriber_test.cpp ssm-subscriber.hppo
-subscriber_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+subscriber_test_SOURCES = subscriber_test.cpp ssm-subscriber.hpp
+subscriber_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -O0 #-fsanitize=address
 subscriber_test_CXXFLAGS = $(subscriber_test_CFLAGS)
 subscriber_test_LDADD = ../src/libssm.la -lm
 
@@ -92,7 +92,7 @@ dssm_player_CXXFLAGS = $(dssm_player_CFLAGS)
 dssm_player_LDADD = ../src/libssm.la 
 
 ## ssm-observer
-ssm_observer_SOURCES = ssm-observer.cpp 
+ssm_observer_SOURCES = ssm-observer.cpp -O0
 ssm_observer_CFLAGS = $(AM_CFLAGS) 
-ssm_observer_CXXFLAGS = $(ssm_observer_CFLAGS)
+ssm_observer_CXXFLAGS = $(ssm_observer_CFLAGS) #-fsanitize=address
 ssm_observer_LDADD = ../src/libssm.la 

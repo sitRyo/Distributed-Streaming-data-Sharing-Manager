@@ -22,43 +22,20 @@
 #include <memory>
 #include <mutex>
 
-using ssm_api_pair = std::pair<std::string, int32_t>;
+#include "observer-util.hpp"
 
-/* SSMApiをunordered_mapで使うためのユーザ定義構造体群 */
-
-struct SSMApiHash {
-  size_t operator()(ssm_api_pair const& p) const {
-    auto h1 = std::hash<std::string>()(p.first);
-    auto h2 = std::hash<std::int32_t>()(p.second);
-    return h1 xor (h2 << 1);
-  }
-};
-
-struct SSMApiEqual {
-  bool operator()(ssm_api_pair const& p1, ssm_api_pair const& p2) const {
-    return (p1.first == p2.first) and (p1.second == p2.second);
-  }
-};
-
-/* ここまで */
-
-struct Stream {
-  std::string stream_name;
-  int32_t stream_id;
-  uint32_t data_size;
-  uint32_t property_size;
-};
+using namespace ssm;
 
 struct SSMApiInfo {
   SSMApiBase ssm_api_base;
   std::string stream_name;
   int32_t stream_id;
-  void* data;
-  void* property;
+  std::unique_ptr<uint8_t[]> data;
+  std::unique_ptr<uint8_t[]> property;
   uint32_t data_size;
   uint32_t property_size;
-  key_t shm_data_key; // int32_t
-  key_t shm_property_key; // int32_t
+  // key_t shm_data_key; // int32_t
+  // key_t shm_property_key; // int32_t
   std::mutex mtx;
 
   int32_t tid;
@@ -71,7 +48,7 @@ struct SSMApiInfo {
   SSMApiInfo& operator=(const SSMApiInfo&) = default;
   // moveはいらない。
 
-  int32_t read_last(int32_t opponent_tid);
+  int32_t read_last(int32_t opponent_tid, void* opponent_data_ptr);
   bool open(SSM_open_mode mode);
   bool setDataBuffer();
 };
@@ -81,6 +58,10 @@ struct SSMApiInfo {
 struct SubscriberSet {
   std::shared_ptr<SSMApiInfo> ssm_api;
   int command; // 条件
+
+  // SSMApiInfoが持つdata, propertyへのアクセス権限
+  void* data;
+  void* property;
 
   /* 条件など */
   int32_t top_tid;
@@ -101,7 +82,6 @@ class Subscriber {
   std::vector<SubscriberSet> subscriber_set;
   uint32_t serial_number;
 public:
-  bool good();
   Subscriber(uint32_t _serial_number);
   ~Subscriber() = default;
 
@@ -120,6 +100,17 @@ public:
   int is_satisfy_condition();
 };
 
+/**
+ * @brief SSMの共有メモリデータ
+ * property_sizeが0の場合, property = nullptr, property_key = -1
+ */
+struct SSMSharedMemoryInfo {
+  void* data;
+  void* property;
+  key_t data_key;
+  key_t property_key;
+};
+
 class SubscriberHost : public Thread {
   pid_t pid;
   int32_t msq_id;
@@ -127,21 +118,20 @@ class SubscriberHost : public Thread {
   std::unique_ptr<ssm_obsv_msg> obsv_msg;
   uint32_t count;
   uint32_t padding_size;
-  
+
+  // 共有メモリ管理HashMap。メモリの解放方法を考えなければいけない。(順当にDestructorでやる？ctrl-cにどう対処するか。)
+  std::unordered_map<ssm_api_pair, SSMSharedMemoryInfo, SSMApiHash, SSMApiEqual> stream_buffer_map;
+
   void loop();
 public:
-  // defined in Thread class
-  // Thread::start();
-  // Thread::wait();
-
   void* run(void* args) override;
   
   SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id);
   inline void set_subscriber(Subscriber const& subscriber);
   inline void set_subscriber(Subscriber&& subscriber);
+  SSMSharedMemoryInfo get_shmkey(ssm_api_pair const& pair, uint32_t const data_size, uint32_t const property_size);
   bool send_msg(OBSV_msg_type const type, pid_t const& s_pid);
   bool recv_msg();
-  void format_obsv_msg();
   bool serialize_4byte_data(int32_t data);
 };
 
@@ -149,30 +139,21 @@ public:
 
 class SSMObserver {  
 private:
-  int msq_id;
   int pid;
-  key_t shm_key_num;
   std::unique_ptr<ssm_obsv_msg> obsv_msg;
   uint32_t padding_size;
   std::unordered_map<ssm_api_pair, std::shared_ptr<SSMApiInfo>, SSMApiHash, SSMApiEqual> api_map; // TODO: unique_ptrにできるか検討
   std::unordered_map<pid_t, std::unique_ptr<SubscriberHost>> subscriber_map;
 
-  int32_t get_shared_memory(uint32_t const& size, void** data);
   bool serialize_raw_data(uint32_t const& size, void* data);
   bool serialize_4byte_data(int32_t data);
   
   // 4byte指定位置から取得するだけ。
   int32_t deserialize_4byte_data(char* buf);
 
-  int32_t deserialize_4byte(char** buf);
-  int64_t deserialize_8byte(char** buf);
-  std::string deserialize_string(char** buf);
-  // std::string deserialize_raw_data(char** buf); 実装するかも？
-
   int recv_msg();
   int send_msg(OBSV_msg_type const& type, pid_t const& s_pid);
   bool allocate_obsv_msg();
-  void format_obsv_msg();
   bool create_subscriber(pid_t const& pid, uint32_t count);
 
   std::vector<Stream> extract_stream_from_msg();
@@ -187,7 +168,7 @@ public:
   ~SSMObserver();
   bool observer_init();
   void msq_loop();
-  void set_signal_handler(int sig_num);
+  // void set_signal_handler(int sig_num);
   void show_msq_id();
 };
 

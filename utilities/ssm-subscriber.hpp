@@ -26,80 +26,12 @@
 #include <cstdlib>
 
 #include "dssm-utility.hpp"
+#include "observer-util.hpp"
 
 int32_t verbose_mode = 1;
 
-using ssm_api_pair = std::pair<std::string, int32_t>;
+using namespace ssm;
 
-/* SSMApiをunordered_mapで使うためのユーザ定義構造体群 */
-
-struct SSMApiHash {
-  size_t operator()(ssm_api_pair const& p) const {
-    auto h1 = std::hash<std::string>()(p.first);
-    auto h2 = std::hash<std::int32_t>()(p.second);
-    return h1 xor (h2 << 1);
-  }
-};
-
-struct SSMApiEqual {
-  bool operator()(ssm_api_pair const& p1, ssm_api_pair const& p2) const {
-    return (p1.first == p2.first) and (p1.second == p2.second);
-  }
-};
-
-/**
- * @brief タプルを関数の引数に展開し, 関数を実行。
- * 本当はSFINAEでテンプレートのオーバーライドをするべき。
- */
-template <class Fn, class Tuple, size_t... _Idx>
-constexpr decltype(auto)
-apply_impl(Fn&& f, Tuple&& t, std::index_sequence<_Idx...>) {
-	return f(* std::get<_Idx>(std::forward<Tuple>(t))...);
-}
-
-/**
- * @brief apply(f, t)でfにtupleを展開し実行する。apply_implへのアダプタ。c++14で動作可能。
- */
-template <class Fn, class Tuple>
-constexpr decltype(auto)  // この時点で戻り値はわからない
-apply(Fn&& f, Tuple&& t) {
-  using Indices 
-		= std::make_index_sequence<
-      std::tuple_size<std::remove_reference_t<Tuple>>::value
-		>;
-	return apply_impl(
-		std::forward<Fn>(f),
-		std::forward<Tuple>(t),
-		Indices{}
-	);
-}
-
-/**
- * @brief impl
- */
-template <class... Args, std::size_t... Indices>
-auto vector_to_tuple_impl(const std::vector<void *>& v, std::tuple<Args...> tpl, std::index_sequence<Indices...>) {
-  return std::make_tuple(
-    (reinterpret_cast<typename std::tuple_element<Indices, decltype(tpl)>::type> (v[Indices]))...
-  );
-}
-
-/**
- * @brief vectorをtupleに変換する。
- */
-template <std::size_t N, class... Args>
-auto vector_to_tuple(const std::vector<void *>& v, std::tuple<Args...> tpl) {
-  return vector_to_tuple_impl(v, tpl, std::make_index_sequence<N>());
-}
-
-/* ここまで */
-
-struct Stream {
-  std::string stream_name;
-  int32_t stream_id;
-  uint32_t data_size;
-  uint32_t property_size;
-};
 
 struct ShmInfo {
   void* data;
@@ -112,8 +44,9 @@ struct ShmInfo {
   uint32_t property_size;
 
   ShmInfo(Stream const& stream) : 
+  data(nullptr), property(nullptr),
   stream_name(stream.stream_name), stream_id(stream.stream_id),
-  data_size(stream.data_size), property_size(stream.property_size) 
+  data_size(stream.data_size), property_size(stream.property_size)
   {}
 };
 
@@ -185,11 +118,16 @@ class Subscriber : public SubscriberBase {
   // shm_info_ptrから作るshm_infoのvoid*が入ったvector
   std::vector<void *> shm_info;
 
+  // invokeされたのは初めてか？
+  bool is_invoke_first;
+
   /**
    * @brief shm_info_ptrからdata, propertyを抽出してvectorを作成
    */
   void create_data_vector() {
     for (auto shm : shm_info_ptr) {
+      // printf()
+      printf("data %p\n", shm->data);
       shm_info.push_back(shm->data);
       shm_info.push_back(shm->property);
     }
@@ -203,14 +141,17 @@ public:
     std::function<bool()> _local_condition,
     uint32_t _serial_number,
     std::vector<SubscriberSet> const& _subscriber_set
-  ) : SubscriberBase(_subscriber_set, _serial_number), callback(_callback), local_condition(_local_condition), shm_info_ptr(_shm_info)
-  {
-    // data, propertyへのポインタvector作成
-    create_data_vector();
-    this->data_property_tpl = vector_to_tuple<sizeof...(Strm)>(shm_info, data_property_tpl);
-  }
+  ) : SubscriberBase(_subscriber_set, _serial_number), callback(_callback), local_condition(_local_condition), shm_info_ptr(_shm_info), is_invoke_first(false)
+  {}
 
   void invoke() override {
+    // もし作られてなかったら
+    if (!is_invoke_first) {
+      is_invoke_first = true;
+      create_data_vector();
+      this->data_property_tpl = vector_to_tuple<sizeof...(Strm)>(shm_info, data_property_tpl);
+    }
+
     if (local_condition()) {
       apply(callback, data_property_tpl);
     }
@@ -227,50 +168,8 @@ class SSMSubscriber {
   std::unordered_map<ssm_api_pair, std::shared_ptr<ShmInfo>, SSMApiHash, SSMApiEqual> shm_info_map;
   std::vector<std::unique_ptr<SubscriberBase>> subscriber;
 
-  void format_obsv_msg() {
-    obsv_msg->msg_type = 0;
-    obsv_msg->res_type = 0;
-    obsv_msg->cmd_type = 0;
-    obsv_msg->pid      = 0;
-    obsv_msg->msg_size = 0;
-    memset(obsv_msg->body, 0, padding_size);
-  }
-
-  bool attach_shared_memory(void** data, int32_t s_id) {
-    // attach
-    if ((*data = static_cast<char*>(shmat(s_id, 0, 0))) == (void*) -1) {
-      perror("shmat");
-      fprintf(stderr, "ERROR: shmat\n");
-      return false;
-    }
-
-    return true;
-  }
-
-  bool register_shm_info(std::vector<Stream> const& name) {
-    auto sz = 0;
-    auto key_t_sz = sizeof(key_t);
-    for (auto&& element : name) {
-      auto& _name = element.stream_name;
-      auto& _id   = element.stream_id;
-      if (sz + key_t_sz * 2 <= obsv_msg->msg_size) {
-        auto& shm_info = shm_info_map.at({_name, _id});
-
-        shm_info->shm_data_key = *reinterpret_cast<int32_t *>(&obsv_msg->body[sz]);
-        shm_info->shm_property_key = *reinterpret_cast<int32_t *>(&obsv_msg->body[sz + key_t_sz]);
-        
-        sz += key_t_sz * 2;
-
-        // 共有メモリをアタッチ
-        attach_shared_memory(&shm_info->data, shm_info->shm_data_key);
-        attach_shared_memory(&shm_info->property, shm_info->shm_property_key);
-      } else {
-        fprintf(stderr, "ERROR: msgsize is too small.\n");
-        return false;
-      }
-    }
-
-    return true;
+  inline void format_obsv_msg() {
+    memset((char *) obsv_msg.get(), 0, OBSV_MSG_SIZE);
   }
 
   bool send_msg(OBSV_msg_type const& type) {
@@ -331,7 +230,7 @@ class SSMSubscriber {
       return false;
     }
 
-    register_shm_info(name);
+    // register_shm_info(name);
     name.clear();
     return true;
   }
@@ -377,16 +276,41 @@ class SSMSubscriber {
         serialize_4byte_data(sub_set.command);
       }
 
-      // dssm::util::hexdump(obsv_msg->body, 50);
       send_msg(OBSV_SUBSCRIBE);
 
       if (recv_msg() < 0) {
         return false;
       }
+
+      // 共有メモリ鍵を登録する。
+      attach_shared_memory_to_api(subscriber_set);
     }
 
     // 全部の情報を送信終わった
     return true;
+  }
+
+  void attach_shared_memory_to_api(std::vector<SubscriberSet> const& subscriber_set) {
+    char*  tmp = obsv_msg->body;
+    char** buf = &tmp;
+
+    for (auto& sub_set : subscriber_set) {
+      auto data_key = deserialize_4byte(buf);
+      auto property_key = deserialize_4byte(buf);
+      printf("data_key %d, property_key %d\n", data_key, property_key);
+      auto shm_info = shm_info_map.at(sub_set.stream_info);
+      
+      if (shm_info->data == nullptr) {
+        attach_shared_memory(&(shm_info->data), data_key);
+      }
+      
+      // propertyはセットされない可能性がある。セットされていないときはproperty_keyは-1になる。
+      if (property_key != -1 && shm_info->property == nullptr) {
+        attach_shared_memory(&(shm_info->property), property_key);
+      }
+
+      printf("data_addr %p, property_addr %p\n", shm_info->data, shm_info->property);
+    }
   }
 
   /**
@@ -404,40 +328,6 @@ class SSMSubscriber {
     send_subscriber_stream_info();
 
     return true;
-  }
-
-  /**
- * @brief ポインタの先頭から4byte分取得。アドレスも4byte分進める。
- */
-  int32_t deserialize_4byte(char** buf) {
-    int32_t res = *reinterpret_cast<int32_t *>(*buf); 
-    *buf += 4;
-    return res;
-  }
-
-  /**
-   * @brief ポインタの先頭から8byte分取得。アドレスも8byte分進める。
-   */
-  int64_t deserialize_8byte(char** buf) {
-    int64_t res = *reinterpret_cast<int64_t *>(*buf); 
-    *buf += 8;
-    return res;
-  }
-
-  /**
-   * @brief ポインタの先頭からnull文字が来るまでデータを文字列として取得。アドレスも進める。
-   */
-  std::string deserialize_string(char** buf) {
-    std::string data;
-    while (**buf != '\0') {
-      data += **buf;
-      *buf += 1;
-    }
-    
-    // null文字分を飛ばす
-    *buf += 1;
-
-    return data;
   }
 
   bool serialize_4byte_data(int32_t data) {
@@ -486,7 +376,7 @@ class SSMSubscriber {
         return;
       }
 
-      printf("obsv_msg->cmd_type %d\n", obsv_msg->cmd_type);
+      // printf("obsv_msg->cmd_type %d\n", obsv_msg->cmd_type);
       switch (obsv_msg->cmd_type) {
         // 通知
         case OBSV_NOTIFY: {
@@ -577,6 +467,7 @@ public:
         return false;
       }
 
+      printf("%p\n", shm_info->data);
       sub_stream.push_back(shm_info);
     }
 
