@@ -1,38 +1,66 @@
+/**
+ * subscriber_test.cpp
+ * SSMSubscriberのサンプルコード
+ */
+
 #include "ssm-subscriber.hpp"
 #include "intSsm.h"
 #include <iostream>
 
-// using ssm_pair = typename SSMSubscriber::ssm_api_pair;
+using namespace ssm;
 
 int main() {
   SSMSubscriber sub;
+
+  // Subscriberの初期化
   sub.init_subscriber();
 
-  std::vector<Stream> subscribers;
+  // アクセスするストリーム情報
+  std::vector<Stream> streams;
+
+  // Subscriber情報
   std::vector<SubscriberSet> subscriber_set;
 
-  subscribers.push_back({SNAME_INT, 0, sizeof(int), 0});
-  sub.add_stream(subscribers);
+  // SSMApiの情報をここに入力する。
+  // StreamName, StreamId, dataのサイズ, propertyのサイズ
+  streams.push_back({SNAME_INT, 0, sizeof(int), 0});
+  streams.push_back({SNAME_INT, 1, sizeof(int), 0});
 
+  // ストリームを追加。
+  sub.add_stream(streams);
+
+  // ストリームをオープン
   sub.stream_open();
   
+  // Subscribeするストリーム情報を設定する。
+  // StreamName, StreamId, dataのサイズ, propertyのサイズ, 条件の指定
   SubscriberSet ss({SNAME_INT, 0, sizeof(int), 0}, OBSV_COND_LATEST);
+  SubscriberSet ss2({SNAME_INT, 1, sizeof(int), 0}, OBSV_COND_LATEST);
   subscriber_set.emplace_back(ss);
+  subscriber_set.emplace_back(ss2);
 
+  // ローカル変数を条件としてキャプチャすることもできる。
   bool flag = true;
   
+  // ローカル条件
   auto cond = [&flag]() -> bool {
     return flag;
   };
 
-  auto func = [](intSsm_k data) {
-    printf("data: %d\n", data.num);
+  // コールバック
+  auto callback = [](intSsm_k data1, intSsm_k data2) {
+    printf("data: %d\n", data1.num + data2.num);
   };
 
+  // ローカル条件は bool()
   std::function<bool()> local_cond = cond;
-  std::function<void(intSsm_k)> print = func;
+  // コールバックはvoid(Args...)
+  std::function<void(intSsm_k, intSsm_k)> print = callback;
 
-  sub.register_subscriber<intSsm_k>(subscriber_set, local_cond, print);
+  // subscriberを登録。
+  // 使用したいsubscriberごとにinvokeする。
+  sub.register_subscriber(subscriber_set, local_cond, print);
 
+  // subscriberを開始する。
   sub.start();
 }
