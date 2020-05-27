@@ -469,9 +469,18 @@ public:
   bool register_subscriber(std::vector<SubscriberSet> const& subscriber_set, std::function<bool()>& local_condition, std::function<void(Args...)>& callback) {
     static auto serial_num = 0UL;
     std::vector<std::shared_ptr<ShmInfo>> sub_stream;
+
+    // subscriberのうち1つはtriggerを持たなければいけない。
+    bool has_trigger = false;
     
     for (auto& info : subscriber_set) {
       auto stream = info.stream_info;
+
+      // トリガーを1つ以上持つ必要がある。
+      // 1つ以上無い場合はobserverが通知をsubscriberに送信できない。
+      if (info.command_trigger == OBSV_COND_TRIGGER) {
+        has_trigger = true;
+      }
 
       auto shm_info = shm_info_map.at(stream);
       if (shm_info == nullptr) {
@@ -481,6 +490,11 @@ public:
 
       printf("%p\n", shm_info->data);
       sub_stream.push_back(shm_info);
+    }
+
+    if (!has_trigger) {
+      fprintf(stderr, "ERROR: No trigger.\n subscriber MUST have trigger.\n");
+      return false;
     }
 
     std::unique_ptr<SubscriberBase> sub = std::make_unique<Subscriber<Args...>>(sub_stream, callback, local_condition, serial_num, subscriber_set);
