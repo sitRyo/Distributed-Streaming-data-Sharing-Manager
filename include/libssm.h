@@ -103,14 +103,26 @@ enum {
  * @brief Observer間で送信するメッセージ
  */
 typedef enum {
-	OBSV_INIT = 0,			 // 新しいSubscriberを追加する
-	OBSV_SUBSCRIBE,      // Subscribeするapiを追加
-	OBSV_START,          // Subscriberのスタート
-	OBSV_ADD_CONDITION,  // 新しい条件を追加する
+	OBSV_INIT = 0,			 /// 新しいSubscriberを追加
+	OBSV_SUBSCRIBE,      /// Subscriberを追加
+	OBSV_ADD_STREAM,     /// Streamを追加。
+	OBSV_START,          /// Subscriberのスタート
+	OBSV_ADD_CONDITION,  /// 新しい条件を追加
+	OBSV_NOTIFY,         /// 条件が満たされたことを通知
 	OBSV_DELETE,
 	OBSV_RES,
 	OBSV_FAIL,
 } OBSV_msg_type;
+
+/**
+ * @brief Observerに送信する条件
+ */
+typedef enum {
+	OBSV_COND_LATEST = 0, /// 最新のデータを取得
+	OBSV_COND_TIME,       /// 指定した時刻のデータを取得
+	OBSV_COND_TRIGGER,    /// トリガー。トリガーで指定したストリームがコマンドの条件を満たしたとき、他のストリームもデータを読み出す。
+	OBSV_COND_NO_TRIGGER, /// トリガーではない
+} OBSV_cond_type;
 
 #define SSM_MARGIN 1							///< データアクセスタイミングの余裕 （書き込み中のデータを読まないようにするため）
 #define SSM_BUFFER_MARGIN 1.2					///< リングバッファの個数の余裕　（なんとなくあった方が安心？）
@@ -154,12 +166,12 @@ typedef struct {
 
 /* SSMObserverコマンドメッセージ */
 typedef struct {
-	uint64_t msg_type;  // 宛先
-	uint64_t res_type;	// 返信用
-	uint32_t cmd_type;	// コマンドの種類
-	pid_t pid;          // プロセスID
-	uint64_t msg_size;  // bodyのサイズ
-	char body[];         // データ & パディング
+	uint64_t msg_type;  /// 宛先
+	uint64_t res_type;	/// 返信用
+	uint32_t cmd_type;	/// コマンドの種類
+	pid_t pid;          /// プロセスID
+	uint64_t msg_size;  /// bodyのサイズ
+	char body[];        /// データ & パディング
 } ssm_obsv_msg;
 
 /* Threadでやり取りするメッセージ */
