@@ -282,7 +282,7 @@ class SSMSubscriber {
         // triggerか否か
         serialize_4byte_data(sub_set.command_trigger);
         // もしcond_timeのときにどのストリームの時刻でデータを取得するかを送信する。
-        if (sub_set.command == OBSV_COND_TIME) {
+        if (sub_set.command_trigger == OBSV_COND_NO_TRIGGER) {
           serialize_string(sub_set.observed_stream.first);
           serialize_4byte_data(sub_set.observed_stream.second);
         }
@@ -418,7 +418,8 @@ public:
     pid = getpid();
     printf("mypid: %d\n", pid);
     allocate_obsv_msg();
-    
+
+    format_obsv_msg();
     send_msg(OBSV_INIT);
 
     if (recv_msg() < 0) {
