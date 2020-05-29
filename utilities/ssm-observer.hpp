@@ -3,8 +3,8 @@
  * 2020/5/7 R.Gunji
  */
 
-#ifndef _INC_SSM_OBSERVER_
-#define _INC_SSM_OBSERVER_
+#ifndef __INC_SSM_OBSERVER__
+#define __INC_SSM_OBSERVER__
 
 #include <libssm.h>
 #include <ssm.hpp>
@@ -22,11 +22,20 @@
 #include <memory>
 
 #include "observer-util.hpp"
+#include "ssm-proxy-client.hpp"
 
 using namespace ssm;
 
+enum SSMApiType {
+  SSM_API_BASE = 0,
+  P_CONNECTOR,
+};
+
 struct SSMApiInfo {
-  SSMApiBase ssm_api_base;
+  SSMApiType ssm_api_type;
+  std::unique_ptr<SSMApiBase> ssm_api_base;
+  std::unique_ptr<PConnector> p_connector;
+  // SSMApiBase ssm_api_base;
   std::string stream_name;
   int32_t stream_id;
   std::unique_ptr<uint8_t[]> data;
@@ -35,13 +44,15 @@ struct SSMApiInfo {
   uint32_t property_size;
   ssmTimeT time;
   int32_t tid;
+  std::string ip_address;
 
   SSMApiInfo();
   ~SSMApiInfo() = default;
   
   SSMApiInfo(const SSMApiInfo&) = default;
   SSMApiInfo& operator=(const SSMApiInfo&) = default;
-  // moveはいらない。
+  
+  // SSMApiBaseがmoveを実装していないのでmove constructorはdelete
 
   int32_t read_last(int32_t opponent_tid, void* opponent_data_ptr);
   int32_t read_time(ssmTimeT const time, void* opponent_data_ptr);
@@ -165,6 +176,10 @@ private:
 
   std::vector<Stream> extract_stream_from_msg();
   uint32_t extract_subscriber_count();
+
+  inline void instantiate_ssm_api_type(Stream const& stream, std::shared_ptr<SSMApiInfo> ssm_api_info);
+  inline void api_set_buffer(std::shared_ptr<SSMApiInfo> ssm_api_info);
+  inline void set_stream_data_to_ssm_api(Stream const& stream, std::shared_ptr<SSMApiInfo> ssm_api_info);
 
   bool register_stream(pid_t const& pid, std::vector<Stream> const& stream_data);
   bool register_subscriber(pid_t const& pid);

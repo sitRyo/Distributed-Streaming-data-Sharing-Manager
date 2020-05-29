@@ -36,9 +36,10 @@ struct Stream {
   int32_t stream_id;
   uint32_t data_size;
   uint32_t property_size;
+  std::string ip_address;
 
-  Stream(std::string const& _stream_name, int32_t _stream_id, uint32_t _data_size, uint32_t _property_size) 
-  : stream_name(_stream_name), stream_id(_stream_id), data_size(_data_size), property_size(_property_size) 
+  Stream(std::string const& _stream_name, int32_t _stream_id, uint32_t _data_size, uint32_t _property_size, std::string _ip_address = "") 
+  : stream_name(_stream_name), stream_id(_stream_id), data_size(_data_size), property_size(_property_size), ip_address(_ip_address) 
   {}
 
   ~Stream() = default;

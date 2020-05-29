@@ -3,8 +3,8 @@
  * 2020/5/7 R.Gunji
  */
 
-#ifndef _INC_SSM_SUBSCIBER_
-#define _INC_SSM_SUBSCIBER_
+#ifndef __INC_SSM_SUBSCIBER__
+#define __INC_SSM_SUBSCIBER__
 
 #include <unistd.h>
 #include <libssm.h>
@@ -41,11 +41,10 @@ struct ShmInfo {
   int32_t stream_id;
   uint32_t data_size;
   uint32_t property_size;
+  std::string ip_address;
 
-  ShmInfo(Stream const& stream) : 
-  data(nullptr), property(nullptr),
-  stream_name(stream.stream_name), stream_id(stream.stream_id),
-  data_size(stream.data_size), property_size(stream.property_size)
+  ShmInfo(Stream const& _stream) : 
+  data(nullptr), property(nullptr), stream_name(_stream.stream_name), stream_id(_stream.stream_id), data_size(_stream.data_size), property_size(_stream.property_size), ip_address(_stream.ip_address)
   {}
 };
 
@@ -62,9 +61,12 @@ struct SubscriberSet {
   // トリガーではないSubscriberSetが基準とするストリーム
   ssm_api_pair observed_stream;
 
+  // ip address
+  std::string ip_address;
+
   SubscriberSet() {}
-  SubscriberSet(Stream const& _stream, OBSV_cond_type const _command, OBSV_cond_type const _command_trigger = OBSV_COND_NO_TRIGGER, ssm_api_pair _observed_stream = { "\0", 0 })
-    : stream_info({_stream.stream_name, _stream.stream_id}), command(_command), command_trigger(_command_trigger), observed_stream(_observed_stream) {} 
+  SubscriberSet(Stream const& _stream, OBSV_cond_type const _command, OBSV_cond_type const _command_trigger, ssm_api_pair _observed_stream = { "\0", 0 })
+    : stream_info({_stream.stream_name, _stream.stream_id}), command(_command), command_trigger(_command_trigger), observed_stream(_observed_stream), ip_address(_stream.ip_address) {} 
 };
 
 class SubscriberBase {
@@ -221,6 +223,7 @@ class SSMSubscriber {
       serialize_4byte_data(element.stream_id);
       serialize_4byte_data(element.data_size);    
       serialize_4byte_data(element.property_size);
+      serialize_string(element.ip_address);
     }
 
     if (!send_msg(OBSV_ADD_STREAM)) {
@@ -281,6 +284,8 @@ class SSMSubscriber {
         serialize_4byte_data(sub_set.command);
         // triggerか否か
         serialize_4byte_data(sub_set.command_trigger);
+        // ip_address
+        // serialize_string(sub_set.ip_address);
         // もしcond_timeのときにどのストリームの時刻でデータを取得するかを送信する。
         if (sub_set.command_trigger == OBSV_COND_NO_TRIGGER) {
           serialize_string(sub_set.observed_stream.first);

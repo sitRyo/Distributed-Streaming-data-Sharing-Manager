@@ -294,12 +294,13 @@ SubscriberSet::SubscriberSet(std::shared_ptr<SSMApiInfo> const& _ssm_api, int _c
 : ssm_api(_ssm_api), observe_stream(nullptr), command(_command)
 {}
 
-SSMApiInfo::SSMApiInfo() : stream_name(""), stream_id(-1), data(nullptr), property(nullptr), tid(-1)
-{}
-
 /* SubscriberSet End */
 
 /* SSMApiInfo */
+
+SSMApiInfo::SSMApiInfo()
+: stream_name(""), stream_id(-1), data(nullptr), property(nullptr), tid(-1), ssm_api_base(nullptr), p_connector(nullptr)
+{}
 
 /**
  * @brief ssm_apiをopen
@@ -310,13 +311,48 @@ bool SSMApiInfo::open(SSM_open_mode mode) {
     return false;
   }
 
-  if (!ssm_api_base.open(stream_name.c_str(), stream_id, mode)) {
-    // TODO: std::runtime_errorでエラーハンドリングするか否か
-    // ssm_api_baseでエラーメッセージが表示されるのでここではとりあえず何もしない。
-    return false;
-  }
+  switch (ssm_api_type) {
+    case SSM_API_BASE: {
+      if (!ssm_api_base->open(stream_name.c_str(), stream_id, mode)) {
+        // TODO: std::runtime_errorでエラーハンドリングするか否か
+        // ssm_api_baseでエラーメッセージが表示されるのでここではとりあえず何もしない。
+        return false;
+      }
 
-  printf("api opened\n");
+      printf("   | ssm_api_base open\n");
+
+      break;
+    }
+
+    case P_CONNECTOR: {
+      // 通信路の確保
+      if (!p_connector->initRemote()) {
+        fprintf(stderr, "ERROR: initRemote\n");
+        goto PCON_ERROR;
+      }
+
+      // proxy側を共有メモリに接続
+      if (!p_connector->open(stream_name.c_str(), stream_id, mode)) {
+        fprintf(stderr, "ERROR: open\n");
+        goto PCON_ERROR;
+      }
+
+      // データ通信路を構築
+      if (!p_connector->createDataCon()) {
+        p_connector->terminate();
+        goto PCON_ERROR;
+      }
+
+      printf("   | p_connector open\n");
+
+      break;
+      
+      // error handling
+PCON_ERROR:
+      p_connector->terminate();
+      return false;
+    }
+  }
 
   return true;
 }
@@ -325,12 +361,29 @@ bool SSMApiInfo::open(SSM_open_mode mode) {
  * @brief read_lastを行い, timeidを返す(atomic)
  */
 int32_t SSMApiInfo::read_last(int32_t opponent_tid, void* opponent_data_ptr) {
-  auto tid_now = getTID_top(ssm_api_base.getSSMId());
+  int32_t tid_now;
+  switch (ssm_api_type) {
+    case SSM_API_BASE: {
+      tid_now = getTID_top(ssm_api_base->getSSMId());
+      if (opponent_tid < tid_now && this->tid != tid_now) {
+        ssm_api_base->readLast();
+      }
+      break;
+    }
 
-  if (opponent_tid < tid_now && this->tid != tid_now) {
-    ssm_api_base.readLast();
+    case P_CONNECTOR: {
+      tid_now = p_connector->getTID_top();
+      if (opponent_tid < tid_now && this->tid != tid_now) {
+        p_connector->readLast();
+      }
+      break;
+    }
+
+    default: {
+      fprintf(stderr, "ERROR: read_last\n");
+    }
   }
-  
+
   // データをコピー
   memcpy(opponent_data_ptr, data.get(), data_size);
 
@@ -344,12 +397,25 @@ int32_t SSMApiInfo::read_last(int32_t opponent_tid, void* opponent_data_ptr) {
  * @brief read_timeを行う。
  */
 int32_t SSMApiInfo::read_time(ssmTimeT time, void* opponent_data_ptr) {
-  this->ssm_api_base.readTime(time);
+  switch (ssm_api_type) {
+    switch (ssm_api_type) {
+      case SSM_API_BASE: {
+        this->ssm_api_base->readTime(time);
+        break;
+      }
+
+      case P_CONNECTOR: {
+        this->p_connector->readTime(time);
+        break;
+      }
+    }
+  }
+
   // データをコピー
   memcpy(opponent_data_ptr, data.get(), data_size);
 
-  this->tid = ssm_api_base.timeId;
-  this->time = ssm_api_base.time;
+  this->tid = ssm_api_base->timeId;
+  this->time = ssm_api_base->time;
   
   return this->tid;
 }
@@ -527,21 +593,20 @@ void SSMObserver::msq_loop() {
 
 std::vector<Stream> SSMObserver::extract_stream_from_msg() {
   std::vector<Stream> stream_data;
-  char*  tmp = obsv_msg->body;
-  char** buf = &tmp;
+  char* tmp = obsv_msg->body;
 
-  // stream_name, stream_id, data_size, property_sizeを抽出する。
+  // stream_name, stream_id, data_size, property_size,を抽出する。
   while (true) {
-    std::string stream_name = deserialize_string(buf);
+    std::string stream_name = deserialize_string(&tmp);
     if (stream_name == "\0") {
       break;
     }
 
-    auto stream_id = deserialize_4byte(buf);
-    uint32_t data_size = static_cast<uint32_t>(deserialize_4byte(buf));
-    uint32_t property_size = static_cast<uint32_t>(deserialize_4byte(buf));
-
-    stream_data.push_back({stream_name, stream_id, data_size, property_size});
+    auto stream_id = deserialize_4byte(&tmp);
+    uint32_t data_size = static_cast<uint32_t>(deserialize_4byte(&tmp));
+    uint32_t property_size = static_cast<uint32_t>(deserialize_4byte(&tmp));
+    std::string ip_address = deserialize_string(&tmp);
+    stream_data.push_back({stream_name, stream_id, data_size, property_size, ip_address});
   }
   
   return stream_data;
@@ -573,6 +638,7 @@ bool SSMObserver::register_subscriber(pid_t const& pid) {
   if (subscriber_host->get_count() == 0) {
     auto count = extract_subscriber_count();
     subscriber_host->set_count(count);
+    printf("   | send subscriber\n");
     return true;
   }
 
@@ -623,6 +689,7 @@ bool SSMObserver::register_subscriber(pid_t const& pid) {
 
     printf("   | stream_name: %s, stream_id: %d, command: %d\n", stream_name.c_str(), stream_id, command);
     printf("   | data_key   : %d, property_key %d\n", ss_shm_info.data_key, ss_shm_info.property_key);
+    printf("   |\n");
 
     // データへのアクセスのためのキー
     serialize_4byte_data(ss_shm_info.data_key);
@@ -669,9 +736,65 @@ bool SSMObserver::register_stream(pid_t const& pid, std::vector<Stream> const& s
     printf("   | stream_name: %s\n", data.stream_name.c_str());
     printf("   | stream_id:   %d\n", data.stream_id);
     printf("   | data_size:   %d\n", data.data_size);
+    printf("   | type     :   %s\n", (data.ip_address == "") ? "SSMApi" : "PConnector");
+    printf("   |\n");
   }
 
   return true;
+}
+
+/**
+ * @brief Streamからssmapitypeを決定し, instantiateする。
+ */
+inline void SSMObserver::instantiate_ssm_api_type(Stream const& stream, std::shared_ptr<SSMApiInfo> ssm_api_info) {
+  // 基底クラスを作ろうと思ったけど, SSMApiBaseと異なる使い方をするメソッドが多かったので大変だけどpointerで実装。
+  // ip_addressがあればPConnector
+  if (stream.ip_address == "") {
+    ssm_api_info->ssm_api_base.reset(new SSMApiBase);
+    ssm_api_info->ssm_api_type = SSM_API_BASE;
+  } else {
+    ssm_api_info->p_connector.reset(new PConnector);
+    ssm_api_info->ssm_api_type = P_CONNECTOR;
+  }
+}
+
+/**
+ * @brief SSMApi, PConnectorにbufferを設定
+ */
+inline void SSMObserver::api_set_buffer(std::shared_ptr<SSMApiInfo> ssm_api_info) {
+  switch (ssm_api_info->ssm_api_type) {
+    case SSM_API_BASE: {
+      ssm_api_info->ssm_api_base
+        ->setBuffer(ssm_api_info->data.get(), ssm_api_info->data_size, ssm_api_info->property.get(), ssm_api_info->property_size);
+      break;
+    }
+
+    case P_CONNECTOR: {
+      // writeはしないので, fulldataにはnullptrを入れておく。
+      ssm_api_info->p_connector
+        ->setBuffer(ssm_api_info->data.get(), ssm_api_info->data_size, ssm_api_info->property.get(), ssm_api_info->property_size, nullptr);
+      break;
+    }
+
+    default: {
+      fprintf(stderr, "ERROR: unknown api type\n");
+    }
+  }
+}
+
+/**
+ * @brief 
+ */
+inline void SSMObserver::set_stream_data_to_ssm_api(Stream const& stream, std::shared_ptr<SSMApiInfo> ssm_api_info) {
+  ssm_api_info->stream_name = stream.stream_name;
+  ssm_api_info->stream_id = stream.stream_id;
+  ssm_api_info->data_size = stream.data_size;
+  ssm_api_info->property_size = stream.property_size;
+  ssm_api_info->ip_address = stream.ip_address;
+
+  // データ確保
+  ssm_api_info->data = std::make_unique<uint8_t[]>(ssm_api_info->data_size);
+  ssm_api_info->property = std::make_unique<uint8_t[]>(ssm_api_info->property_size);
 }
 
 /**
@@ -682,21 +805,13 @@ bool SSMObserver::create_ssm_api_info(Stream const& stream_data, pid_t const pid
   ssm_api_pair key = std::make_pair(stream_data.stream_name, stream_data.stream_id);
 
   auto ssm_api_info = std::make_shared<SSMApiInfo>();
-  auto data_size = stream_data.data_size;
-  auto property_size = stream_data.property_size;
-
-  // データ確保
-  ssm_api_info->data = std::make_unique<uint8_t[]>(data_size);
-  ssm_api_info->property = std::make_unique<uint8_t[]>(property_size);
-
+  // SSMApiBase or PConnectorをInstantiate
+  instantiate_ssm_api_type(stream_data, ssm_api_info);
+  // ストリーム情報を設定する。
+  set_stream_data_to_ssm_api(stream_data, ssm_api_info);  
   // アタッチしたバッファをデータ保存場所として指定
-  ssm_api_info->ssm_api_base.setBuffer(ssm_api_info->data.get(), data_size, ssm_api_info->property.get(), property_size);
-  ssm_api_info->stream_name = stream_data.stream_name;
-  ssm_api_info->stream_id = stream_data.stream_id;
-  ssm_api_info->data_size = data_size;
-  ssm_api_info->property_size = property_size;
-    
-  // Apiをオープン
+  api_set_buffer(ssm_api_info);
+  // Apiをオープン TODO: openは後でまとめてやる。
   ssm_api_info->open(SSM_READ);
   subscriber_host->set_stream_info_map_element(key, ssm_api_info);
 
