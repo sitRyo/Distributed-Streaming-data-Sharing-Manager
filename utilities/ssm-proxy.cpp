@@ -29,7 +29,7 @@
 #include "ssm-proxy.hpp"
 #include "dssm-utility.hpp"
 
-#define DEBUG 1
+#define DEBUG 0
 
 extern pid_t my_pid; // for debug
 DataCommunicator::DataCommunicator(uint16_t nport, char* mData, uint64_t d_size,
@@ -113,21 +113,21 @@ bool DataCommunicator::receiveTMsg(thrd_msg *tmsg) {
 }
 
 void DataCommunicator::handleData() {
-	char *p;
+	// char *p;
 	ssmTimeT time;
 	while (true) {
 		if (!receiveData()) {
 			fprintf(stderr, "receiveData Error happends\n");
 			break;
 		}
-		p = &mData[8];
+		// p = &mData[8];
 
 		time = *(reinterpret_cast<ssmTimeT*>(mData));
 		pstream->write(time);
 #ifdef DEBUG
-	std::cout << "tid " << this->pstream->timeId << "\n";
-	dssm::util::hexdump(&mData[sizeof(ssmTimeT)], mDataSize);
-	std::cout << std::endl;
+	// std::cout << "tid " << this->pstream->timeId << "\n";
+	// dssm::util::hexdump(&mData[sizeof(ssmTimeT)], mDataSize);
+	// std::cout << std::endl;
 #endif
 	}
 	// pstream->showRawData();
@@ -135,7 +135,7 @@ void DataCommunicator::handleData() {
 
 bool DataCommunicator::sendBulkData(char* buf, uint64_t size) {
 #ifdef DEBUG
-	dssm::util::hexdump(buf, size);
+	// dssm::util::hexdump(buf, size);
 #endif
 	if (send(this->client.data_socket, buf, size, 0) != -1) {
 		return true;
