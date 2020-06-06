@@ -13,4 +13,9 @@ typedef struct {
 	double dnum;
 } doubleProperty_p;
 
+typedef struct {
+	int num1;
+	double num2;
+} intSsm_p;
+
 #endif

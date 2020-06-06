@@ -95,6 +95,9 @@ void* SubscriberHost::run(void* args) {
  * @brief ループ
  */
 void SubscriberHost::loop() {
+  // propertyがあれば共有メモリにセット。
+  this->set_property_data();
+
   while (true) {
     for (auto& sub : subscriber) {
       int32_t serial_number = -1;
@@ -106,6 +109,10 @@ void SubscriberHost::loop() {
       }
     }
   }
+}
+
+inline void SubscriberHost::set_property_data() {
+  for (auto & sub : subscriber) { sub.set_property(); }
 }
 
 bool SubscriberHost::serialize_subscriber_data(Subscriber& sub, int const serial_number) {
@@ -307,6 +314,23 @@ int Subscriber::is_satisfy_condition() {
   return (is_satisfy) ? this->serial_number : -1 ;
 }
 
+inline void Subscriber::set_property() {
+  // triggerのプロパティチェック
+  // nullptrではないときにプロパティのデータを共有メモリにセット
+  auto trigger_sub = this->trigger_subscriber_set;
+  if (trigger_sub.ssm_api->property != nullptr) {
+    // セット
+    memcpy(trigger_sub.property, trigger_sub.ssm_api->property.get(), trigger_sub.ssm_api->property_size);
+  }
+
+  // 他のsubscriberも同様にセット
+  for (auto sub : this->other_subscriber_set) {
+    if (sub.ssm_api->property != nullptr) {
+      memcpy(sub.property, sub.ssm_api->property.get(), sub.ssm_api->property_size);
+    }
+  }
+}
+
 /**
  * @brief is_satisfy_conditionを満たしたときに呼ばれる。otherに入っているsubscriberのデータを読み出す。
  */
@@ -455,7 +479,7 @@ int32_t SSMApiInfo::read_last(int32_t opponent_tid, void* opponent_data_ptr) {
 }
 
 /**
- * @brief read_timeを行う。
+ * @brief readtimeを行う。
  */
 int32_t SSMApiInfo::read_time(ssmTimeT time, void* opponent_data_ptr) {
   switch (ssm_api_type) {
@@ -872,7 +896,7 @@ bool SSMObserver::create_ssm_api_info(Stream const& stream_data, pid_t const pid
   set_stream_data_to_ssm_api(stream_data, ssm_api_info);  
   // アタッチしたバッファをデータ保存場所として指定
   api_set_buffer(ssm_api_info);
-  // Apiをオープン TODO: openは後でまとめてやる。
+  // Apiをオープン
   ssm_api_info->open(SSM_READ);
   subscriber_host->set_stream_info_map_element(key, ssm_api_info);
 

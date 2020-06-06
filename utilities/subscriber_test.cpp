@@ -21,7 +21,7 @@ int main() {
   // Subscriber情報
   std::vector<SubscriberSet> subscriber_set;
 
-  Stream int_ssm1 {SNAME_INT, 0, sizeof(int), 0, "127.0.0.1"};
+  Stream int_ssm1 {SNAME_INT, 0, sizeof(int), sizeof(intSsm_p)};
   Stream int_ssm2 {SNAME_INT, 1, sizeof(int), 0};
 
   // SSMApiの情報をここに入力する。
@@ -53,9 +53,10 @@ int main() {
   };
 
   // コールバック
-  std::function<void(intSsm_k, intSsm_k)> callback = [&pair_map](intSsm_k data1, intSsm_k data2) {
+  std::function<void(intSsm_k, intSsm_p, intSsm_k)> callback = [&pair_map](intSsm_k data1, intSsm_p property1, intSsm_k data2) {
     const auto p_map1 = pair_map.at({SNAME_INT, 0});
     const auto p_map2 = pair_map.at({SNAME_INT, 1});
+    printf("num1 %d num2 %f\n", property1.num1, property1.num2);
     printf("time %lf, tid %d\n", p_map1.time, p_map1.tid);
     printf("time %lf, tid %d\n", p_map2.time, p_map2.tid);
     printf("data: %d\n", data1.num + data2.num);
