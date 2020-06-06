@@ -54,8 +54,10 @@ int main() {
 
   // コールバック
   std::function<void(intSsm_k, intSsm_k)> callback = [&pair_map](intSsm_k data1, intSsm_k data2) {
-    const auto p_map = pair_map.at({SNAME_INT, 0});
-    printf("time %lf, tid %d\n", p_map.time, p_map.tid);
+    const auto p_map1 = pair_map.at({SNAME_INT, 0});
+    const auto p_map2 = pair_map.at({SNAME_INT, 1});
+    printf("time %lf, tid %d\n", p_map1.time, p_map1.tid);
+    printf("time %lf, tid %d\n", p_map2.time, p_map2.tid);
     printf("data: %d\n", data1.num + data2.num);
   };
 

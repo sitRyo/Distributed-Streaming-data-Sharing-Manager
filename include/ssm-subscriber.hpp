@@ -114,7 +114,11 @@ public:
    * @brief 時刻データ・APIデータをセット
    */
   inline void set_shm_data_info(ssm_api_pair const api_pair, SSMShmDataInfo const shm_data) {
-    this->ssm_shm_data_info.insert({api_pair, shm_data});
+    if (this->ssm_shm_data_info.find(api_pair) != ssm_shm_data_info.end()) {
+      this->ssm_shm_data_info[api_pair] = shm_data;
+    } else {
+      this->ssm_shm_data_info.insert({api_pair, shm_data});
+    }
   }
 };
 
@@ -172,6 +176,10 @@ public:
       create_data_vector();
       this->data_property_tpl = vector_to_tuple<sizeof...(Strm)>(shm_info, data_property_tpl);
     }
+
+    // for (auto itr : ssm_shm_data_info) {
+      // printf("%d %lf\n", itr.second.tid, itr.second.time);
+    // }
 
     if (local_condition()) {
       apply(callback, this->data_property_tpl);
@@ -421,7 +429,6 @@ class SSMSubscriber {
             auto stream_id = deserialize_4byte(buf);
             auto tid = deserialize_4byte(buf);
             double time = deserialize_double(buf);
-            // printf("%d %lf\n", tid, time);
             subscriber.at(serial_number)->set_shm_data_info({stream_name, stream_id}, {time, tid});
           }
           invoke(serial_number);
