@@ -21,8 +21,8 @@ int main() {
   // Subscriber情報
   std::vector<SubscriberSet> subscriber_set;
 
-  Stream int_ssm1 {SNAME_INT, 0, sizeof(int), 0};
-  Stream int_ssm2 {SNAME_INT, 1, sizeof(int), 0, "127.0.0.1"};
+  Stream int_ssm1 {SNAME_INT, 0, sizeof(int), 0, "127.0.0.1"};
+  Stream int_ssm2 {SNAME_INT, 1, sizeof(int), 0};
 
   // SSMApiの情報をここに入力する。
   // StreamName, StreamId, dataのサイズ, propertyのサイズ
@@ -41,6 +41,8 @@ int main() {
   SubscriberSet ss2 {int_ssm2, OBSV_COND_LATEST, OBSV_COND_NO_TRIGGER, {SNAME_INT, 0}};
   subscriber_set.emplace_back(ss);
   subscriber_set.emplace_back(ss2);
+  
+  ssm_api_pair_map pair_map;
 
   // ローカル変数を条件としてキャプチャすることもできる。
   bool flag = true;
@@ -51,13 +53,15 @@ int main() {
   };
 
   // コールバック
-  std::function<void(intSsm_k, intSsm_k)> callback = [](intSsm_k data1, intSsm_k data2) {
+  std::function<void(intSsm_k, intSsm_k)> callback = [&pair_map](intSsm_k data1, intSsm_k data2) {
+    const auto p_map = pair_map.at({SNAME_INT, 0});
+    printf("time %lf, tid %d\n", p_map.time, p_map.tid);
     printf("data: %d\n", data1.num + data2.num);
   };
 
   // subscriberを登録。
   // 使用したいsubscriberごとにinvokeする。
-  sub.register_subscriber(subscriber_set, local_cond, callback);
+  sub.register_subscriber(subscriber_set, local_cond, callback, pair_map);
 
   // subscriberを開始する。
   sub.start();

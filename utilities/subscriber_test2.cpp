@@ -41,6 +41,7 @@ int main() {
   // StreamName, StreamId, dataのサイズ, propertyのサイズ,
   // 条件の指定(時刻指定でデータを取得 = readTime), 同期するストリーム(ここでは intSsm1)
   SubscriberSet ss2({SNAME_INT, 1, sizeof(int), 0}, OBSV_COND_TIME, OBSV_COND_NO_TRIGGER, {SNAME_INT, 0});
+  ssm_api_pair_map api_pair_map;
   
   subscriber_set.emplace_back(ss);
   subscriber_set.emplace_back(ss2);
@@ -65,7 +66,7 @@ int main() {
 
   // subscriberを登録。
   // 使用したいsubscriberごとにinvokeする。
-  sub.register_subscriber(subscriber_set, local_cond, print);
+  sub.register_subscriber(subscriber_set, local_cond, print, api_pair_map);
 
   // subscriberを開始する。
   sub.start();
