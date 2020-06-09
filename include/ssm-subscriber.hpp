@@ -32,6 +32,11 @@ int32_t verbose_mode = 1;
 
 using namespace ssm;
 
+/**
+ * @brief ローカル条件が無いに使用するラムダ式
+ */
+std::function<bool()> no_local_cond = [](){ return true; };
+
 struct ShmInfo {
   void* data;
   void* property;

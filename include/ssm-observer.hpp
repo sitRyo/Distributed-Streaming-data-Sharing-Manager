@@ -106,6 +106,7 @@ public:
   inline void set_trigger_subscriber(SubscriberSet const& subscriber_set);
   inline void set_other_subscriber(std::vector<SubscriberSet> const& subscriber_set);
   inline void set_other_subscriber(std::vector<SubscriberSet> && subscriber_set);
+  inline void set_property();
   inline uint32_t get_serial_number();
   inline std::vector<SubscriberSet> get_other_subscriber_set();
   inline SubscriberSet get_trigger_subscriber_set();
@@ -147,6 +148,7 @@ public:
   inline void set_subscriber(Subscriber&& subscriber);
   inline void set_count(int32_t const count);
   inline void set_stream_info_map_element(ssm_api_pair const& key, std::shared_ptr<SSMApiInfo> shm);
+  inline void set_property_data();
   inline std::shared_ptr<SSMApiInfo> get_stream_info_map_element(ssm_api_pair const& key);
   inline int32_t get_count();
   SSMSharedMemoryInfo get_shmkey(ssm_api_pair const& pair, uint32_t const data_size, uint32_t const property_size);
