@@ -307,6 +307,7 @@ int Subscriber::is_satisfy_condition() {
     }
     
     default: {
+      fprintf(stderr, "trigger: unknown command %d\n", trigger_subscriber_set.command);
       break;
     }
   }
