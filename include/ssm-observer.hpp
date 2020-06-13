@@ -23,6 +23,7 @@
 
 #include "observer-util.hpp"
 #include "ssm-proxy-client.hpp"
+#include "PipeConnector.hpp"
 
 using namespace ssm;
 
@@ -129,6 +130,7 @@ struct SSMSharedMemoryInfo {
 class SubscriberHost : public Thread {
   pid_t pid;
   int32_t msq_id;
+  int32_t subscriber_msq_key;
   uint32_t count;
   uint32_t padding_size;
   std::vector<Subscriber> subscriber;
@@ -142,8 +144,8 @@ class SubscriberHost : public Thread {
 public:
   void* run(void* args) override;
   
-  SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id);
-  SubscriberHost(pid_t _pid, uint32_t _padding, int32_t _msq_id);
+  SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id, int32_t _subscriber_msq_key);
+  SubscriberHost(pid_t _pid, uint32_t _padding, int32_t _msq_id, int32_t _subscriber_msq_id);
   inline void set_subscriber(Subscriber const& subscriber);
   inline void set_subscriber(Subscriber&& subscriber);
   inline void set_count(int32_t const count);
@@ -168,6 +170,7 @@ private:
   std::unique_ptr<ssm_obsv_msg> obsv_msg;
   uint32_t padding_size;
   std::unordered_map<pid_t, std::unique_ptr<SubscriberHost>> subscriber_map;
+  std::unique_ptr<PipeReader> pipe_reader;
 
   bool serialize_raw_data(uint32_t const& size, void* data);
   bool serialize_4byte_data(int32_t data);

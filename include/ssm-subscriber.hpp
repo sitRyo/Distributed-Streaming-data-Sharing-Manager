@@ -118,12 +118,14 @@ public:
   /**
    * @brief 時刻データ・APIデータをセット
    */
-  inline void set_shm_data_info(ssm_api_pair const api_pair, SSMShmDataInfo const shm_data) {
+  inline void set_time_and_tid(ssm_api_pair const api_pair, SSMShmDataInfo const shm_data) {
+    printf("%d %s\n", api_pair.second, api_pair.first.c_str());
     if (this->ssm_shm_data_info.find(api_pair) != ssm_shm_data_info.end()) {
       this->ssm_shm_data_info[api_pair] = shm_data;
     } else {
       this->ssm_shm_data_info.insert({api_pair, shm_data});
     }
+    printf("ok\n");
   }
 };
 
@@ -194,6 +196,7 @@ public:
 
 class SSMSubscriber {
   int msq_id;
+  int subscriber_msq_id;
   pid_t pid;
   std::unique_ptr<ssm_obsv_msg> obsv_msg;
   
@@ -206,12 +209,13 @@ class SSMSubscriber {
     memset((char *) obsv_msg.get(), 0, OBSV_MSG_SIZE);
   }
 
-  bool send_msg(OBSV_msg_type const& type) {
+  bool send_msg(OBSV_msg_type const type, int32_t const id) {
     obsv_msg->msg_type = OBSV_MSQ_CMD;
     obsv_msg->cmd_type = type;
     obsv_msg->pid      = pid;
 
-    if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
+    // if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
+    if (msgsnd(id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
       perror("msgsnd");
       fprintf(stderr, "msq send err\n");
       return false;
@@ -220,9 +224,10 @@ class SSMSubscriber {
     return true;
   }
 
-  int recv_msg() {
+  int recv_msg(int32_t const id) {
     format_obsv_msg();
-    int len = msgrcv(msq_id, obsv_msg.get(), OBSV_MSG_SIZE, pid, 0);
+    // int len = msgrcv(msq_id, obsv_msg.get(), OBSV_MSG_SIZE, pid, 0);
+    int len = msgrcv(id, obsv_msg.get(), OBSV_MSG_SIZE, pid, 0);
     if (obsv_msg->res_type == OBSV_FAIL) {
       fprintf(stderr, "ERROR: RESTYPE is OBSV_FAIL\n");
       return -1;
@@ -253,14 +258,14 @@ class SSMSubscriber {
       serialize_string(element.ip_address);
     }
 
-    if (!send_msg(OBSV_ADD_STREAM)) {
+    if (!send_msg(OBSV_ADD_STREAM, msq_id)) {
       // Error handling?
       return false;
     }
 
     // 共有メモリ鍵データが帰ってくる
     format_obsv_msg();
-    if (!recv_msg()) {
+    if (!recv_msg(msq_id)) {
       // Error handling?
       return false;
     }
@@ -276,9 +281,9 @@ class SSMSubscriber {
   bool send_subscriber_size() {
     format_obsv_msg();
     serialize_4byte_data(subscriber.size());
-    send_msg(OBSV_SUBSCRIBE);
+    send_msg(OBSV_SUBSCRIBE, msq_id);
 
-    return recv_msg() > 0;
+    return recv_msg(msq_id) > 0;
   }
 
   /**
@@ -320,9 +325,9 @@ class SSMSubscriber {
         }
       }
 
-      send_msg(OBSV_SUBSCRIBE);
+      send_msg(OBSV_SUBSCRIBE, msq_id);
 
-      if (recv_msg() < 0) {
+      if (recv_msg(msq_id) < 0) {
         return false;
       }
 
@@ -414,13 +419,12 @@ class SSMSubscriber {
     printf("start msg loop\n");
     int len = -1;
     while (true) {
-      len = recv_msg();
+      len = recv_msg(subscriber_msq_id);
       if (len < 0) {
         fprintf(stderr, "ERROR: msgrcv\n");
         return;
       }
 
-      // printf("obsv_msg->cmd_type %d\n", obsv_msg->cmd_type);
       switch (obsv_msg->cmd_type) {
         // 通知
         case OBSV_NOTIFY: {
@@ -429,12 +433,13 @@ class SSMSubscriber {
 
           auto serial_number = deserialize_4byte(buf);
           auto ssm_api_count = deserialize_4byte(buf);
+          printf("serial %d count %d size %d\n", serial_number, ssm_api_count, subscriber.size());
           for (auto idx = 0; idx < ssm_api_count; ++idx) {
             auto stream_name = deserialize_string(buf);
             auto stream_id = deserialize_4byte(buf);
             auto tid = deserialize_4byte(buf);
             double time = deserialize_double(buf);
-            subscriber.at(serial_number)->set_shm_data_info({stream_name, stream_id}, {time, tid});
+            subscriber.at(serial_number)->set_time_and_tid({stream_name, stream_id}, {time, tid});
           }
           invoke(serial_number);
         }
@@ -460,16 +465,24 @@ public:
     allocate_obsv_msg();
 
     format_obsv_msg();
-    send_msg(OBSV_INIT);
+    send_msg(OBSV_INIT, msq_id);
 
-    if (recv_msg() < 0) {
+    if (recv_msg(msq_id) < 0) {
       if (errno == E2BIG) {
         fprintf(stderr, "ERROR: msg size is too large.\n");
       }
       return false;
     }
 
-    printf("observer pid: %d\n", obsv_msg->pid);
+    // subscriber_msq_idを取得
+    char *tmp  = this->obsv_msg->body;
+    auto subscriber_msq_key = deserialize_4byte(&tmp);
+    if ((this->subscriber_msq_id = msgget(subscriber_msq_key, 0666)) < 0) {
+      fprintf(stderr, "msgque cannot open.\n");
+      return false;
+    }
+
+    printf("observer pid: %d, subscriber_msq_id: %d\n", obsv_msg->pid, this->subscriber_msq_id);
 
     return true;
   }
@@ -554,13 +567,16 @@ public:
     printf("sent subscriber\n");
 
     format_obsv_msg();    
-    if (!send_msg(OBSV_START)) {
+    if (!send_msg(OBSV_START, msq_id)) {
       return false;
     }
+
+    printf("id %d\n", this->subscriber_msq_id);
     
-    if (recv_msg() < 0) {
+    // バグ？
+    /*if (recv_msg(msq_id) < 0) {
       return false;
-    }
+    }*/
 
     printf("start\n");
 

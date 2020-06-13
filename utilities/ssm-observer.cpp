@@ -25,6 +25,44 @@ static std::unordered_map<void*, key_t> shm_memory_ptr; /* 共有メモリのポ
 static int32_t msq_id; /* msgqueのid */
 static uint32_t shm_key_num; /* 共有メモリキーの数 */
 
+// Subscriberが作られるごとにメッセージキューを新規登録する。
+// 同じmessage queueを使いまわすとメッセージキューにメッセージが追加されるたびに全てのメッセージキューを持つプロセスが自分のデータかどうかを調べにいくらしいのでその対策
+key_t subscriber_msq_key = MSQ_KEY_OBS + 1;
+
+// Observerが持っているmsgque key
+std::vector<int> subscriber_msq_key_array;
+
+#include <chrono>
+// #include <iostream>
+using namespace std;
+
+struct Timer {
+  chrono::system_clock::time_point _start, _end;  
+  double _elapsed;
+  Timer() : _elapsed(0) {
+    _start = chrono::system_clock::now();
+  }
+
+  double timeUpdate() {
+    _end = chrono::system_clock::now();
+    double elapsed = chrono::duration_cast<chrono::milliseconds>(_end - _start).count();    
+    _elapsed = elapsed;
+    // printf("%lf\n", elapsed);
+    return elapsed;
+  }
+
+  inline double elapsed() {
+    return _elapsed;
+  }
+
+  inline void clear() {
+    _start = chrono::system_clock::now();
+  }
+};
+
+
+Timer timer;
+
 /**
  * @brief SIGINT時に実行する関数
  * Subscriber側ではmsgqueへの参照を消さなくていい？
@@ -40,10 +78,17 @@ static void escape(int sig) {
   
   // メッセージキューの削除
   msgctl(msq_id, IPC_RMID, NULL);
+  for (auto id : subscriber_msq_key_array) {
+    // Subscriber, Observer間のmsgque削除
+    msgctl(id, IPC_RMID, NULL);
+  }
+  
   printf("Deleted shared memory and message queue. id: %d\n", msq_id);
 
   // ssm終了
   endSSM();
+  
+  exit(0);
 }
 
 /**
@@ -58,7 +103,7 @@ void set_signal_handler() {
 /**
  * @brief SubscriberHostのコンストラクタ。Hostのsubscriberを管理
  */
-SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id) 
+SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id, int32_t _subscriber_msq_id) 
 : pid(_pid), msq_id(_msq_id), count(_count), padding_size(_padding)
 {
   subscriber.reserve(_count);
@@ -73,7 +118,7 @@ SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, i
 /**
  * @brief SubscriberHostのコンストラクタ2
  */
-SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _padding, int32_t _msq_id) 
+SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _padding, int32_t _msq_id, int32_t _subscriber_msq_key) 
 : pid(_pid), msq_id(_msq_id), count(0), padding_size(_padding)
 {
   // 通信用メッセージバッファを確保
@@ -81,6 +126,11 @@ SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _padding, int32_t _msq_id)
   if (!obsv_msg) {
 		fprintf(stderr, "ERROR: memory allocate");
   }
+  
+  // msgqueを作成
+  this->subscriber_msq_key = construct_msg_que(_subscriber_msq_key);
+  printf("subscriber_msq_key %d\n", this->subscriber_msq_key);
+  subscriber_msq_key_array.push_back(this->subscriber_msq_key);
 }
 
 /**
@@ -97,15 +147,30 @@ void* SubscriberHost::run(void* args) {
 void SubscriberHost::loop() {
   // propertyがあれば共有メモリにセット。
   this->set_property_data();
+  int cnt = 0;
 
   while (true) {
     for (auto& sub : subscriber) {
       int32_t serial_number = -1;
-      
+      auto t1 = timer.timeUpdate();
       if ((serial_number = sub.is_satisfy_condition()) != -1) {
         serialize_subscriber_data(sub, serial_number);
+        auto t2 = timer.timeUpdate();
+        printf("check subscriber time %lf ", t2 - t1);
+        
+        auto time1 = timer.timeUpdate();
         send_msg(OBSV_NOTIFY, this->pid);
-        // TODO: recv_msg() 必要？一方向で良い？実行を確認できる？
+        auto time2 = timer.timeUpdate();
+
+        // printf("send time %lf ", time2 - time1);
+        cnt++;
+        
+        if (time2 >= 1000) {
+          printf("1 sec cnt = %d", cnt);
+          cnt = 0;
+          timer.clear();
+        }
+        printf("\n");
       }
     }
   }
@@ -201,12 +266,15 @@ bool SubscriberHost::send_msg(OBSV_msg_type const type, pid_t const& s_pid) {
   obsv_msg->cmd_type = type;
   obsv_msg->pid      = pid; // バグるかも。というか想定外の値かもしれない。
 
-  if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
+  auto time3 = timer.timeUpdate();
+  if (msgsnd(this->subscriber_msq_key, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
     fprintf(stderr, "errno: %d\n", errno);
     perror("msgsnd");
     fprintf(stderr, "msq send err in SubscriberHost\n");
     return false;
   }
+  auto time4 = timer.timeUpdate();
+  printf("send_msg diff : %lf ", time4 - time3);
 
   return true;
 }
@@ -530,16 +598,7 @@ bool SSMObserver::observer_init() {
 
   // ssm-observerのmsgque作成
   // msq_id = msgget(MSQ_KEY_OBS, IPC_CREAT | IPC_EXCL | 0666);
-  msq_id = msgget(MSQ_KEY_OBS, IPC_CREAT | 0666);
-
-  if (msq_id < 0) {
-    // メッセージキューが存在する場合はエラーメッセージを出力して終了
-    if (errno == EEXIST) {
-      fprintf( stderr, "ERROR : message queue is already exist.\n" );
-			fprintf( stderr, "maybe ssm-observer has started.\n" );
-      return false;
-    }
-  }
+  msq_id = construct_msg_que(MSQ_KEY_OBS);
 
   allocate_obsv_msg();
   return true;
@@ -576,7 +635,7 @@ int SSMObserver::send_msg(OBSV_msg_type const& type, pid_t const& s_pid) {
   obsv_msg->cmd_type = type;
   obsv_msg->pid      = pid;
 
-  if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
+  if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, IPC_NOWAIT) < 0) {
     fprintf(stderr, "errno: %d\n", errno);
     perror("msgsnd");
     fprintf(stderr, "msq send err\n");
@@ -635,6 +694,10 @@ void SSMObserver::msq_loop() {
         create_subscriber(s_pid); 
 
         format_obsv_msg((char*)obsv_msg.get());
+        // subscriber固有のmsq_keyを返信
+        serialize_4byte_data(subscriber_msq_key);
+        // subscriber_msq_key.push_back(subscriber_msq_id);
+        subscriber_msq_key++;
         send_msg(OBSV_RES, s_pid);
         break;
       }
@@ -702,7 +765,7 @@ std::vector<Stream> SSMObserver::extract_stream_from_msg() {
  * @brief SubscriberHostを作成
  */
 bool SSMObserver::create_subscriber(pid_t const pid) {
-  subscriber_map.insert({pid, std::make_unique<SubscriberHost>(pid, padding_size, msq_id)}); // 例外を投げることがある(try catchをすべき?)
+  subscriber_map.insert({pid, std::make_unique<SubscriberHost>(pid, padding_size, msq_id, subscriber_msq_key)}); // 例外を投げることがある(try catchをすべき?)
   return true;
 }
 

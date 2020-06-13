@@ -12,6 +12,7 @@
 #include <functional>
 #include <libssm.h>
 #include <cstring>
+#include <sys/msg.h>
 
 namespace ssm {
 
@@ -185,6 +186,20 @@ std::string deserialize_string(char** buf) {
  */
 inline void format_obsv_msg(char* src) {
   memset(src, 0, OBSV_MSG_SIZE);
+}
+
+inline int construct_msg_que(key_t msg_key) {
+  auto msq_id = msgget(msg_key, IPC_CREAT | 0666);
+  if (msq_id < 0) {
+    // メッセージキューが存在する場合はエラーメッセージを出力して終了
+    if (errno == EEXIST) {
+      fprintf( stderr, "ERROR : message queue is already exist.\n" );
+			fprintf( stderr, "maybe ssm-observer has started.\n" );
+      return -1;
+    }
+  }
+
+  return msq_id;
 }
 
 } // namespace ssm
