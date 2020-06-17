@@ -11,12 +11,22 @@
 #include <string>
 #include <functional>
 #include <libssm.h>
-#include <cstring>
+
 #include <sys/msg.h>
+
+#include <cstring>
+#include <cstdlib>
+
+#include "dssm-utility.hpp"
+#include "PipeConnector.hpp"
 
 namespace ssm {
 
 using ssm_api_pair = std::pair<std::string, int32_t>;
+
+constexpr char* DSSM_PATH_ENV_NAME = "DSSM_DIRECTORY"; /* DSSM_DIRECTORYの環境変数 */
+constexpr char* SERVER_PIPE_NAME = "server"; /* serverのパイプ名 */
+constexpr char* CLIENT_PIPE_NAME = "client"; /* clientのパイプ名 */
 
 struct SSMApiHash {
   size_t operator()(ssm_api_pair const& p) const {
@@ -185,7 +195,9 @@ std::string deserialize_string(char** buf) {
  * @brief obsv_msgを0初期化
  */
 inline void format_obsv_msg(char* src) {
+  // dssm::util::hexdump(src, 64);
   memset(src, 0, OBSV_MSG_SIZE);
+  //dssm::util::hexdump(src, 64);
 }
 
 inline int construct_msg_que(key_t msg_key) {
@@ -200,6 +212,52 @@ inline int construct_msg_que(key_t msg_key) {
   }
 
   return msq_id;
+}
+
+std::string get_env(std::string const& name) {
+  const char *env_name = getenv(name.c_str());
+  std::string s {env_name};
+  return s;
+}
+
+/**
+ * @brief dssmのroot directoryを追加したパイプのpathを作る
+ */
+std::string create_full_pipe_path(std::string const& name) {
+  std::string dssm_root_path = get_env(DSSM_PATH_ENV_NAME);
+  return dssm_root_path + name;
+}
+
+/**
+ * @brief PipeWriter関連の処理(creat, open)
+ * @param is_create trueでpipeを作る
+ * @param mode NONBLOCKなどfcntlで宣言されているマクロを指定
+ */
+std::unique_ptr<PipeWriter> init_pipe_writer(bool const is_create, std::string const& pipe_name, int const mode = O_WRONLY) {
+  std::unique_ptr<PipeWriter> pipe_writer = std::make_unique<PipeWriter>(create_full_pipe_path(pipe_name));
+  if (is_create) {
+    pipe_writer->mk_pipe();
+  }
+
+  pipe_writer->open_pipe(mode);
+  
+  return pipe_writer;
+}
+
+/**
+ * @brief PipeReader関連の処理(creat, open)
+ * @param is_create trueでpipeを作る
+ * @param mode NONBLOCKなどfcntlで宣言されているマクロを指定
+ */
+std::unique_ptr<PipeReader> init_pipe_reader(bool const is_create, std::string const& pipe_name, int const mode = O_RDONLY) {
+  std::unique_ptr<PipeReader> pipe_reader = std::make_unique<PipeReader>(create_full_pipe_path(pipe_name));
+  if (is_create) {
+    pipe_reader->mk_pipe();
+  }
+
+  pipe_reader->open_pipe(mode);
+
+  return pipe_reader;
 }
 
 } // namespace ssm

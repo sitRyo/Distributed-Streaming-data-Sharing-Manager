@@ -23,7 +23,7 @@
 #define SHM_KEY 0x3292							/**< 共有メモリアクセス用キー */
 #define SHM_TIME_KEY (SHM_KEY - 1)				/**< 時刻同期用の共有メモリアクセスキー */
 #define MSQ_KEY 0x3292							/**< メッセージキューアクセス用キー */
-#define MSQ_KEY_OBS 0x3293 /// SSMObserver間メッセージキューアクセスキー
+#define OBSV_SHM_KEY 0x4292 /// SSMObserverデータのアクセスキー
 
 // #define SHM_NUM 10
 
@@ -32,7 +32,6 @@
 #define MSQ_RES 1001
 #define OBSV_MSQ_CMD 1002
 #define MSQ_RES_MAX 2000
-#define OBSV_SHM_KEY 0x4292 /// SSMObserverデータのアクセスキー
 
 /*
  * proxy-clientで使うコマンド群
@@ -132,7 +131,7 @@ typedef enum {
 // #define SSM_MSG_SIZE (sizeof(ssm_msg))
 
 // ssm-observer用のメッセージサイズ
-#define OBSV_MSG_SIZE 1000
+#define OBSV_MSG_SIZE 1024
 
 #ifdef __cplusplus
 extern "C" {
@@ -171,7 +170,7 @@ typedef struct {
 	uint32_t cmd_type;	/// コマンドの種類
 	pid_t pid;          /// プロセスID
 	uint64_t msg_size;  /// bodyのサイズ
-	char body[];        /// データ & パディング
+	// char body[];        /// データ & パディング
 } ssm_obsv_msg;
 
 /* Threadでやり取りするメッセージ */

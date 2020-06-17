@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <cstddef> /* c++ type def */
+#include <cstring> /* memcpy */
 #include <memory> /* unique_ptr */
 #include <string> /* describe path */
 #include <unordered_map> /* hashmap */
@@ -21,7 +22,13 @@ struct FIFOPacketHeader {
 };
 
 class PipeConnection {
+  int fd_; /// file descripter
+  int buffer_max_; /// バッファ最大値
+  std::unique_ptr<char[]> write_buf_; /// write時に使うバッファ
 public:
+  PipeConnection(int const buffer_max = 1024) : buffer_max_(1024) {}
+  ~PipeConnection() = default;
+
   bool mk_pipe(std::string const& path, bool const is_remove_exist_file = false) {
     int ret = mkfifo(path.c_str(), 0666);
 
@@ -39,57 +46,113 @@ public:
     return true;
   }
 
-  int open_pipe(std::string const& path) {
-    int fd = open(path.c_str(), O_RDONLY);
-    if (fd == -1) {
+  int open_pipe(std::string const& path, int const mode) {
+    fd_ = open(path.c_str(), mode);
+    write_buf_.reset(new char[buffer_max_]); /* defaultで1024byte分確保 */
+    if (fd_ == -1) {
       perror("PipeReader::open_pipe");
     }
-    return fd;
-  }
-};
 
-class PipeReader {
-  int fd_;
-  std::string path_;
-  std::unique_ptr<PipeConnection> con_;
-public:
-  PipeReader(std::string const& path) : path_(path), con_(new PipeConnection) {}
-
-  bool mk_pipe(bool is_remove_exist_fifo = false) {
-    return con_->mk_pipe(path_, is_remove_exist_fifo);
+    return fd_;
   }
 
-  bool open_pipe() {
-    fd_ = con_->open_pipe(path_);
-    return fd_ >= 0;
-  }
-
-  int read_pipe(char* buf) const noexcept {
+  int read_pipe(char* buf) noexcept {
     FIFOPacketHeader header;
-    int len = read(fd_, &header, sizeof(FIFOPacketHeader));
-    if (len == -1) {
-      perror("PipeReader::read_pipe");
-      return -1;
-    } else if (len != sizeof(FIFOPacketHeader)) {
-      fprintf(stderr, "PipeReader::read_pipe size error.\n require = %d, packet size = %d\n", sizeof(FIFOPacketHeader), len);
-      return -2;
+    int ret;
+    
+    // header
+    if ((ret = read_impl((char*)&header, sizeof(FIFOPacketHeader))) <= 0) {
+      return ret;
     }
 
-    len = read(fd_, buf, header.data_size);
-    if (len == -1) {
-      perror("PipeReader::read_pipe");
-      return -3;
-    } else if (len != header.data_size) {
-      fprintf(stderr, "PipeReader::read_pipe size error. \n require = %d, packet size = %d\n", header.data_size, len);
-      return -4;
+    // body
+    if ((ret = read_impl(buf, static_cast<std::size_t>(header.data_size))) < 0) {
+      return ret;
     }
+    
+    return header.data_size;
+  }
+
+  int read_impl(char* buf, std::size_t const len) const noexcept {
+    int now_len = 0;
+    
+    do {
+      int rd = read(fd_, buf + now_len, len - now_len);
+      if (rd <= 0) {
+        // rd = 0  => EOF
+        // rd = -1 => error
+        return rd;
+      }
+      now_len += rd;
+    } while (len != now_len);
+
+    return len;
+  }
+
+  int write_pipe(char* buf, std::size_t const sz) const noexcept {
+    FIFOPacketHeader* header = reinterpret_cast<FIFOPacketHeader*>(write_buf_.get());
+    std::size_t header_size = sizeof(FIFOPacketHeader);
+    std::size_t send_data_size = header_size + sz;
+
+    // header情報
+    header->data_size = sz;
+    header->error_info = 0;
+
+    if (send_data_size > buffer_max_) {
+      fprintf(stderr, "PipeConnection::write_pipe send msg is too large.\n");
+      return -1;
+    }
+
+    // パケットの中身をコピー
+    memcpy(write_buf_.get() + header_size, buf, sz);
+
+    int ret = 0;
+    // header + body
+    if ((ret = write_impl(write_buf_.get(), send_data_size)) <= 0) {
+      return ret;
+    }
+
+    return sz;
+  }
+
+  int write_impl(char* buf, std::size_t const len) const noexcept {
+    int now_len = 0;
+
+    do {
+      int rd = write(fd_, buf + now_len, len - now_len);
+      if (rd < 0) {
+        // rd = 0  => EOF
+        // rd = -1 => error
+        return rd;
+      }
+      now_len += rd;
+    } while (now_len != len);
 
     return len;
   }
 };
 
+class PipeReader {
+  std::string path_;
+  std::unique_ptr<PipeConnection> con_;
+public:
+  PipeReader(std::string const& path) : path_(path), con_(new PipeConnection) {}
+
+  bool mk_pipe(bool const is_remove_exist_fifo = false) {
+    return con_->mk_pipe(path_, is_remove_exist_fifo);
+  }
+
+  bool open_pipe(int const mode = O_RDONLY) {
+    int fd = con_->open_pipe(path_, O_RDONLY | mode);
+    return fd >= 0;
+  }
+
+  int read_pipe(char* buf) const noexcept {
+    return con_->read_pipe(buf);
+  }
+};
+
 class PipeWriter {
-  int fd_;
   std::string path_;
   std::unique_ptr<PipeConnection> con_;
 public:
@@ -99,27 +162,20 @@ public:
     return con_->mk_pipe(path_, is_remove_exist_fifo);
   }
 
-  bool open_pipe() {
-    fd_ = con_->open_pipe(path_);
-    return fd_ >= 0;
+  bool open_pipe(int const mode = O_WRONLY) {
+    int fd;
+    if (mode & O_NONBLOCK) {
+      // fifo(7)
+      // NONBLOCK指定時にはO_WRONLYではENXIOエラーが生じるのでO_RDWRに変更
+      fd = con_->open_pipe(path_, O_RDWR | O_NONBLOCK);
+    } else {
+      fd = con_->open_pipe(path_, O_WRONLY | mode);
+    }
+    return fd >= 0;
   }
 
   int write_pipe(char* buf, std::size_t const sz) const noexcept {
-    FIFOPacketHeader header;
-    header.data_size = sz;
-    int len = write(fd_, &header, sizeof(header));
-    if (len == -1) {
-      perror("PipeWriter::write_pipe");
-      return -1;
-    }
-
-    len = write(fd_, buf, sz);
-    if (len == -1) {
-      perror("PipeWriter::write_pipe");
-      return -2;
-    }
-
-    return len;
+    return con_->write_pipe(buf, sz);
   }
 };
 

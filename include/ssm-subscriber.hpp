@@ -27,10 +27,12 @@
 
 #include "dssm-utility.hpp"
 #include "observer-util.hpp"
+#include "PipeConnector.hpp"
 
 int32_t verbose_mode = 1;
 
 using namespace ssm;
+using dssm::util::hexdump;
 
 /**
  * @brief ローカル条件が無いに使用するラムダ式
@@ -119,13 +121,11 @@ public:
    * @brief 時刻データ・APIデータをセット
    */
   inline void set_time_and_tid(ssm_api_pair const api_pair, SSMShmDataInfo const shm_data) {
-    printf("%d %s\n", api_pair.second, api_pair.first.c_str());
     if (this->ssm_shm_data_info.find(api_pair) != ssm_shm_data_info.end()) {
       this->ssm_shm_data_info[api_pair] = shm_data;
     } else {
       this->ssm_shm_data_info.insert({api_pair, shm_data});
     }
-    printf("ok\n");
   }
 };
 
@@ -184,10 +184,6 @@ public:
       this->data_property_tpl = vector_to_tuple<sizeof...(Strm)>(shm_info, data_property_tpl);
     }
 
-    // for (auto itr : ssm_shm_data_info) {
-      // printf("%d %lf\n", itr.second.tid, itr.second.time);
-    // }
-
     if (local_condition()) {
       apply(callback, this->data_property_tpl);
     }
@@ -198,15 +194,18 @@ class SSMSubscriber {
   int msq_id;
   int subscriber_msq_id;
   pid_t pid;
-  std::unique_ptr<ssm_obsv_msg> obsv_msg;
-  
+  ssm_obsv_msg *obsv_msg;
+  char* msg_body;
+  std::unique_ptr<char[]> data_buffer;
+  std::unique_ptr<PipeWriter> pipe_writer;
+  std::unique_ptr<PipeReader> pipe_reader;
   uint32_t padding_size;
   std::vector<Stream> name;
   std::unordered_map<ssm_api_pair, std::shared_ptr<ShmInfo>, SSMApiHash, SSMApiEqual> shm_info_map;
   std::vector<std::unique_ptr<SubscriberBase>> subscriber;
 
   inline void format_obsv_msg() {
-    memset((char *) obsv_msg.get(), 0, OBSV_MSG_SIZE);
+    memset((char *) data_buffer.get(), 0, OBSV_MSG_SIZE);
   }
 
   bool send_msg(OBSV_msg_type const type, int32_t const id) {
@@ -214,37 +213,58 @@ class SSMSubscriber {
     obsv_msg->cmd_type = type;
     obsv_msg->pid      = pid;
 
-    // if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
-    if (msgsnd(id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
-      perror("msgsnd");
-      fprintf(stderr, "msq send err\n");
+    // hexdump(data_buffer.get(), 48);
+
+    // dssm::util::hexdump(data_buffer.get(), 48);
+    if (pipe_writer->write_pipe(data_buffer.get(), sizeof(ssm_obsv_msg) + obsv_msg->msg_size) <= 0) {
+      perror("SSMSubscriber::send_msg");
       return false;
     }
 
     return true;
   }
 
-  int recv_msg(int32_t const id) {
+  int recv_msg_sync() {
+    int len;
     format_obsv_msg();
-    // int len = msgrcv(msq_id, obsv_msg.get(), OBSV_MSG_SIZE, pid, 0);
-    int len = msgrcv(id, obsv_msg.get(), OBSV_MSG_SIZE, pid, 0);
-    if (obsv_msg->res_type == OBSV_FAIL) {
-      fprintf(stderr, "ERROR: RESTYPE is OBSV_FAIL\n");
+    while ((len = recv_msg()) <= 0) {
+      if (len == -1 && errno != EAGAIN)  {
+        perror("SSMSubscriber::recv_msg_sync");
+        return -1;
+      }
+    }
+
+    return len;
+  }
+
+  int recv_msg(int32_t const id = 0) {
+    // messageをrecv
+    int len = pipe_reader->read_pipe(data_buffer.get());
+    if (len < 0) {
+      if (errno != EAGAIN) {
+        perror("SSMObserver::recv_msg");
+      }
+
       return -1;
     }
+
+    if (len == 0) {
+      return 0;
+    }
+
     return len;
   }
 
   bool allocate_obsv_msg() {
-    auto size = sizeof(ssm_obsv_msg);
-    auto padding = OBSV_MSG_SIZE - size;
-    obsv_msg.reset((ssm_obsv_msg *) malloc(sizeof(ssm_obsv_msg) + sizeof(char) * padding));
-    if (!obsv_msg) {
-      fprintf(stderr, "ERROR: memory allocate");
+    data_buffer.reset(new char[OBSV_MSG_SIZE]);
+    if (data_buffer == nullptr) {
+      fprintf(stderr, "SSMObserver::allocate_obsv_msg: bad alloc.\n");
       return false;
     }
-    padding_size = padding;
-    return true;    
+
+    this->obsv_msg = reinterpret_cast<ssm_obsv_msg*>(data_buffer.get());
+    this->msg_body = reinterpret_cast<char*>(((char*) data_buffer.get()) + sizeof(ssm_obsv_msg));
+    return true;
   }
 
   bool send_stream() {
@@ -265,7 +285,7 @@ class SSMSubscriber {
 
     // 共有メモリ鍵データが帰ってくる
     format_obsv_msg();
-    if (!recv_msg(msq_id)) {
+    if (recv_msg_sync() < 0) {
       // Error handling?
       return false;
     }
@@ -281,9 +301,10 @@ class SSMSubscriber {
   bool send_subscriber_size() {
     format_obsv_msg();
     serialize_4byte_data(subscriber.size());
+    // dssm::util::hexdump(data_buffer.get(), 40);
     send_msg(OBSV_SUBSCRIBE, msq_id);
 
-    return recv_msg(msq_id) > 0;
+    return recv_msg_sync() > 0;
   }
 
   /**
@@ -327,7 +348,7 @@ class SSMSubscriber {
 
       send_msg(OBSV_SUBSCRIBE, msq_id);
 
-      if (recv_msg(msq_id) < 0) {
+      if (recv_msg_sync() < 0) {
         return false;
       }
 
@@ -340,12 +361,10 @@ class SSMSubscriber {
   }
 
   void attach_shared_memory_to_api(std::vector<SubscriberSet> const& subscriber_set) {
-    char*  tmp = obsv_msg->body;
-    char** buf = &tmp;
-
+    char *buf = msg_body;
     for (auto& sub_set : subscriber_set) {
-      auto data_key = deserialize_4byte(buf);
-      auto property_key = deserialize_4byte(buf);
+      auto data_key = deserialize_4byte(&buf);
+      auto property_key = deserialize_4byte(&buf);
       printf("data_key %d, property_key %d\n", data_key, property_key);
       auto shm_info = shm_info_map.at(sub_set.stream_info);
       
@@ -390,7 +409,7 @@ class SSMSubscriber {
 
     auto& size = obsv_msg->msg_size;
     // メッセージBodyの先頭から4byteにデータを書き込む。
-    *reinterpret_cast<int32_t *>(&obsv_msg->body[size]) = data;
+    *reinterpret_cast<int32_t *>(&msg_body[size]) = data;
     // 埋めた分だけメッセージサイズを++
     size += 4;
     return true;
@@ -405,8 +424,8 @@ class SSMSubscriber {
       return false;
     }
 
-    for (auto&& ch : str) { obsv_msg->body[obsv_msg->msg_size++] = ch; }
-    obsv_msg->body[obsv_msg->msg_size++] = '\0';
+    for (auto&& ch : str) { msg_body[obsv_msg->msg_size++] = ch; }
+    msg_body[obsv_msg->msg_size++] = '\0';
 
     return true;
   }
@@ -419,7 +438,7 @@ class SSMSubscriber {
     printf("start msg loop\n");
     int len = -1;
     while (true) {
-      len = recv_msg(subscriber_msq_id);
+      len = recv_msg_sync();
       if (len < 0) {
         fprintf(stderr, "ERROR: msgrcv\n");
         return;
@@ -428,17 +447,15 @@ class SSMSubscriber {
       switch (obsv_msg->cmd_type) {
         // 通知
         case OBSV_NOTIFY: {
-          char*  tmp = obsv_msg->body;
-          char** buf = &tmp;
+          char* buf = msg_body;
 
-          auto serial_number = deserialize_4byte(buf);
-          auto ssm_api_count = deserialize_4byte(buf);
-          printf("serial %d count %d size %d\n", serial_number, ssm_api_count, subscriber.size());
+          auto serial_number = deserialize_4byte(&buf);
+          auto ssm_api_count = deserialize_4byte(&buf);
           for (auto idx = 0; idx < ssm_api_count; ++idx) {
-            auto stream_name = deserialize_string(buf);
-            auto stream_id = deserialize_4byte(buf);
-            auto tid = deserialize_4byte(buf);
-            double time = deserialize_double(buf);
+            auto stream_name = deserialize_string(&buf);
+            auto stream_id = deserialize_4byte(&buf);
+            auto tid = deserialize_4byte(&buf);
+            double time = deserialize_double(&buf);
             subscriber.at(serial_number)->set_time_and_tid({stream_name, stream_id}, {time, tid});
           }
           invoke(serial_number);
@@ -454,35 +471,49 @@ public:
    * @brief Subscriberを初期化。Observer間にメッセージキューを作る。
    */
   bool init_subscriber() {
-    if ((msq_id = msgget(MSQ_KEY_OBS, 0666)) < 0) {
-      fprintf(stderr, "msgque cannot open.\n");
-      return false;
-    }
-
     // 区別のためのプロセスIDを取得
     pid = getpid();
     printf("mypid: %d\n", pid);
     allocate_obsv_msg();
 
+    // server間のパイプと接続
+    if (!init_client_pipe_writer()) {
+      return false;
+    }
+    
     format_obsv_msg();
     send_msg(OBSV_INIT, msq_id);
-
-    if (recv_msg(msq_id) < 0) {
-      if (errno == E2BIG) {
-        fprintf(stderr, "ERROR: msg size is too large.\n");
-      }
+    
+    // clientパイプに接続
+    if (!init_client_pipe_reader()) {
       return false;
     }
 
-    // subscriber_msq_idを取得
-    char *tmp  = this->obsv_msg->body;
-    auto subscriber_msq_key = deserialize_4byte(&tmp);
-    if ((this->subscriber_msq_id = msgget(subscriber_msq_key, 0666)) < 0) {
-      fprintf(stderr, "msgque cannot open.\n");
+    if (recv_msg_sync() < 0) {
       return false;
     }
 
-    printf("observer pid: %d, subscriber_msq_id: %d\n", obsv_msg->pid, this->subscriber_msq_id);
+    printf("observer pid %d my pid %d\n", obsv_msg->pid, obsv_msg->msg_type);
+    return true;
+  }
+
+  /**
+   * @brief serverとの通信用パイプを作る
+   */
+  bool init_client_pipe_writer() {
+    // serverとの通信
+    this->pipe_writer = init_pipe_writer(false, SERVER_PIPE_NAME);
+    
+    return true;
+  }
+
+  /**
+   * @brief client側のパイプを初期化する
+   */
+  bool init_client_pipe_reader() {
+    // clientパイプ作成
+    std::string client_path = "client" + std::to_string(pid);
+    this->pipe_reader = init_pipe_reader(true, client_path);
 
     return true;
   }
@@ -571,8 +602,6 @@ public:
       return false;
     }
 
-    printf("id %d\n", this->subscriber_msq_id);
-    
     // バグ？
     /*if (recv_msg(msq_id) < 0) {
       return false;

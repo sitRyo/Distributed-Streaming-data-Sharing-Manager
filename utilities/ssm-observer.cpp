@@ -18,19 +18,12 @@ using namespace ssm;
 
 using std::cout;
 using std::endl;
+using dssm::util::hexdump;
 
 int verbose_mode = 1;
 
 static std::unordered_map<void*, key_t> shm_memory_ptr; /* 共有メモリのポインタ */
-static int32_t msq_id; /* msgqueのid */
 static uint32_t shm_key_num; /* 共有メモリキーの数 */
-
-// Subscriberが作られるごとにメッセージキューを新規登録する。
-// 同じmessage queueを使いまわすとメッセージキューにメッセージが追加されるたびに全てのメッセージキューを持つプロセスが自分のデータかどうかを調べにいくらしいのでその対策
-key_t subscriber_msq_key = MSQ_KEY_OBS + 1;
-
-// Observerが持っているmsgque key
-std::vector<int> subscriber_msq_key_array;
 
 #include <chrono>
 // #include <iostream>
@@ -68,22 +61,17 @@ Timer timer;
  * Subscriber側ではmsgqueへの参照を消さなくていい？
  */
 static void escape(int sig) {
-  fprintf(stdout, "espace\n");
+  printf("espace\n");
+  printf("free shm_memory\n");
   for (auto& shm : shm_memory_ptr) {
     // デタッチ
     shmdt(shm.first);
     // 削除
     shmctl(shm.second, IPC_RMID, NULL);
   }
-  
-  // メッセージキューの削除
-  msgctl(msq_id, IPC_RMID, NULL);
-  for (auto id : subscriber_msq_key_array) {
-    // Subscriber, Observer間のmsgque削除
-    msgctl(id, IPC_RMID, NULL);
-  }
-  
-  printf("Deleted shared memory and message queue. id: %d\n", msq_id);
+
+  printf("delete server pipe\n");
+  remove("server");
 
   // ssm終了
   endSSM();
@@ -101,36 +89,16 @@ void set_signal_handler() {
 /* SubscriberHost */
 
 /**
- * @brief SubscriberHostのコンストラクタ。Hostのsubscriberを管理
- */
-SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id, int32_t _subscriber_msq_id) 
-: pid(_pid), msq_id(_msq_id), count(_count), padding_size(_padding)
-{
-  subscriber.reserve(_count);
-
-  // 通信用メッセージバッファを確保
-  obsv_msg.reset((ssm_obsv_msg *) malloc(sizeof(ssm_obsv_msg) + sizeof(char) * _padding));
-  if (!obsv_msg) {
-		fprintf(stderr, "ERROR: memory allocate");
-  }
-}
-
-/**
  * @brief SubscriberHostのコンストラクタ2
  */
-SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _padding, int32_t _msq_id, int32_t _subscriber_msq_key) 
-: pid(_pid), msq_id(_msq_id), count(0), padding_size(_padding)
+SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count) 
+: pid(_pid), count(_count)
 {
   // 通信用メッセージバッファを確保
-  obsv_msg.reset((ssm_obsv_msg *) malloc(sizeof(ssm_obsv_msg) + sizeof(char) * _padding));
-  if (!obsv_msg) {
-		fprintf(stderr, "ERROR: memory allocate");
-  }
-  
-  // msgqueを作成
-  this->subscriber_msq_key = construct_msg_que(_subscriber_msq_key);
-  printf("subscriber_msq_key %d\n", this->subscriber_msq_key);
-  subscriber_msq_key_array.push_back(this->subscriber_msq_key);
+  this->data_buffer.reset(new char[OBSV_MSG_SIZE]);
+  this->obsv_msg = reinterpret_cast<ssm_obsv_msg*>(this->data_buffer.get());
+  this->msg_body = reinterpret_cast<char*>(((char*) data_buffer.get()) + sizeof(ssm_obsv_msg));
+  printf("host %p %p\n", obsv_msg, msg_body);
 }
 
 /**
@@ -187,7 +155,7 @@ bool SubscriberHost::serialize_subscriber_data(Subscriber& sub, int const serial
   std::vector<SubscriberSet> other_subscriber_set = sub.get_other_subscriber_set();
   SubscriberSet trigger_subscriber_set = sub.get_trigger_subscriber_set();
 
-  format_obsv_msg((char*)obsv_msg.get());
+  format_obsv_msg((char*)data_buffer.get());
   // シリアルナンバーをメッセージに追加
   serialize_4byte_data(serial_number);
   // APIの数(trigger + other_subscriber_setの数)
@@ -224,6 +192,10 @@ inline void SubscriberHost::set_stream_info_map_element(ssm_api_pair const& key,
   this->stream_info_map.insert({key, std::move(shm)});
 }
 
+inline void SubscriberHost::set_pipe_writer(std::unique_ptr<PipeWriter>&& pipe_writer) {
+  this->pipe_writer = std::move(pipe_writer);
+}
+
 inline std::shared_ptr<SSMApiInfo> SubscriberHost::get_stream_info_map_element(ssm_api_pair const& key) {
   return this->stream_info_map.at(key);
 }
@@ -250,11 +222,6 @@ SSMSharedMemoryInfo SubscriberHost::get_shmkey(ssm_api_pair const& stream_pair, 
     SSMSharedMemoryInfo ssm_smemory_info {data, property, data_key, property_key};
     stream_buffer_map.insert({stream_pair, ssm_smemory_info});
 
-    printf("   | data address %p\n", data);
-    printf("   | data key     %d\n", data_key);
-    printf("   | property     %p\n", property);
-    printf("   | property key %d\n", property_key);
-
     return ssm_smemory_info;
   }
 
@@ -266,47 +233,24 @@ bool SubscriberHost::send_msg(OBSV_msg_type const type, pid_t const& s_pid) {
   obsv_msg->cmd_type = type;
   obsv_msg->pid      = pid; // バグるかも。というか想定外の値かもしれない。
 
-  auto time3 = timer.timeUpdate();
-  if (msgsnd(this->subscriber_msq_key, (void *) obsv_msg.get(), OBSV_MSG_SIZE, 0) < 0) {
-    fprintf(stderr, "errno: %d\n", errno);
-    perror("msgsnd");
-    fprintf(stderr, "msq send err in SubscriberHost\n");
-    return false;
-  }
-  auto time4 = timer.timeUpdate();
-  printf("send_msg diff : %lf ", time4 - time3);
-
+  this->pipe_writer->write_pipe(data_buffer.get(), sizeof(ssm_obsv_msg) + obsv_msg->msg_size);
+  
   return true;
 }
 
 bool SubscriberHost::serialize_4byte_data(int32_t data) {
-  // メッセージに書き込めないときはエラー(呼び出し元でerror handlingしないと(面倒))
-  if (sizeof(int32_t) + obsv_msg->msg_size >= padding_size) {
-    if (verbose_mode > 0) {
-      fprintf(stderr, "VERBOSE: message body is too large.\n");
-    }
-    return false;
-  }
-
   auto& size = obsv_msg->msg_size;
   // メッセージBodyの先頭から4byteにデータを書き込む。
-  *reinterpret_cast<int32_t *>(&obsv_msg->body[size]) = data;
+  *reinterpret_cast<int32_t *>(&msg_body[size]) = data;
   // 埋めた分だけメッセージサイズを++
   size += 4;
   return true;
 }
 
 bool SubscriberHost::serialize_double_data(double data) {
-  if (sizeof(double) + obsv_msg->msg_size >= padding_size) {
-    if (verbose_mode > 0) {
-      fprintf(stderr, "VERBOSE: message body is too large.\n");
-    }
-    return false;
-  }
-
   auto& size = obsv_msg->msg_size;
   // メッセージBodyの先頭から8byteにデータを書き込む。
-  *reinterpret_cast<double *>(&obsv_msg->body[size]) = data;
+  *reinterpret_cast<double *>(&msg_body[size]) = data;
   // 埋めた分だけメッセージサイズを++
   size += 8;
   return true;
@@ -321,8 +265,8 @@ bool SubscriberHost::serialize_string(std::string const& str) {
     return false;
   }
 
-  for (auto&& ch : str) { obsv_msg->body[obsv_msg->msg_size++] = ch; }
-  obsv_msg->body[obsv_msg->msg_size++] = '\0';
+  for (auto&& ch : str) { this->msg_body[obsv_msg->msg_size++] = ch; }
+  this->msg_body[obsv_msg->msg_size++] = '\0';
 
   return true;
 }
@@ -577,7 +521,7 @@ int32_t SSMApiInfo::read_time(ssmTimeT time, void* opponent_data_ptr) {
 SSMObserver::SSMObserver() : pid(getpid()) {}
 
 SSMObserver::~SSMObserver() {
-  msgctl( msq_id, IPC_RMID, NULL );
+  // msgctl( msq_id, IPC_RMID, NULL );
 }
 
 /* SSMApiInfo End */
@@ -585,48 +529,62 @@ SSMObserver::~SSMObserver() {
 /* SSMObserver */
 
 /**
- * @brief メッセージキューを作る。
+ * @brief FIFOを作る。
  */
 bool SSMObserver::observer_init() {
-  shm_key_num = 0;
-
   // ssm-coordinatorとのmsgque作成
   if (initSSM() == 0) {
-    fprintf(stderr, " ssm-coordinator\n");
+    fprintf(stderr, "SSMObserver::observer_init: ssm-coordinator cannot find in this host.\n");
     return false;
   }
 
-  // ssm-observerのmsgque作成
-  // msq_id = msgget(MSQ_KEY_OBS, IPC_CREAT | IPC_EXCL | 0666);
-  msq_id = construct_msg_que(MSQ_KEY_OBS);
+  pipe_reader = init_pipe_reader(true, SERVER_PIPE_NAME, O_NONBLOCK);
 
-  allocate_obsv_msg();
-  return true;
+  return allocate_obsv_msg();
 }
 
 /**
- * @brief obsv_msgを確保
+ * @brief FIFOで使うバッファを確保。ポインタをバッファにセット。
  */
 bool SSMObserver::allocate_obsv_msg() {
-	auto size = sizeof(ssm_obsv_msg);
-	auto padding = OBSV_MSG_SIZE - size;
-  // cout << padding << endl;
-	obsv_msg.reset((ssm_obsv_msg *) malloc(sizeof(ssm_obsv_msg) + sizeof(char) * padding));
-	if (!obsv_msg) {
-		fprintf(stderr, "ERROR: memory allocate");
-		return false;
-	}
-	padding_size = padding;
+  data_buffer.reset(new char[OBSV_MSG_SIZE]);
+  if (data_buffer == nullptr) {
+    fprintf(stderr, "SSMObserver::allocate_obsv_msg: bad alloc.\n");
+    return false;
+  }
+
+  this->obsv_msg = reinterpret_cast<ssm_obsv_msg*>(data_buffer.get());
+  this->msg_body = reinterpret_cast<char*>(((char*) data_buffer.get()) + sizeof(ssm_obsv_msg)); // ここのポインタのセットは少し怪しいかもしれない。
 	return true;
 }
 
-void SSMObserver::show_msq_id() {
-  std::cout << msq_id << std::endl;
+int SSMObserver::recv_msg_sync() {
+  int len;
+  format_obsv_msg(data_buffer.get());
+  while ((len = recv_msg()) <= 0) {
+    if (len == -1 && errno != EAGAIN)  {
+      perror("SSMSubscriber::recv_msg_sync");
+      return -1;
+    }
+  }
+
+  return len;
 }
 
 int SSMObserver::recv_msg() {
-  format_obsv_msg((char*)obsv_msg.get());
-  int len = msgrcv(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, OBSV_MSQ_CMD, 0);
+  int len = pipe_reader->read_pipe(data_buffer.get());
+  if (len < 0) {
+    if (errno != EAGAIN) {
+      perror("SSMObserver::recv_msg");
+    }
+
+    return -1;
+  }
+
+  if (len == 0) {
+    return 0;
+  }
+
   return len;
 }
 
@@ -635,12 +593,9 @@ int SSMObserver::send_msg(OBSV_msg_type const& type, pid_t const& s_pid) {
   obsv_msg->cmd_type = type;
   obsv_msg->pid      = pid;
 
-  if (msgsnd(msq_id, (void *) obsv_msg.get(), OBSV_MSG_SIZE, IPC_NOWAIT) < 0) {
-    fprintf(stderr, "errno: %d\n", errno);
-    perror("msgsnd");
-    fprintf(stderr, "msq send err\n");
-    return false;
-  }
+  std::unique_ptr<PipeWriter>& pw = this->client_pipe_writer[s_pid];
+
+  pw->write_pipe(data_buffer.get(), sizeof(ssm_obsv_msg) + obsv_msg->msg_size);
 
   return true;
 }
@@ -664,27 +619,24 @@ bool SSMObserver::serialize_4byte_data(int32_t data) {
 
   auto& size = obsv_msg->msg_size;
   // メッセージBodyの先頭から4byteにデータを書き込む。
-  *reinterpret_cast<int32_t *>(&obsv_msg->body[size]) = data;
+  *reinterpret_cast<int32_t *>(&msg_body[size]) = data;
   // 埋めた分だけメッセージサイズを++
   size += 4;
   return true;
 }
 
 void SSMObserver::msq_loop() {
-  // int len = -1;
   key_t s_pid;
   while (true) {
-    // len = recv_msg();
-    recv_msg();
+    int len = recv_msg_sync();
+    // メッセージがパイプの中に入っていない
+    if (len < 0) { 
+      perror("SSMObserver::msq_loop");
+      exit(1);
+    }
+
     s_pid = obsv_msg->pid;
 
-    // msg_sizeは必ずpadding_size以内
-    if (obsv_msg->msg_size > padding_size) {
-      fprintf(stderr, "ERROR: msgsize is too large\n");
-      send_msg(OBSV_FAIL, s_pid);
-      continue;
-    }
-    
     switch (obsv_msg->cmd_type) {
       // SubscriberHostの追加
       case OBSV_INIT: {
@@ -693,17 +645,15 @@ void SSMObserver::msq_loop() {
         // SubscriberHostを追加
         create_subscriber(s_pid); 
 
-        format_obsv_msg((char*)obsv_msg.get());
-        // subscriber固有のmsq_keyを返信
-        serialize_4byte_data(subscriber_msq_key);
-        // subscriber_msq_key.push_back(subscriber_msq_id);
-        subscriber_msq_key++;
+        format_obsv_msg((char*)data_buffer.get());
+
         send_msg(OBSV_RES, s_pid);
         break;
       }
 
       case OBSV_ADD_STREAM: {
         printf("OBSV_ADD_STREAM pid = %d\n", s_pid);
+        printf("data buf %p, msg body %p\n", data_buffer.get(), msg_body);
         auto stream_data = extract_stream_from_msg();
         
         if (!register_stream(obsv_msg->pid, stream_data)) {
@@ -711,13 +661,14 @@ void SSMObserver::msq_loop() {
         }
 
         // 返信データの準備
-        format_obsv_msg((char*)obsv_msg.get());
+        format_obsv_msg((char*)data_buffer.get());
         send_msg(OBSV_RES, s_pid);
         break;
       }
 
       case OBSV_SUBSCRIBE: {
         printf("OBSV_SUBSCRIBE pid = %d\n", s_pid);
+        printf("data buf %p, msg body %p\n", data_buffer.get(), msg_body);
         
         // msg内のsubscriberを登録
         register_subscriber(s_pid);
@@ -728,8 +679,11 @@ void SSMObserver::msq_loop() {
       case OBSV_START: {
         printf("OBSV_START pid = %d\n", s_pid);
         
+        auto& sh = subscriber_map.at(s_pid);
+        // writerをセット
+        sh->set_pipe_writer(std::move(client_pipe_writer.at(s_pid)));
         // thread start
-        subscriber_map.at(s_pid)->start(nullptr);
+        sh->start(nullptr);
         break;
       }
 
@@ -742,19 +696,19 @@ void SSMObserver::msq_loop() {
 
 std::vector<Stream> SSMObserver::extract_stream_from_msg() {
   std::vector<Stream> stream_data;
-  char* tmp = obsv_msg->body;
+  char *p = msg_body;
 
   // stream_name, stream_id, data_size, property_size,を抽出する。
   while (true) {
-    std::string stream_name = deserialize_string(&tmp);
+    std::string stream_name = deserialize_string(&p);
     if (stream_name == "\0") {
       break;
     }
 
-    auto stream_id = deserialize_4byte(&tmp);
-    uint32_t data_size = static_cast<uint32_t>(deserialize_4byte(&tmp));
-    uint32_t property_size = static_cast<uint32_t>(deserialize_4byte(&tmp));
-    std::string ip_address = deserialize_string(&tmp);
+    auto stream_id = deserialize_4byte(&p);
+    uint32_t data_size = static_cast<uint32_t>(deserialize_4byte(&p));
+    uint32_t property_size = static_cast<uint32_t>(deserialize_4byte(&p));
+    std::string ip_address = deserialize_string(&p);
     stream_data.push_back({stream_name, stream_id, data_size, property_size, ip_address});
   }
   
@@ -765,7 +719,15 @@ std::vector<Stream> SSMObserver::extract_stream_from_msg() {
  * @brief SubscriberHostを作成
  */
 bool SSMObserver::create_subscriber(pid_t const pid) {
-  subscriber_map.insert({pid, std::make_unique<SubscriberHost>(pid, padding_size, msq_id, subscriber_msq_key)}); // 例外を投げることがある(try catchをすべき?)
+  subscriber_map.insert({pid, std::make_unique<SubscriberHost>(pid, 0)});
+  // clientとのpipeを作る
+  std::string client_path = "client" + std::to_string(pid);
+  
+  // serverがclientに対してデータを送信するのでWriter
+  // pipewriter作成
+  auto client_pipe_writer = init_pipe_writer(false, client_path, O_NONBLOCK);
+  this->client_pipe_writer.insert({pid, std::move(client_pipe_writer)});
+
   return true;
 }
 
@@ -773,12 +735,18 @@ bool SSMObserver::create_subscriber(pid_t const pid) {
  * @brief Subscriberの数を取得
  */
 uint32_t SSMObserver::extract_subscriber_count() {
-  auto num = deserialize_4byte_data(obsv_msg->body);
+  auto num = deserialize_4byte_data(msg_body);
   return static_cast<uint32_t>(num);
 }
 
 /**
  * @brief Subscriberからのメッセージ解析
+ * User Program
+ * => Subscriber1, Subscriber2, Subscriber3 ... SubscriberN
+ * Subscriber
+ * => SSMApi, trigger
+ * と構成されている。
+ * なので、最初にプログラムのSubscriberの数を取得して、その後、Subscriberが要求するAPIやtriggerなどの条件をメッセージから取得する。
  */
 bool SSMObserver::register_subscriber(pid_t const& pid) {
   std::unique_ptr<SubscriberHost>& subscriber_host = subscriber_map.at(pid);
@@ -791,13 +759,11 @@ bool SSMObserver::register_subscriber(pid_t const& pid) {
     return true;
   }
 
-  char* buf = (char *)malloc(padding_size);
-  auto size = obsv_msg->msg_size;
-  
-  memcpy(buf, (char *) obsv_msg->body, padding_size);
+  std::vector<key_t> shm_keys;
 
-  format_obsv_msg((char*)obsv_msg.get());
+  char* buf = this->msg_body;
   
+  /* 1つのSubscriberに登録されている条件などを取得 & 登録 */
   // serial_number
   auto serial_number = deserialize_4byte(&buf);
 
@@ -827,7 +793,7 @@ bool SSMObserver::register_subscriber(pid_t const& pid) {
       observe_stream.second = deserialize_4byte(&buf);
     }
 
-    // ストリームの情報(SubscriberSetに登録する。)
+    // ストリームの情報(SubscriberSetに登録する)
     std::shared_ptr<SSMApiInfo> ssm_api_info = subscriber_host->get_stream_info_map_element(stream_info_pair);
 
     // 共有メモリキーを取得する。
@@ -841,9 +807,9 @@ bool SSMObserver::register_subscriber(pid_t const& pid) {
     printf("   |\n");
 
     // データへのアクセスのためのキー
-    serialize_4byte_data(ss_shm_info.data_key);
+    shm_keys.push_back(ss_shm_info.data_key);
     // プロパティへのアクセスのためのキー
-    serialize_4byte_data(ss_shm_info.property_key);
+    shm_keys.push_back(ss_shm_info.property_key);
 
     // SIGINT時に共有メモリを解放するためにstaticなhashmapに共有メモリ情報を登録。
     shm_memory_ptr.insert({ss_shm_info.data, ss_shm_info.data_key});
@@ -870,8 +836,12 @@ bool SSMObserver::register_subscriber(pid_t const& pid) {
   // subscriberの全情報をsubscriberhostに登録
   subscriber_host->set_subscriber(std::move(sub));
 
-  // bufferを解放
-  free(buf - size);
+  // データを詰める前にバッファを初期化
+  format_obsv_msg((char*)data_buffer.get());
+  // 共有メモリキーを送信
+  for (auto&& key : shm_keys) {
+    serialize_4byte_data(key);
+  }
 
   return true;
 }
@@ -896,7 +866,7 @@ bool SSMObserver::register_stream(pid_t const& pid, std::vector<Stream> const& s
  * @brief Streamからssmapitypeを決定し, instantiateする。
  */
 inline void SSMObserver::instantiate_ssm_api_type(Stream const& stream, std::shared_ptr<SSMApiInfo> ssm_api_info) {
-  // 基底クラスを作ろうと思ったけど, SSMApiBaseと異なる使い方をするメソッドが多かったので大変だけどpointerで実装。
+  // 基底クラスを作ろうと思ったけど, SSMApiBaseと異なる使い方をするメソッドが多かったのでpointerで実装。
   // ip_addressがあればPConnector
   if (stream.ip_address == "") {
     ssm_api_info->ssm_api_base.reset(new SSMApiBase);
@@ -988,9 +958,7 @@ int main() {
 
   espace_load();
 
-  std::cout << "mypid:     " << getpid() << "\n";
-  std::cout << "msgque id: ";
-  observer.show_msq_id();
+  std::cout << "mypid: " << getpid() << "\n";
   observer.msq_loop();
 }
 

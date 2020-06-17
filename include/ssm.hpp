@@ -368,7 +368,6 @@ public:
 	virtual bool read( SSM_tid timeId = -1 )
 	{
 		SSM_tid tid = readSSM( ssmId, mData, &time, timeId );
-//		printf("mData pointer : %p \n", mData);
 		if( tid >= 0 )
 		{
 			this->timeId = tid;

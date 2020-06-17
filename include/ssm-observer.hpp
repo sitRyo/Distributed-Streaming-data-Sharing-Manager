@@ -134,7 +134,10 @@ class SubscriberHost : public Thread {
   uint32_t count;
   uint32_t padding_size;
   std::vector<Subscriber> subscriber;
-  std::unique_ptr<ssm_obsv_msg> obsv_msg;
+  std::unique_ptr<char[]> data_buffer;
+  ssm_obsv_msg* obsv_msg;
+  char* msg_body;
+  std::unique_ptr<PipeWriter> pipe_writer;
 
   // 共有メモリ管理HashMap
   std::unordered_map<ssm_api_pair, SSMSharedMemoryInfo, SSMApiHash, SSMApiEqual> stream_buffer_map;
@@ -144,13 +147,13 @@ class SubscriberHost : public Thread {
 public:
   void* run(void* args) override;
   
-  SubscriberHost(pid_t _pid, uint32_t _count, uint32_t _padding, int32_t _msq_id, int32_t _subscriber_msq_key);
-  SubscriberHost(pid_t _pid, uint32_t _padding, int32_t _msq_id, int32_t _subscriber_msq_id);
+  SubscriberHost(pid_t _pid, uint32_t _count);
   inline void set_subscriber(Subscriber const& subscriber);
   inline void set_subscriber(Subscriber&& subscriber);
   inline void set_count(int32_t const count);
   inline void set_stream_info_map_element(ssm_api_pair const& key, std::shared_ptr<SSMApiInfo> shm);
   inline void set_property_data();
+  inline void set_pipe_writer(std::unique_ptr<PipeWriter>&& pipe_writer);
   inline std::shared_ptr<SSMApiInfo> get_stream_info_map_element(ssm_api_pair const& key);
   inline int32_t get_count();
   SSMSharedMemoryInfo get_shmkey(ssm_api_pair const& pair, uint32_t const data_size, uint32_t const property_size);
@@ -166,11 +169,14 @@ public:
 
 class SSMObserver {  
 private:
-  int pid;
-  std::unique_ptr<ssm_obsv_msg> obsv_msg;
-  uint32_t padding_size;
-  std::unordered_map<pid_t, std::unique_ptr<SubscriberHost>> subscriber_map;
-  std::unique_ptr<PipeReader> pipe_reader;
+  int pid; /* SSMObserverのpid */
+  ssm_obsv_msg *obsv_msg; /* ipcでやり取りするメッセージのヘッダー */
+  char *msg_body;
+  uint32_t padding_size; /* もう使わない */
+  std::unordered_map<pid_t, std::unique_ptr<SubscriberHost>> subscriber_map; /* subscriberとprocess id のhashmap */
+  std::unique_ptr<PipeReader> pipe_reader; /* pipereader */
+  std::unique_ptr<char[]> data_buffer; /* obsv_msgの後に続くデータを取得するためのバッファ */
+  std::unordered_map<pid_t, std::unique_ptr<PipeWriter>> client_pipe_writer;
 
   bool serialize_raw_data(uint32_t const& size, void* data);
   bool serialize_4byte_data(int32_t data);
@@ -179,9 +185,13 @@ private:
   int32_t deserialize_4byte_data(char* buf);
 
   int recv_msg();
+  int recv_msg_sync();
   int send_msg(OBSV_msg_type const& type, pid_t const& s_pid);
   bool allocate_obsv_msg();
   bool create_subscriber(pid_t const pid);
+  //std::unique_ptr<PipeWriter> init_pipe_writer(bool const is_create, std::string const& pipe_name, int const mode = O_WRONLY);
+  //std::unique_ptr<PipeReader> init_pipe_reader(bool const is_create, std::string const& pipe_name, int const mode = O_RDONLY);
+  //std::string create_full_pipe_path(std::string const& name);
 
   std::vector<Stream> extract_stream_from_msg();
   uint32_t extract_subscriber_count();
@@ -199,8 +209,6 @@ public:
   ~SSMObserver();
   bool observer_init();
   void msq_loop();
-  // void set_signal_handler(int sig_num);
-  void show_msq_id();
 };
 
 #endif // __INC_SSM_OBSERVER__

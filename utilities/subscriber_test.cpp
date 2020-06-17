@@ -22,7 +22,7 @@ int main() {
   std::vector<SubscriberSet> subscriber_set;
 
   Stream int_ssm1 {SNAME_INT, 0, sizeof(int), sizeof(intSsm_p)};
-  Stream int_ssm2 {SNAME_INT, 1, sizeof(int), 0};
+  Stream int_ssm2 {SNAME_INT, 1, sizeof(int), 0, "127.0.0.1"};
 
   // SSMApiの情報をここに入力する。
   // StreamName, StreamId, dataのサイズ, propertyのサイズ
