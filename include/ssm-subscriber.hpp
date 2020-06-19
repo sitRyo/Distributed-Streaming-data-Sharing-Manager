@@ -365,7 +365,6 @@ class SSMSubscriber {
     for (auto& sub_set : subscriber_set) {
       auto data_key = deserialize_4byte(&buf);
       auto property_key = deserialize_4byte(&buf);
-      printf("data_key %d, property_key %d\n", data_key, property_key);
       auto shm_info = shm_info_map.at(sub_set.stream_info);
       
       if (shm_info->data == nullptr) {
@@ -376,8 +375,6 @@ class SSMSubscriber {
       if (property_key != -1 && shm_info->property == nullptr) {
         attach_shared_memory(&(shm_info->property), property_key);
       }
-
-      printf("data_addr %p, property_addr %p\n", shm_info->data, shm_info->property);
     }
   }
 
@@ -434,7 +431,7 @@ class SSMSubscriber {
     subscriber.at(serial_number)->invoke();
   }
 
-  void msq_loop() {
+  void subscribe_loop() {
     printf("start msg loop\n");
     int len = -1;
     while (true) {
@@ -502,7 +499,7 @@ public:
    */
   bool init_client_pipe_writer() {
     // serverとの通信
-    this->pipe_writer = init_pipe_writer(false, SERVER_PIPE_NAME);
+    this->pipe_writer = init_pipe_writer(false, false, SERVER_PIPE_NAME);
     
     return true;
   }
@@ -512,8 +509,8 @@ public:
    */
   bool init_client_pipe_reader() {
     // clientパイプ作成
-    std::string client_path = "client" + std::to_string(pid);
-    this->pipe_reader = init_pipe_reader(true, client_path);
+    std::string client_path = CLIENT_PIPE_NAME + std::to_string(pid);
+    this->pipe_reader = init_pipe_reader(true, true, client_path);
 
     return true;
   }
@@ -539,20 +536,15 @@ public:
     send_stream();
   }
 
-  /**
-   * @brief Debug用
-   */
-  void access_subscriber(ssm_api_pair const& p) {
-    auto& api = shm_info_map[p];
-    printf("%d\n", *(int32_t *) api->data);
-  }
+  int subscriber_serial_number = 0;
 
   /**
   * @brief stream, callback, 条件を登録
   */
   template <class ...Args>
   bool register_subscriber(std::vector<SubscriberSet> const& subscriber_set, std::function<bool()>& local_condition, std::function<void(Args...)>& callback, ssm_api_pair_map& api_pair_map) {
-    static auto serial_num = 0UL;
+    // vectorのインデックスとして使用する。
+    // static auto serial_num = 0UL;
     std::vector<std::shared_ptr<ShmInfo>> sub_stream;
 
     // subscriberのうち1つはtriggerを持たなければいけない。
@@ -572,8 +564,7 @@ public:
         fprintf(stderr, "ERROR: ssm cannot find.\n");
         return false;
       }
-
-      printf("%p\n", shm_info->data);
+      
       sub_stream.push_back(shm_info);
     }
 
@@ -582,8 +573,11 @@ public:
       return false;
     }
 
-    std::unique_ptr<SubscriberBase> sub = std::make_unique<Subscriber<Args...>>(sub_stream, callback, local_condition, serial_num, subscriber_set, api_pair_map);
+    std::unique_ptr<SubscriberBase> sub = std::make_unique<Subscriber<Args...>>(sub_stream, callback, local_condition, subscriber_serial_number, subscriber_set, api_pair_map);
     subscriber.push_back(std::move(sub));
+
+    // serial_num++;
+    subscriber_serial_number += 1;
 
     return true;
   }
@@ -595,21 +589,13 @@ public:
     printf("send subscriber\n");
     // Subscriber情報を送信
     send_subscriber();
-    printf("sent subscriber\n");
 
     format_obsv_msg();    
     if (!send_msg(OBSV_START, msq_id)) {
       return false;
     }
 
-    // バグ？
-    /*if (recv_msg(msq_id) < 0) {
-      return false;
-    }*/
-
-    printf("start\n");
-
-    msq_loop();
+    subscribe_loop();
 
     return true;
   }

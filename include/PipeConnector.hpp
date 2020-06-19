@@ -39,7 +39,7 @@ public:
     }
 
     if (ret == -1) {
-      perror("PipeReader::mk_pipe");
+      perror("PipeConnection::mk_pipe");
       return false;
     }
 
@@ -50,7 +50,7 @@ public:
     fd_ = open(path.c_str(), mode);
     write_buf_.reset(new char[buffer_max_]); /* defaultで1024byte分確保 */
     if (fd_ == -1) {
-      perror("PipeReader::open_pipe");
+      perror("PipeConnection::open_pipe");
     }
 
     return fd_;

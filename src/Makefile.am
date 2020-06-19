@@ -2,9 +2,9 @@ noinst_HEADERS =  ssm-coordinator.h
 
 # set the include path found by configure
 INCLUDES= $(all_includes) -I../include
+DEBUG_FLAG = -g 
 
-
-AM_CFLAGS   = -Wall
+AM_CFLAGS   = -Wall $(DEBUG_FLAG)
 AM_CXXFLAGS = $(AM_CFLAGS)
 
 ## libssm

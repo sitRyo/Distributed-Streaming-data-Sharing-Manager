@@ -25,8 +25,8 @@ namespace ssm {
 using ssm_api_pair = std::pair<std::string, int32_t>;
 
 constexpr char* DSSM_PATH_ENV_NAME = "DSSM_DIRECTORY"; /* DSSM_DIRECTORYの環境変数 */
-constexpr char* SERVER_PIPE_NAME = "server"; /* serverのパイプ名 */
-constexpr char* CLIENT_PIPE_NAME = "client"; /* clientのパイプ名 */
+constexpr char* SERVER_PIPE_NAME = "pipe_dir/server"; /* serverのパイプ名 */
+constexpr char* CLIENT_PIPE_NAME = "pipe_dir/client"; /* clientのパイプ名 */
 
 struct SSMApiHash {
   size_t operator()(ssm_api_pair const& p) const {
@@ -231,12 +231,13 @@ std::string create_full_pipe_path(std::string const& name) {
 /**
  * @brief PipeWriter関連の処理(creat, open)
  * @param is_create trueでpipeを作る
+ * @param is_check_exist_pipe パイプを新しく作り直すかどうか
  * @param mode NONBLOCKなどfcntlで宣言されているマクロを指定
  */
-std::unique_ptr<PipeWriter> init_pipe_writer(bool const is_create, std::string const& pipe_name, int const mode = O_WRONLY) {
+std::unique_ptr<PipeWriter> init_pipe_writer(bool const is_create, bool const is_check_exist_pipe, std::string const& pipe_name, int const mode = O_WRONLY) {
   std::unique_ptr<PipeWriter> pipe_writer = std::make_unique<PipeWriter>(create_full_pipe_path(pipe_name));
   if (is_create) {
-    pipe_writer->mk_pipe();
+    pipe_writer->mk_pipe(is_check_exist_pipe);
   }
 
   pipe_writer->open_pipe(mode);
@@ -247,12 +248,13 @@ std::unique_ptr<PipeWriter> init_pipe_writer(bool const is_create, std::string c
 /**
  * @brief PipeReader関連の処理(creat, open)
  * @param is_create trueでpipeを作る
+ * @param is_check_exist_pipe パイプを新しく作り直すかどうか
  * @param mode NONBLOCKなどfcntlで宣言されているマクロを指定
  */
-std::unique_ptr<PipeReader> init_pipe_reader(bool const is_create, std::string const& pipe_name, int const mode = O_RDONLY) {
+std::unique_ptr<PipeReader> init_pipe_reader(bool const is_create, bool const is_check_exist_pipe, std::string const& pipe_name, int const mode = O_RDONLY) {
   std::unique_ptr<PipeReader> pipe_reader = std::make_unique<PipeReader>(create_full_pipe_path(pipe_name));
   if (is_create) {
-    pipe_reader->mk_pipe();
+    pipe_reader->mk_pipe(is_check_exist_pipe);
   }
 
   pipe_reader->open_pipe(mode);

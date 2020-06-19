@@ -26,7 +26,6 @@ static std::unordered_map<void*, key_t> shm_memory_ptr; /* 共有メモリのポ
 static uint32_t shm_key_num; /* 共有メモリキーの数 */
 
 #include <chrono>
-// #include <iostream>
 using namespace std;
 
 struct Timer {
@@ -52,7 +51,6 @@ struct Timer {
     _start = chrono::system_clock::now();
   }
 };
-
 
 Timer timer;
 
@@ -98,7 +96,6 @@ SubscriberHost::SubscriberHost(pid_t _pid, uint32_t _count)
   this->data_buffer.reset(new char[OBSV_MSG_SIZE]);
   this->obsv_msg = reinterpret_cast<ssm_obsv_msg*>(this->data_buffer.get());
   this->msg_body = reinterpret_cast<char*>(((char*) data_buffer.get()) + sizeof(ssm_obsv_msg));
-  printf("host %p %p\n", obsv_msg, msg_body);
 }
 
 /**
@@ -122,23 +119,27 @@ void SubscriberHost::loop() {
       int32_t serial_number = -1;
       auto t1 = timer.timeUpdate();
       if ((serial_number = sub.is_satisfy_condition()) != -1) {
+        /* Debugを一応残しておく */
+        // printf("tid %d, serial num %d\n", sub.get_trigger_subscriber_set().ssm_api->tid, serial_number);
         serialize_subscriber_data(sub, serial_number);
-        auto t2 = timer.timeUpdate();
-        printf("check subscriber time %lf ", t2 - t1);
+        // auto t2 = timer.timeUpdate();
+        // printf("check subscriber time %lf ", t2 - t1);
         
-        auto time1 = timer.timeUpdate();
+        // auto time1 = timer.timeUpdate();
         send_msg(OBSV_NOTIFY, this->pid);
-        auto time2 = timer.timeUpdate();
+        // auto time2 = timer.timeUpdate();
 
         // printf("send time %lf ", time2 - time1);
-        cnt++;
+        // cnt++;
         
+        /*
         if (time2 >= 1000) {
           printf("1 sec cnt = %d", cnt);
           cnt = 0;
           timer.clear();
         }
         printf("\n");
+        */
       }
     }
   }
@@ -538,7 +539,7 @@ bool SSMObserver::observer_init() {
     return false;
   }
 
-  pipe_reader = init_pipe_reader(true, SERVER_PIPE_NAME, O_NONBLOCK);
+  pipe_reader = init_pipe_reader(true, true, SERVER_PIPE_NAME, O_NONBLOCK);
 
   return allocate_obsv_msg();
 }
@@ -721,11 +722,11 @@ std::vector<Stream> SSMObserver::extract_stream_from_msg() {
 bool SSMObserver::create_subscriber(pid_t const pid) {
   subscriber_map.insert({pid, std::make_unique<SubscriberHost>(pid, 0)});
   // clientとのpipeを作る
-  std::string client_path = "client" + std::to_string(pid);
-  
+  std::string client_path = CLIENT_PIPE_NAME + std::to_string(pid);
+
   // serverがclientに対してデータを送信するのでWriter
   // pipewriter作成
-  auto client_pipe_writer = init_pipe_writer(false, client_path, O_NONBLOCK);
+  auto client_pipe_writer = init_pipe_writer(false, true, client_path, O_NONBLOCK);
   this->client_pipe_writer.insert({pid, std::move(client_pipe_writer)});
 
   return true;
@@ -772,7 +773,7 @@ bool SSMObserver::register_subscriber(pid_t const& pid) {
   // subscribeするssmapiの数
   uint32_t ssm_api_num = deserialize_4byte(&buf);
 
-  printf("   | size %d\n", ssm_api_num);
+  printf("   | api num %d, serial number %d\n", ssm_api_num, serial_number);
 
   SubscriberSet trigger_sub_set;
   std::vector<SubscriberSet> other_sub_set;
