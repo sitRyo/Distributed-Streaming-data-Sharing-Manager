@@ -74,31 +74,31 @@ ssm_graph_CXXFLAGS = $(ssm_graph_CFLAGS)
 ssm_graph_LDADD = ../src/libssm.la
 
 ## ssm-log-parser
-## ssm_log_parser_SOURCES = ssm-log-parser.cpp ssm-proxy-client.cpp
-## ssm_log_parser_CFLAGS = $(AM_CFLAGS)
-## ssm_log_parser_CXXFLAGS = $(ssm_log_parser_CFLAGS) -std=c++14
-## ssm_log_parser_LDADD = ../src/libssm.la
+# ssm_log_parser_SOURCES = ssm-log-parser.cpp ssm-proxy-client.cpp
+# ssm_log_parser_CFLAGS = $(AM_CFLAGS)
+# ssm_log_parser_CXXFLAGS = $(ssm_log_parser_CFLAGS) -std=c++14
+# ssm_log_parser_LDADD = ../src/libssm.la
 
 ## dssm-player
-dssm_player_SOURCES = dssm-player.cpp ssm-proxy-client.cpp dssm-utility.cpp
-dssm_player_CFLAGS = $(AM_CFLAGS) 
-dssm_player_CXXFLAGS = $(dssm_player_CFLAGS)
-dssm_player_LDADD = ../src/libssm.la 
+# dssm_player_SOURCES = dssm-player.cpp ssm-proxy-client.cpp dssm-utility.cpp
+# dssm_player_CFLAGS = $(AM_CFLAGS) 
+# dssm_player_CXXFLAGS = $(dssm_player_CFLAGS)
+# dssm_player_LDADD = ../src/libssm.la 
 
 ## ssm-observer
-ssm_observer_SOURCES = ssm-observer.cpp ssm-proxy-client.cpp dssm-utility.cpp
-ssm_observer_CFLAGS = $(AM_CFLAGS) 
-ssm_observer_CXXFLAGS = $(ssm_observer_CFLAGS) -fsanitize=address -O0 -g
-ssm_observer_LDADD = ../src/libssm.la 
+# ssm_observer_SOURCES = ssm-observer.cpp ssm-proxy-client.cpp dssm-utility.cpp
+# ssm_observer_CFLAGS = $(AM_CFLAGS) 
+# ssm_observer_CXXFLAGS = $(ssm_observer_CFLAGS) -fsanitize=address -O0 -g
+# ssm_observer_LDADD = ../src/libssm.la 
 
 ## subscriber_test
-subscriber_test_SOURCES = subscriber_test.cpp ssm-proxy-client.cpp dssm-utility.cpp
-subscriber_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -O0 -fsanitize=address
-subscriber_test_CXXFLAGS = $(subscriber_test_CFLAGS)
-subscriber_test_LDADD = ../src/libssm.la -lm
+# subscriber_test_SOURCES = subscriber_test.cpp ssm-proxy-client.cpp dssm-utility.cpp
+# subscriber_test_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -O0 -fsanitize=address
+# subscriber_test_CXXFLAGS = $(subscriber_test_CFLAGS)
+# subscriber_test_LDADD = ../src/libssm.la -lm
 
 ## subscriber_test2
-subscriber_test2_SOURCES = subscriber_test2.cpp ssm-proxy-client.cpp dssm-utility.cpp
-subscriber_test2_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -O0 -fsanitize=address
-subscriber_test2_CXXFLAGS = $(subscriber_test2_CFLAGS)
-subscriber_test2_LDADD = ../src/libssm.la -lm
+# subscriber_test2_SOURCES = subscriber_test2.cpp ssm-proxy-client.cpp dssm-utility.cpp
+# subscriber_test2_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -O0 -fsanitize=address
+# subscriber_test2_CXXFLAGS = $(subscriber_test2_CFLAGS)
+# subscriber_test2_LDADD = ../src/libssm.la -lm
