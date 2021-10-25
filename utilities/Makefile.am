@@ -6,9 +6,9 @@ DEBUG_FLAG = -g
 AM_CFLAGS   = -Wall -lpthread -L/lib64 $(DEBUG_FLAG)
 AM_CXXFLAGS = $(AM_CFLAGS) -std=c++14
 
-bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph dssm-player ssm-observer
-noinst_PROGRAMS = read_proxy_test write_proxy_test subscriber_test subscriber_test2
-noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h dssm-player.hpp
+bin_PROGRAMS = lsssm ssm-logger ssm-player ssm-proxy ssm-transporter ssm-date ssm-monitor ssm-graph 
+noinst_PROGRAMS = read_proxy_test write_proxy_test 
+noinst_HEADERS = ssm-transporter.h printlog.hpp intSsm.h 
 
 # shell scripts
 #EXTRA_DIST = ssm-advance-player killssm psssm topssm
