@@ -826,6 +826,9 @@ bool PConnector::createDataCon() {
 	}
 	free(msg_buf);
 
+	printf("server address = %s\n", ipaddr);
+	printf("port %d\n", msg.suid);
+
 	connectToDataServer(ipaddr, msg.suid);
 
 	return true;

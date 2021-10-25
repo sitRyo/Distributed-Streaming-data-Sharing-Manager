@@ -31,7 +31,7 @@ ssm_player_CXXFLAGS = $(ssm_advance_player_CFLAGS)
 ssm_player_LDADD = ../src/libssm.la -lm
 
 ## ssm-proxy
-ssm_proxy_SOURCES = ssm-proxy.cpp dssm-utility.cpp
+ssm_proxy_SOURCES = ssm-proxy.cpp dssm-utility.cpp udp_connection.cpp
 #ssm_proxy_SOURCES = ssm-proxy.cpp test.cpp
 ssm_proxy_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 # -fsanitize=address
 ssm_proxy_CXXFLAGS = $(ssm_proxy_CFLAGS)

@@ -67,6 +67,34 @@ public:
 };
 
 
+class UDPCommunicator : public Thread {
+private:
+	char* mData;
+	uint64_t mDataSize;
+	uint64_t ssmTimeSize;
+	uint64_t mFullDataSize;
+	PROXY_open_mode mType;
+	uint32_t thrdMsgLen;
+	
+	char* buf;
+	SSMApiBase *pstream;
+	ProxyServer* proxy;
+
+	bool sopen();
+	bool sclose();	
+
+
+public:
+	UDPCommunicator() = delete;
+	UDPCommunicator(uint16_t nport, char* mData, uint64_t d_size, uint64_t t_size, 
+        SSMApiBase *pstream, PROXY_open_mode type, ProxyServer* proxy);
+	~UDPCommunicator();
+	void* run(void *args);
+
+
+};
+
+
 class ProxyServer {
 private:
 	TCPSERVER_INFO server;
