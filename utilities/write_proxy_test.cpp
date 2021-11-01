@@ -59,15 +59,55 @@ int main(int aArgc, char **aArgv) {
 	// セットしたデータがメモリに書き込まれる
 	con.setProperty();
 
+	con.setCommType(UDP_MODE);
+	//con.setCommType(TCP_MODE);
+
+
+
+	
 	// データの送受信路を開く
 	// これがないとデータが送信できない
+	// create tcp connection
+
 	if (!con.createDataCon()) {
 		con.terminate();
 		return 1;
 	}
 
+	
+
+	// create udp connection
+	/*	
+	if(!con.createUDPDataCon()) {
+		con.terminate();
+		return 1;
+	}
+	*/
+	
+	
+
+	
+
 	// 安全に終了できるように設定
 	setSigInt();
+
+	/* ここからテスト */
+
+	int tcnt = 0;
+	while (!gShutOff) {
+		tcnt += 1;
+		// con.wdata->データ型 で書き込み
+		con.wdata->num = tcnt;
+		printf("write %d\n", tcnt);
+		// 引数なしだと現在時刻を書き込み
+		con.write();
+
+		// SSM時間に合わせたsleep...だが，speedを1以外に変更できないので引数がそのまま停止時間になる
+		sleepSSM(1);
+	}
+	exit(1);
+
+	/* ここまでテスト */
 
 	// 書き込む変数
 	int cnt = 0;

@@ -160,7 +160,8 @@ ssm_player_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(ssm_player_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
 am_ssm_proxy_OBJECTS = ssm_proxy-ssm-proxy.$(OBJEXT) \
-	ssm_proxy-dssm-utility.$(OBJEXT)
+	ssm_proxy-dssm-utility.$(OBJEXT) \
+	ssm_proxy-udp_connection.$(OBJEXT)
 ssm_proxy_OBJECTS = $(am_ssm_proxy_OBJECTS)
 ssm_proxy_DEPENDENCIES = ../src/libssm.la
 ssm_proxy_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -240,6 +241,7 @@ am__depfiles_remade = ./$(DEPDIR)/lsssm.Po \
 	./$(DEPDIR)/ssm_player-ssm-proxy-client.Po \
 	./$(DEPDIR)/ssm_proxy-dssm-utility.Po \
 	./$(DEPDIR)/ssm_proxy-ssm-proxy.Po \
+	./$(DEPDIR)/ssm_proxy-udp_connection.Po \
 	./$(DEPDIR)/ssm_transporter-ssm-transporter.Po \
 	./$(DEPDIR)/write_proxy_test-dssm-utility.Po \
 	./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po \
@@ -465,7 +467,7 @@ ssm_player_SOURCES = ssm-player.cpp ssm-proxy-client.cpp dssm-utility.cpp
 ssm_player_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 ssm_player_CXXFLAGS = $(ssm_advance_player_CFLAGS)
 ssm_player_LDADD = ../src/libssm.la -lm
-ssm_proxy_SOURCES = ssm-proxy.cpp dssm-utility.cpp
+ssm_proxy_SOURCES = ssm-proxy.cpp dssm-utility.cpp udp_connection.cpp
 #ssm_proxy_SOURCES = ssm-proxy.cpp test.cpp
 ssm_proxy_CFLAGS = $(AM_CFLAGS) -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 # -fsanitize=address
 ssm_proxy_CXXFLAGS = $(ssm_proxy_CFLAGS)
@@ -680,6 +682,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_player-ssm-proxy-client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_proxy-dssm-utility.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_proxy-ssm-proxy.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_proxy-udp_connection.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssm_transporter-ssm-transporter.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/write_proxy_test-dssm-utility.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po@am__quote@ # am--include-marker
@@ -915,6 +918,20 @@ ssm_proxy-dssm-utility.obj: dssm-utility.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -c -o ssm_proxy-dssm-utility.obj `if test -f 'dssm-utility.cpp'; then $(CYGPATH_W) 'dssm-utility.cpp'; else $(CYGPATH_W) '$(srcdir)/dssm-utility.cpp'; fi`
 
+ssm_proxy-udp_connection.o: udp_connection.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -MT ssm_proxy-udp_connection.o -MD -MP -MF $(DEPDIR)/ssm_proxy-udp_connection.Tpo -c -o ssm_proxy-udp_connection.o `test -f 'udp_connection.cpp' || echo '$(srcdir)/'`udp_connection.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/ssm_proxy-udp_connection.Tpo $(DEPDIR)/ssm_proxy-udp_connection.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='udp_connection.cpp' object='ssm_proxy-udp_connection.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -c -o ssm_proxy-udp_connection.o `test -f 'udp_connection.cpp' || echo '$(srcdir)/'`udp_connection.cpp
+
+ssm_proxy-udp_connection.obj: udp_connection.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -MT ssm_proxy-udp_connection.obj -MD -MP -MF $(DEPDIR)/ssm_proxy-udp_connection.Tpo -c -o ssm_proxy-udp_connection.obj `if test -f 'udp_connection.cpp'; then $(CYGPATH_W) 'udp_connection.cpp'; else $(CYGPATH_W) '$(srcdir)/udp_connection.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/ssm_proxy-udp_connection.Tpo $(DEPDIR)/ssm_proxy-udp_connection.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='udp_connection.cpp' object='ssm_proxy-udp_connection.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(ssm_proxy_CXXFLAGS) $(CXXFLAGS) -c -o ssm_proxy-udp_connection.obj `if test -f 'udp_connection.cpp'; then $(CYGPATH_W) 'udp_connection.cpp'; else $(CYGPATH_W) '$(srcdir)/udp_connection.cpp'; fi`
+
 write_proxy_test-write_proxy_test.o: write_proxy_test.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(write_proxy_test_CXXFLAGS) $(CXXFLAGS) -MT write_proxy_test-write_proxy_test.o -MD -MP -MF $(DEPDIR)/write_proxy_test-write_proxy_test.Tpo -c -o write_proxy_test-write_proxy_test.o `test -f 'write_proxy_test.cpp' || echo '$(srcdir)/'`write_proxy_test.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/write_proxy_test-write_proxy_test.Tpo $(DEPDIR)/write_proxy_test-write_proxy_test.Po
@@ -1103,6 +1120,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ssm_player-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/ssm_proxy-dssm-utility.Po
 	-rm -f ./$(DEPDIR)/ssm_proxy-ssm-proxy.Po
+	-rm -f ./$(DEPDIR)/ssm_proxy-udp_connection.Po
 	-rm -f ./$(DEPDIR)/ssm_transporter-ssm-transporter.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-dssm-utility.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po
@@ -1165,6 +1183,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ssm_player-ssm-proxy-client.Po
 	-rm -f ./$(DEPDIR)/ssm_proxy-dssm-utility.Po
 	-rm -f ./$(DEPDIR)/ssm_proxy-ssm-proxy.Po
+	-rm -f ./$(DEPDIR)/ssm_proxy-udp_connection.Po
 	-rm -f ./$(DEPDIR)/ssm_transporter-ssm-transporter.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-dssm-utility.Po
 	-rm -f ./$(DEPDIR)/write_proxy_test-ssm-proxy-client.Po

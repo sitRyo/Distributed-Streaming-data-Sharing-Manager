@@ -14,6 +14,14 @@
 class DSSMDummy {
 };
 
+/*
+ * proxy-clientで使うコマンド群
+ */
+typedef enum {
+	TCP_MODE = 1,
+	UDP_MODE = 2,   // 読み出し時	
+} com_type;
+
 class PConnector {
 private:
 	struct sockaddr_in server;
@@ -21,6 +29,8 @@ private:
 	int sock;
 	int dsock;                              // データ送信用
 	PROXY_open_mode openMode;
+
+	com_type c_type;
 
 	char *tbuf;
 
@@ -74,6 +84,7 @@ public:
 	PConnector(const char *streamName, int streamId = 0, const char *ipAddress = "127.0.0.1");
 
 	void initPConnector();
+	void setCommType(com_type c_type);
 
 	bool connectToServer(const char* serverName, int port);
 	bool sendMsgToServer(int cmd_type, ssm_msg *msg);
@@ -83,6 +94,7 @@ public:
 	bool recvTMsg(thrd_msg *tmsg);
 
 	bool connectToDataServer(const char* serverName, int port);
+	bool connectToUDPDataServer(const char* serverName, int port);
 
 	bool isOpen();
 	void* getData();
@@ -102,6 +114,8 @@ public:
 	bool getProperty();
 	void setOffset(ssmTimeT offset);
 	bool createDataCon();
+	bool createUDPDataCon();
+
 	bool release();
 	bool terminate();
 

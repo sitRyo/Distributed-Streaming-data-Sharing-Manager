@@ -674,6 +674,19 @@ void ProxyServer::handleCommand() {
 			com = new DataCommunicator(nport, mData, mDataSize, ssmTimeSize,
 					&stream, mType, this);
 			com->start(nullptr);
+			int len = sendMsg(MC_RES, &msg);
+			//printf("send msg len = %d\n", len);
+			break;
+		}
+		case MC_UDP_CONNECTION: {
+			msg.suid = nport;
+			// create udp connection
+			printf("MC_UDP_CONNECTION\n");
+			
+			ucom = new UDPCommunicator(nport, mData, mDataSize, ssmTimeSize,
+				&stream, mType, this);
+			ucom->start(nullptr);
+			
 			sendMsg(MC_RES, &msg);
 			break;
 		}
@@ -693,8 +706,14 @@ void ProxyServer::handleCommand() {
 	END_PROC: free(buf);
 	if (com) {
 		com->wait();
+		free(com);
 	}
-	free(com);
+
+	if (ucom) {
+		ucom->wait();
+		free(ucom);
+	}
+
 
 	inittimeSSM();
 	endSSM();

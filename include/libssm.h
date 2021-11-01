@@ -93,6 +93,7 @@ enum {
 
 	MC_OFFSET,                               // オフセットの設定
 	MC_CONNECTION,                           // バルク通信用経路の確立
+	MC_UDP_CONNECTION,                       // UDPでのバルク通信経路確率
 
 	MC_FAIL = 30,
 	MC_RES = 31									///< コマンドに対する返信

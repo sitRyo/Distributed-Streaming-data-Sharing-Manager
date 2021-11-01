@@ -58,7 +58,12 @@ void PConnector::initPConnector() {
 	tbuf = (char*) malloc(sizeof(thrd_msg));
 	thrdMsgLen = dssm::util::countThrdMsgLength();
 	dssmMsgLen = dssm::util::countDssmMsgLength();
+	c_type = TCP_MODE;
 	memset(tbuf, 0, sizeof(thrd_msg));
+}
+
+void PConnector::setCommType(com_type c_type) {
+	this->c_type = c_type;
 }
 
 int PConnector::readInt(char **p) {
@@ -332,6 +337,19 @@ bool PConnector::connectToDataServer(const char* serverName, int port) {
 	return true;
 }
 
+bool PConnector::connectToUDPDataServer(const char* serverName, int port) {
+	dsock = socket(AF_INET, SOCK_DGRAM, 0);
+	dserver.sin_family = AF_INET;
+	dserver.sin_port = htons(port);
+	if(inet_pton(AF_INET, serverName, &dserver.sin_addr.s_addr)) {
+		printf("udp connection established\n");
+		return true;
+	} else {
+		fprintf(stderr, "udp connection error\n");
+		return false;
+	}	
+}
+
 bool PConnector::initRemote() {
 	bool r = true;
 	ssm_msg msg;
@@ -390,8 +408,9 @@ bool PConnector::deserializeTMessage(thrd_msg *tmsg, char **p) {
 	return true;
 }
 
-bool PConnector::recvMsgFromServer(ssm_msg *msg, char *buf) {
+bool PConnector::recvMsgFromServer(ssm_msg *msg, char *buf) {	
 	int len = recv(sock, buf, dssmMsgLen, 0);
+	//printf("len = %d\n", len);
 	if (len > 0) {
 		deserializeMessage(msg, buf);
 		return true;
@@ -501,12 +520,31 @@ ssmTimeT PConnector::getRealTime() {
 }
 
 bool PConnector::write(ssmTimeT time) {
+
 	*((ssmTimeT*) mFullData) = time;
-	if (send(dsock, mFullData, mFullDataSize, 0) == -1) { // データ送信用経路を使う
-		perror("send");
-		return false;
+	if (this->c_type == TCP_MODE) {		
+		if (send(dsock, mFullData, mFullDataSize, 0) == -1) { // データ送信用経路を使う
+			perror("send");
+			return false;
+		}
+	} else if (this->c_type == UDP_MODE) {
+		printf("udp mode\n");
+		printf("sent size = %d\n", mFullDataSize);
+
+		for (int i = 0; i < mFullDataSize; ++i) {
+			if (i % 16 ==  0) printf("\n");
+			printf("%02x ", ((char*)mFullData)[i] & 0xff);
+		}
+		printf("\n");
+
+
+		if (sendto(dsock, mFullData, mFullDataSize, 0, (struct sockaddr*)&dserver, sizeof(dserver)) == -1) {
+			perror("udp send error");
+			return false;
+		}
 	}
 	this->time = time;
+
 	return true;
 }
 
@@ -818,20 +856,57 @@ bool PConnector::createDataCon() {
 	msg.suid = 0;
 	msg.time = 0;
 	char *msg_buf = (char*) malloc(sizeof(ssm_msg));
-	if (!sendMsgToServer(MC_CONNECTION, &msg)) {
+
+	int	cmd_type;
+	if (this->c_type == TCP_MODE) {
+		cmd_type = MC_CONNECTION;
+	} else if (this->c_type == UDP_MODE) {		
+		cmd_type = MC_UDP_CONNECTION;
+	}
+
+
+	if (!sendMsgToServer(cmd_type, &msg)) {
 		fprintf(stderr, "error in createDataCon\n");
 	}
 	if (recvMsgFromServer(&msg, msg_buf)) {
-//            fprintf(stderr, "create data connection error\n");
+        //fprintf(stderr, "create data connection error\n");
 	}
 	free(msg_buf);
 
 	printf("server address = %s\n", ipaddr);
 	printf("port %d\n", msg.suid);
 
-	connectToDataServer(ipaddr, msg.suid);
+	if (this->c_type == TCP_MODE) { 
+		return connectToDataServer(ipaddr, msg.suid);
+	} else if (this->c_type == UDP_MODE) {
+		printf("start udp connection\n");
+		return connectToUDPDataServer(ipaddr, msg.suid);
+	}
+
+	
 
 	return true;
+}
+
+bool PConnector::createUDPDataCon() {
+	ssm_msg msg;
+	msg.hsize = 0;
+	msg.ssize = 0;
+	msg.suid = 0;
+	msg.time = 0;
+	char *msg_buf = (char*)malloc(sizeof(ssm_msg));
+	if (!sendMsgToServer(MC_UDP_CONNECTION, &msg)) {
+		fprintf(stderr, "error in createUDPDataCon\n");		
+	}
+	if (recvMsgFromServer(&msg, msg_buf)) {
+		//fprintf(stderr, "error in createUDPDataCon recvMsgFromServer\n");
+	}
+	
+	printf("server address = %s\n", ipaddr);
+	printf("port = %d\n", msg.suid);
+	printf("start udp connection\n");
+
+	return connectToUDPDataServer(ipaddr, msg.suid);
 }
 
 bool PConnector::release() {

@@ -23,6 +23,17 @@ typedef struct {
 } TCPCLIENT_INFO;
 
 
+typedef struct {
+	int                wait_socket;
+	struct sockaddr_in udpserver_addr;
+} UDPSERVER_INFO;
+
+typedef struct {
+	int                data_socket;
+	struct sockaddr_in udpclient_addr;
+} UDPCLIENT_INFO;
+
+
 #include "Thread.hpp"
 
 class ProxyServer;
@@ -69,6 +80,9 @@ public:
 
 class UDPCommunicator : public Thread {
 private:
+	UDPSERVER_INFO udp_server;
+	UDPCLIENT_INFO udp_client;
+
 	char* mData;
 	uint64_t mDataSize;
 	uint64_t ssmTimeSize;
@@ -83,6 +97,10 @@ private:
 	bool sopen();
 	bool sclose();	
 
+	bool receiveData();
+	void handleWrite();
+	void handleRead();
+
 
 public:
 	UDPCommunicator() = delete;
@@ -90,8 +108,6 @@ public:
         SSMApiBase *pstream, PROXY_open_mode type, ProxyServer* proxy);
 	~UDPCommunicator();
 	void* run(void *args);
-
-
 };
 
 
@@ -110,6 +126,7 @@ private:
 	PROXY_open_mode mType;
 
 	DataCommunicator *com;
+	UDPCommunicator  *ucom;
 
 	SSMApiBase stream; // real stream
 	uint32_t dssmMsgLen;
