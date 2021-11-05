@@ -62,6 +62,7 @@ int main() {
 	printf("property -> %f\n", con.property.dnum);
 
 
+	// UDPモードで通信
 	con.setCommType(UDP_MODE);
 
 	// データ通信路を開く
@@ -77,18 +78,18 @@ int main() {
 
 		if (con.readNew()) {
 			printf("\n");
+			printf("now -> %f\n", con.time);
+			cout << "NUM = " << con.data.num << endl;
 		}
-		printf("now -> %f\n", con.time);
-		cout << "NUM = " << con.data.num << endl;
 
-		
+		if (con.readTime(con.time - 1)) {
+			printf("\n");
+			printf("before 1 sec -> %f\n", con.time);
+			cout << "old NUM = " << con.data.num << endl;
+		}
 
 		sleepSSM(1);
-
 	}
-
-
-
 
 
 	exit(1);

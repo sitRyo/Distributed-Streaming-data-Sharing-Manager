@@ -59,6 +59,7 @@ int main(int aArgc, char **aArgv) {
 	// セットしたデータがメモリに書き込まれる
 	con.setProperty();
 
+	// UDPモードで通信
 	con.setCommType(UDP_MODE);
 	//con.setCommType(TCP_MODE);
 

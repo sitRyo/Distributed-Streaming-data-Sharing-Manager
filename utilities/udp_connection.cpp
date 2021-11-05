@@ -222,6 +222,21 @@ void UDPCommunicator::handleRead() {
                     }
                     break;
                 }
+                case REAL_TIME: {                    
+                    ssmTimeT t = tmsg.time;
+                    if (!pstream->readTime(t)) {
+                        fprintf(stderr, "[%s] SSMApi::readTime error.\n", pstream->getStreamName());
+                    }
+                    tmsg.tid = pstream->timeId;
+                    tmsg.time = pstream->time;
+                    tmsg.res_type = TMC_RES;
+                    if (sendTmsg(&tmsg)) {
+                        if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
+                            perror("send bulk Error");
+                        }
+                    }                    
+                    break;
+                }
                 default: {
                     fprintf(stderr, "unrecognized msg_type %d\n", tmsg.msg_type);
                     break;
