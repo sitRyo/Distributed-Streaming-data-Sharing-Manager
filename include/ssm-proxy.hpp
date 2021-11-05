@@ -101,6 +101,12 @@ private:
 	void handleWrite();
 	void handleRead();
 
+	bool deserializeTmsg(thrd_msg* tmsg);
+	bool serializeTmsg(thrd_msg* tmsg);
+	bool receiveTmsg(thrd_msg* tmsg);
+	bool sendTmsg(thrd_msg* tmsg);
+	bool sendBulkData(char* bdata, uint64_t size);
+
 
 public:
 	UDPCommunicator() = delete;

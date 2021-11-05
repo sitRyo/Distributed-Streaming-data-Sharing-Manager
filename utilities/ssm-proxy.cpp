@@ -681,7 +681,7 @@ void ProxyServer::handleCommand() {
 		case MC_UDP_CONNECTION: {
 			msg.suid = nport;
 			// create udp connection
-			printf("MC_UDP_CONNECTION\n");
+			//printf("MC_UDP_CONNECTION\n");
 			
 			ucom = new UDPCommunicator(nport, mData, mDataSize, ssmTimeSize,
 				&stream, mType, this);

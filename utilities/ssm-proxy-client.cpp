@@ -226,15 +226,45 @@ SSM_tid PConnector::getTID_bottom(SSM_sid sid) {
 bool PConnector::sendTMsg(thrd_msg *tmsg) {
 	char *p = tbuf;
 	serializeTMessage(tmsg, &p);
-	if (send(dsock, tbuf, thrdMsgLen, 0) == -1) {
-		perror("socket error");
-		return false;
+	
+	if (c_type == TCP_MODE) {
+		if (send(dsock, tbuf, thrdMsgLen, 0) == -1) {
+			perror("socket error");
+			return false;
+		}
+	} else if(c_type == UDP_MODE) {
+		//printf("send udp mode\n");
+		/*
+		printf("sent data len = %d\n", thrdMsgLen);
+		for (int i = 0; i < thrdMsgLen; ++i) {
+			if (i % 16 == 0) printf("\n");
+            printf("%02x ", tbuf[i] & 0xff);
+		}
+		printf("\n");
+		*/
+		
+
+		if (sendto(dsock, tbuf, thrdMsgLen, 0, (struct sockaddr*)&dserver, sizeof(dserver)) == -1) {
+			perror("udp send error");
+			return false;
+		}
 	}
 	return true;
 }
 
 bool PConnector::recvTMsg(thrd_msg *tmsg) {
-	int len = recv(dsock, tbuf, thrdMsgLen, 0);
+	int len = 0;
+	socklen_t addrlen;
+	if (c_type == TCP_MODE) {
+		len = recv(dsock, tbuf, thrdMsgLen, 0);
+	} else if (c_type == UDP_MODE) {
+		//printf("read udp mode\n");
+		addrlen = sizeof(dserver);
+		len = recvfrom(dsock, tbuf, thrdMsgLen, 0, (struct sockaddr*)&dserver, &addrlen);
+		//printf("len = %d\n", len);
+		//printf("thrdMsgLen = %d\n", thrdMsgLen);
+	}	
+
 	if (len == thrdMsgLen) {
 		char* p = tbuf;
 		return deserializeTMessage(tmsg, &p);
@@ -391,6 +421,8 @@ bool PConnector::serializeTMessage(thrd_msg *tmsg, char **p) {
 	/*if (tmsg == NULL) {
 		return false;
 	}*/
+	//printf("serializeTMessage\n");
+
 	writeLong(p, tmsg->msg_type);
 	writeLong(p, tmsg->res_type);
 	writeInt(p, tmsg->tid);
@@ -461,7 +493,7 @@ bool PConnector::readTime(ssmTimeT t) {
 	memset(&tmsg, 0, sizeof(thrd_msg));
 
 	tmsg.msg_type = REAL_TIME;
-	tmsg.time = t;
+	tmsg.time = t;	
 
 	if (!sendTMsg(&tmsg)) {
 		return -1;
@@ -471,7 +503,8 @@ bool PConnector::readTime(ssmTimeT t) {
 		if (tmsg.tid == -1) {
 			fprintf(stderr, "readTime: recv -1");
 			return -1;
-		}
+		}		
+
 		if (tmsg.res_type == TMC_RES) {
 			if (recvData()) {
 				time = tmsg.time;
@@ -491,9 +524,10 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 
 	if (!sendTMsg(&tmsg)) {
 		return false;
-	}
+	}	
 	if (recvTMsg(&tmsg)) {
 		if (tmsg.res_type == TMC_RES) {
+			//printf("res_type = %d\n", tmsg.res_type);
 			if (recvData()) {
 				time = tmsg.time;
 				timeId = tmsg.tid;
@@ -507,9 +541,25 @@ bool PConnector::read(SSM_tid tmid, READ_packet_type type) {
 /* read ここまで　*/
 bool PConnector::recvData() {
 	int len = 0;
-	while ((len += recv(dsock, &((char*) mData)[len], mDataSize - len, 0))
-			!= mDataSize)
-		;
+	if (c_type == TCP_MODE) {
+		while ((len += recv(dsock, &((char*) mData)[len], mDataSize - len, 0))
+				!= mDataSize)
+			;
+	} else if (c_type == UDP_MODE) {
+		printf("udp_mode\n");
+		socklen_t addrlen = sizeof(dserver);
+		while ((len += recvfrom(dsock, &((char*)mData)[len], mDataSize - len, 0, 
+			(struct sockaddr*)&dserver, &addrlen)) != mDataSize);
+
+		/*
+		socklen_t addrlen;
+	
+		printf("read udp mode\n");
+		addrlen = sizeof(dserver);
+		len = recvfrom(dsock, tbuf, thrdMsgLen, 0, (struct sockaddr*)&dserver, &addrlen);
+		*/
+
+	}
 	return true;
 }
 
@@ -528,14 +578,15 @@ bool PConnector::write(ssmTimeT time) {
 			return false;
 		}
 	} else if (this->c_type == UDP_MODE) {
-		printf("udp mode\n");
-		printf("sent size = %d\n", mFullDataSize);
-
+		
+		//printf("sent size = %d\n", mFullDataSize);
+		/*
 		for (int i = 0; i < mFullDataSize; ++i) {
 			if (i % 16 ==  0) printf("\n");
 			printf("%02x ", ((char*)mFullData)[i] & 0xff);
 		}
 		printf("\n");
+		*/
 
 
 		if (sendto(dsock, mFullData, mFullDataSize, 0, (struct sockaddr*)&dserver, sizeof(dserver)) == -1) {

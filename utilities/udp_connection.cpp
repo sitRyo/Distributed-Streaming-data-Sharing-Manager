@@ -79,16 +79,17 @@ UDPCommunicator::~UDPCommunicator() {
 
 void* UDPCommunicator::run(void* args) {
 
-    printf("UDPCommunicator::run\n");
+    //printf("UDPCommunicator::run\n");
 
     switch (mType) {
         case WRITE_MODE: {
-            printf("write mode\n");
+            //printf("write mode\n");
             handleWrite();
             break;
         }
         case READ_MODE: {
-            printf("read mode\n");
+            //printf("read mode\n");
+            handleRead();
             break;
         }
         default: {
@@ -110,7 +111,7 @@ bool UDPCommunicator::receiveData() {
 }
 
 void UDPCommunicator::handleWrite() {
-    printf("handleWrite\n");
+    //printf("handleWrite\n");
     ssmTimeT time;    
     while (true) {
         if (!receiveData()) {
@@ -123,6 +124,113 @@ void UDPCommunicator::handleWrite() {
     }
 }
 
+bool UDPCommunicator::serializeTmsg(thrd_msg* tmsg) {
+    char* p = this->buf;
+	proxy->writeLong(&p, tmsg->msg_type);
+	proxy->writeLong(&p, tmsg->res_type);
+	proxy->writeInt(&p, tmsg->tid);
+	proxy->writeDouble(&p, tmsg->time);
+	return true;    
+}
+
+bool UDPCommunicator::deserializeTmsg(thrd_msg* tmsg) {
+    //printf("deserialize tmsg\n");
+    memset((char*)tmsg, 0, sizeof(thrd_msg));
+    char* p = this->buf;
+	tmsg->msg_type = proxy->readLong(&p);
+	tmsg->res_type = proxy->readLong(&p);
+	tmsg->tid = proxy->readInt(&p);
+	tmsg->time = proxy->readDouble(&p);
+
+    //printf("msg_type = %d\n", tmsg->msg_type);    
+
+	return true;
+}
+
+bool UDPCommunicator::sendTmsg(thrd_msg* tmsg) {
+    if(serializeTmsg(tmsg)) {
+        // send udp
+        if(sendto(this->udp_server.wait_socket, this->buf, this->thrdMsgLen, 0, 
+            (struct sockaddr*)&this->udp_client.udpclient_addr, sizeof(this->udp_client.udpclient_addr)) != -1) {
+                return true;
+        }
+    } 
+    return false;
+}
+
+bool UDPCommunicator::sendBulkData(char* bdata, uint64_t size) {
+    /*
+    printf("send bulk data\n");    
+    for (int i = 0; i < size; ++i) {
+        if (i % 16 == 0) printf("\n");
+        printf("%02x ", bdata[i]);
+    }
+    printf("\n");
+    */
+    
+    if (sendto(this->udp_server.wait_socket, bdata, size, 0,
+        (struct sockaddr*)&this->udp_client.udpclient_addr, sizeof(this->udp_client.udpclient_addr)) != -1) {
+        return true;
+    }
+    return false;
+}
+
+bool UDPCommunicator::receiveTmsg(thrd_msg* tmsg) {
+    int len = 0;
+    socklen_t addrlen = sizeof(this->udp_client.udpclient_addr);
+    
+    //printf("thrdMsgLen = %d\n", thrdMsgLen);
+   
+    if ((len = recvfrom(this->udp_server.wait_socket, this->buf, this->thrdMsgLen, 0,
+        (struct sockaddr*)&this->udp_client.udpclient_addr, &addrlen)) > 0) {
+            // deserialize
+            //printf("received len = %d\n", len);
+            /*
+            for (int i = 0; i < this->thrdMsgLen; ++i) {
+                if (i % 16 == 0) printf("\n");
+                printf("%02x ", buf[i] & 0xff);
+            }
+            printf("\n");
+            */
+
+            return deserializeTmsg(tmsg);            
+    }
+    
+    return true;
+}
+
 void UDPCommunicator::handleRead() {
     printf("handleRead\n");
+    thrd_msg tmsg;
+    while (true) {
+        if(receiveTmsg(&tmsg)) {
+            switch (tmsg.msg_type) {
+                case TIME_ID: {
+                    SSM_tid req_tid = (SSM_tid)tmsg.tid;                    
+                    if (!pstream->read(req_tid)) {
+						fprintf(stderr, "[%s] SSMApi::read error.\n", pstream->getStreamName());
+					}
+					tmsg.tid = pstream->timeId;
+					tmsg.time = pstream->time;
+					tmsg.res_type = TMC_RES;
+                    
+                    if(sendTmsg(&tmsg)) {
+                        //printf("sent tmsg!\n");
+                        if (!sendBulkData(&mData[sizeof(ssmTimeT)], mDataSize)) {
+							perror("send bulk Error");
+						}
+                    }
+                    break;
+                }
+                default: {
+                    fprintf(stderr, "unrecognized msg_type %d\n", tmsg.msg_type);
+                    break;
+                }
+            }
+
+        } else {
+            fprintf(stderr, "receiveTmsg is not valid\n");
+            break;
+        }
+    }
 }
