@@ -61,12 +61,39 @@ int main() {
 	// プロパティは 変数名.property.データ でアクセス
 	printf("property -> %f\n", con.property.dnum);
 
+
+	con.setCommType(UDP_MODE);
+
 	// データ通信路を開く
 	// これをしないとデータを取得できない
 	if (!con.createDataCon()) {
 		con.terminate();
 		return 1;
 	}
+
+	/* ここからテスト */
+	setSigInt();
+	while (!gShutOff) {
+
+		if (con.readNew()) {
+			printf("\n");
+		}
+		printf("now -> %f\n", con.time);
+		cout << "NUM = " << con.data.num << endl;
+
+		
+
+		sleepSSM(1);
+
+	}
+
+
+
+
+
+	exit(1);
+
+	/* ここまで */
 
 	// 安全に終了できるように設定
 	setSigInt();
